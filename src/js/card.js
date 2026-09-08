@@ -58,7 +58,8 @@
    */
   function renderCard(canvas, activity, options) {
     const opts = options || {};
-    const theme = THEMES[opts.theme || (activity.loopClosed || activity.claimedArea ? 'violet' : activity.mode === 'duo' ? 'magenta' : 'lime')];
+    const kind = activity.kind || 'free';
+    const theme = THEMES[opts.theme || (kind === 'territory' ? 'violet' : kind === 'race' ? 'magenta' : 'lime')];
     canvas.width = W;
     canvas.height = H;
     const ctx = canvas.getContext('2d');
@@ -82,30 +83,53 @@
     ctx.textBaseline = 'alphabetic';
     tracked(ctx, 'MILES', PAD, PAD + 40, 11);
 
+    const KIND_LABEL = { free: 'RUN', territory: 'TERRITORY', race: 'RACE' };
+    const label = KIND_LABEL[kind] || 'RUN';
+    // Measure the wordmark in the font it was actually drawn in, or the badge
+    // lands on top of it.
+    ctx.font = `800 40px ${FONT}`;
+    const badgeX = PAD + trackedWidth(ctx, 'MILES', 11) + 30;
+    ctx.font = `800 26px ${FONT}`;
+    const labelW = trackedWidth(ctx, label, 4) + 44;
+    roundRect(ctx, badgeX, PAD + 12, labelW, 44, 22);
+    ctx.fillStyle = theme.accent;
+    ctx.fill();
+    ctx.fillStyle = '#05070a';
+    tracked(ctx, label, badgeX + 22, PAD + 41, 4);
+
     const date = new Date(activity.startedAt).toLocaleDateString('en-US', {
       weekday: 'short', month: 'short', day: 'numeric',
     });
     const time = new Date(activity.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    ctx.font = `600 26px ${FONT}`;
+    ctx.font = `600 24px ${FONT}`;
     ctx.fillStyle = '#7d8b9d';
     ctx.textAlign = 'right';
     ctx.fillText(`${date} · ${time}`, W - PAD, PAD + 38);
     ctx.textAlign = 'left';
 
-    /* --- Title & headline distance --------------------------------------- */
-    ctx.fillStyle = '#9dabbd';
-    ctx.font = `700 30px ${FONT}`;
-    ctx.fillText(activity.title || 'Run', PAD, PAD + 128);
+    /* --- The one number this run was about --------------------------------
+       A race is about where you came; a territory run is about how much
+       ground you took; a free run is about the distance. Whichever it is
+       gets the headline, and the other numbers fall in behind it. ---------- */
 
-    const distance = Units.distText(activity.distance);
+    const headline = kind === 'race' && activity.placing
+      ? { value: ordinal(activity.placing), unit: `of ${activity.fieldSize}`, caption: activity.finished ? `Finished the ${Units.distText(activity.target)} ${Units.distLabel()}` : 'Did not finish' }
+      : kind === 'territory' && activity.claimedArea
+        ? { value: Units.areaText(activity.claimedArea), unit: Units.areaLabel(), caption: 'Claimed by closing the loop' }
+        : { value: Units.distText(activity.distance), unit: Units.distLabel(), caption: kind === 'territory' ? 'No loop closed — no land taken' : activity.title || 'Run' };
+
+    ctx.fillStyle = '#5f6d7e';
+    ctx.font = `700 24px ${FONT}`;
+    tracked(ctx, headline.caption.toUpperCase(), PAD, PAD + 122, 3);
+
     ctx.fillStyle = '#ffffff';
-    ctx.font = `800 188px ${MONO}`;
-    ctx.fillText(distance, PAD - 6, PAD + 300);
-    const distW = ctx.measureText(distance).width;
+    ctx.font = `800 176px ${MONO}`;
+    ctx.fillText(headline.value, PAD - 6, PAD + 292);
+    const distW = ctx.measureText(headline.value).width;
 
     ctx.fillStyle = theme.accent;
-    ctx.font = `800 52px ${FONT}`;
-    ctx.fillText(Units.distLabel(), PAD + distW + 12, PAD + 300);
+    ctx.font = `800 50px ${FONT}`;
+    ctx.fillText(headline.unit, PAD + distW + 14, PAD + 292);
 
     /* --- Route ------------------------------------------------------------ */
     const panel = { x: PAD, y: PAD + 360, w: W - PAD * 2, h: 520 };
@@ -118,23 +142,30 @@
 
     drawRoute(ctx, activity, panel, theme);
 
-    /* --- Territory badge -------------------------------------------------- */
-    if (activity.claimedArea > 0) {
-      const label = `TERRITORY CLAIMED · ${Units.areaText(activity.claimedArea)} ${Units.areaLabel()}`;
+    /* --- Outcome badge ---------------------------------------------------- */
+    const badge = kind === 'territory'
+      ? (activity.claimedArea > 0 ? { text: 'LOOP CLOSED · LAND TAKEN', fill: 'rgba(139, 92, 246, 0.92)' } : { text: 'LOOP NOT CLOSED', fill: 'rgba(255, 255, 255, 0.14)' })
+      : kind === 'race'
+        ? { text: activity.finished ? `CROSSED THE LINE ${ordinal(activity.placing).toUpperCase()}` : 'DID NOT FINISH', fill: activity.placing === 1 ? 'rgba(46, 230, 168, 0.92)' : 'rgba(255, 61, 139, 0.92)' }
+        : null;
+
+    if (badge) {
       ctx.font = `800 24px ${FONT}`;
-      const bw = trackedWidth(ctx, label, 3) + 52;
+      const bw = trackedWidth(ctx, badge.text, 3) + 52;
       roundRect(ctx, panel.x + 26, panel.y + panel.h - 74, bw, 50, 25);
-      ctx.fillStyle = 'rgba(139, 92, 246, 0.9)';
+      ctx.fillStyle = badge.fill;
       ctx.fill();
       ctx.fillStyle = '#ffffff';
-      tracked(ctx, label, panel.x + 52, panel.y + panel.h - 40, 3);
+      tracked(ctx, badge.text, panel.x + 52, panel.y + panel.h - 40, 3);
     }
 
-    /* --- Stat row --------------------------------------------------------- */
+    /* --- Stat row ---------------------------------------------------------
+       Whatever the headline took, distance always appears here, so the three
+       cells read the same way on every card. --------------------------- */
     const stats = [
+      { label: 'DISTANCE', value: Units.distText(activity.distance), suffix: Units.distLabel() },
       { label: 'TIME', value: clock(activity.duration) },
       { label: 'PACE', value: Units.paceText(activity.duration / Math.max(1, activity.distance)), suffix: Units.paceLabel() },
-      { label: 'ELEV', value: String(activity.elevation || 0), suffix: 'm' },
     ];
 
     const statY = panel.y + panel.h + 108;
@@ -168,16 +199,21 @@
     ctx.fillText(athlete, PAD + 34, footY + 10);
 
     let right = '';
-    if (activity.mode === 'duo' && activity.rival) {
-      const verdict = activity.won === null ? 'DUO' : activity.won ? 'WON' : 'LOST';
-      right = `${verdict} vs ${activity.rival}`;
+    let rightColor = '#9dabbd';
+    if (kind === 'race' && activity.placing) {
+      const beat = activity.fieldSize - activity.placing;
+      right = activity.placing === 1
+        ? `WON · BEAT ${beat}`
+        : `${ordinal(activity.placing).toUpperCase()} OF ${activity.fieldSize}`;
+      rightColor = activity.placing === 1 ? '#2ee6a8' : '#ff8ab6';
+    } else if (kind === 'territory') {
+      right = `${Units.areaText(opts.totalArea || activity.claimedArea)} ${Units.areaLabel()} HELD`;
+      rightColor = '#b79dfb';
     } else if (opts.rank) {
       right = opts.rank.toUpperCase();
-    } else {
-      right = 'SOLO RUN';
     }
     ctx.textAlign = 'right';
-    ctx.fillStyle = activity.won === false ? '#ff5964' : activity.won === true ? '#2ee6a8' : '#9dabbd';
+    ctx.fillStyle = rightColor;
     ctx.font = `800 28px ${FONT}`;
     ctx.fillText(right, W - PAD - 34, footY + 10);
     ctx.textAlign = 'left';
@@ -217,7 +253,7 @@
     });
 
     // A closed loop is land: fill it before stroking the route.
-    if (activity.loopClosed || activity.claimedArea > 0) {
+    if (activity.claimedArea > 0) {
       ctx.closePath();
       ctx.fillStyle = 'rgba(139, 92, 246, 0.26)';
       ctx.fill();
@@ -246,6 +282,13 @@
     ctx.restore();
   }
 
+  function ordinal(n) {
+    if (!n) return '—';
+    const tens = n % 100;
+    if (tens >= 11 && tens <= 13) return n + 'th';
+    return n + (['th', 'st', 'nd', 'rd'][n % 10] || 'th');
+  }
+
   /** Saves the card as a PNG. Falls back to opening it in a tab. */
   function downloadCard(canvas, filename) {
     try {
@@ -264,5 +307,6 @@
   }
 
   M.renderCard = renderCard;
+  M.ordinal = ordinal;
   M.downloadCard = downloadCard;
 })(window.MILES);

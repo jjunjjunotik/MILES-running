@@ -17,8 +17,8 @@
 
   const Tracker = {
     active: false,
-    mode: 'solo',
-    rival: null,
+    kind: 'free',
+    rivals: [],
     state: null,
     _watchId: null,
     _timer: null,
@@ -27,19 +27,25 @@
     /** Speeds up simulated runs so a demo does not take an hour. */
     demoSpeed: 12,
 
+    /**
+     * @param {object} options
+     *   kind    'free' | 'territory' | 'race'
+     *   rivals  friends to race (up to MAX_RIVALS); race only
+     *   target  metres to the finish line; race only
+     */
     start(options) {
       const opts = options || {};
       const home = M.State.data.profile.home;
 
       this.active = true;
-      this.mode = opts.mode || 'solo';
-      this.rival = opts.rival || null;
+      this.kind = opts.kind || 'free';
+      this.rivals = (opts.rivals || []).slice(0, M.MAX_RIVALS);
 
       this.state = {
         id: uid(),
         startedAt: Date.now(),
-        mode: this.mode,
-        rivalName: this.rival ? this.rival.name : null,
+        kind: this.kind,
+        target: this.kind === 'race' ? (opts.target || 5000) : null,
         distance: 0,
         duration: 0,
         elevation: 0,
@@ -50,6 +56,7 @@
         loopReady: false,
         loopClosed: false,
         closure: null,
+        finishedAt: null,
         source: 'sim',
       };
 
@@ -61,7 +68,9 @@
         // captured in a demo. At ~2.9 m/s these rates trace a loop of roughly
         // 1.2–1.8 km, which closes in a couple of minutes at 12x.
         turnRate: (Math.random() > 0.5 ? 1 : -1) * (0.0105 + Math.random() * 0.005),
-        speed: 2.9,
+        // Mid-field pace, so a simulated runner can actually win a race
+        // against friends whose speed comes from their real weekly volume.
+        speed: 3.15,
         phase: 0,
       };
 
@@ -69,14 +78,16 @@
       this._lastTick = Date.now();
       this._timer = setInterval(() => this._tick(), 250);
 
-      if (this.mode === 'duo' && this.rival) {
-        Live.join(opts.room || 'duo-' + this.rival.id, {
+      if (this.kind === 'race' && this.rivals.length) {
+        // Everyone who picks the same friends lands in the same room, which is
+        // what lets two tabs (or two phones) race for real.
+        Live.join(opts.room || 'race-' + this.rivals.map((r) => r.name.toLowerCase()).sort().join('-'), {
           id: uid(),
           name: M.State.data.profile.name,
           initials: M.State.data.profile.initials,
           color: '#c8ff2e',
         });
-        Live.startBot(this.rival, home);
+        Live.startBots(this.rivals, home);
       }
 
       Bus.emit('run:started', this.state);
@@ -114,21 +125,34 @@
       this.state.duration += dt;
 
       if (this.state.source !== 'gps') this._simulate(dt);
-      if (this.mode === 'duo') this._advanceRival(dt);
+      if (this.kind === 'race') this._advanceField(dt);
 
       this.state.currentPace = this.state.distance > 20
         ? this.state.duration / this.state.distance
         : 0;
 
-      this._checkLoop();
+      if (this.kind === 'territory') this._checkLoop();
+      if (this.kind === 'race') this._checkFinishLine();
+      // Crossing the line ends the run synchronously, inside that check, so
+      // there is nothing left to publish or report for this tick.
+      if (!this.active) return;
+
       this._publish();
       Bus.emit('run:tick', this.state);
+    },
+
+    /** Crossing the agreed distance ends your race, and fixes your place. */
+    _checkFinishLine() {
+      const s = this.state;
+      if (s.finishedAt !== null || s.distance < s.target) return;
+      s.finishedAt = s.duration;
+      Bus.emit('run:finished', s);
     },
 
     _simulate(dt) {
       const sim = this._sim;
       sim.phase += dt * 0.35;
-      sim.speed = clamp(2.9 + Math.sin(sim.phase * 0.4) * 0.35, 2.2, 3.9);
+      sim.speed = clamp(3.15 + Math.sin(sim.phase * 0.4) * 0.35, 2.4, 4.0);
       sim.heading += (sim.turnRate + Math.sin(sim.phase) * 0.004) * dt;
       const step = sim.speed * dt;
       sim.position = Geo.offset(sim.position, Math.cos(sim.heading) * step, Math.sin(sim.heading) * step);
@@ -168,9 +192,9 @@
       Bus.emit('run:position', this.state);
     },
 
-    _advanceRival(dt) {
-      const bot = Live.tickBot(dt);
-      if (bot) Bus.emit('live:peers', Live.list());
+    _advanceField(dt) {
+      Live.tickBots(dt, this.state.target);
+      Bus.emit('live:peers', Live.list());
     },
 
     /* --- Territory ---------------------------------------------------------
@@ -200,7 +224,7 @@
     },
 
     _publish() {
-      if (this.mode !== 'duo') return;
+      if (this.kind !== 'race') return;
       const telemetry = {
         name: M.State.data.profile.name,
         initials: M.State.data.profile.initials,
@@ -226,15 +250,14 @@
       this._watchId = null;
 
       const s = this.state;
-      const rivals = Live.list();
-      const rival = rivals[0] || null;
-
+      const field = Live.list();
       const route = Geo.simplify(s.route, 2.5);
       const closure = s.closure;
+
       const activity = {
         id: s.id,
         startedAt: s.startedAt,
-        mode: s.mode,
+        kind: s.kind,
         title: titleFor(s),
         distance: s.distance,
         duration: s.duration,
@@ -245,10 +268,11 @@
         territoryPolygon: closure ? Geo.simplify(closure.polygon, 2.5) : null,
         claimedArea: 0,
         source: s.source,
-        rival: rival ? rival.name : s.rivalName,
-        rivalDistance: rival ? rival.distance : null,
-        won: rival ? s.distance >= rival.distance : null,
+        target: s.target,
+        finished: s.finishedAt !== null,
       };
+
+      if (s.kind === 'race') Object.assign(activity, resultsFor(s, field));
 
       Live.leave();
       this.state = null;
@@ -262,8 +286,44 @@
   function titleFor(s) {
     const hour = new Date(s.startedAt).getHours();
     const part = hour < 5 ? 'Night' : hour < 11 ? 'Morning' : hour < 15 ? 'Midday' : hour < 19 ? 'Afternoon' : 'Evening';
-    if (s.closure) return `${part} Territory Loop`;
-    return s.mode === 'duo' ? `${part} Duel` : `${part} Run`;
+    if (s.kind === 'race') return `${part} Race`;
+    if (s.kind === 'territory') return s.closure ? `${part} Territory Loop` : `${part} Territory Run`;
+    return `${part} Run`;
+  }
+
+  /**
+   * Scores a race. Finishers are ordered by the clock time they crossed on;
+   * anyone still out on the course is ranked behind them, furthest first.
+   */
+  function resultsFor(s, field) {
+    const mine = {
+      name: 'You', me: true, initials: M.State.data.profile.initials,
+      color: '#c8ff2e', distance: s.distance, finishedAt: s.finishedAt,
+    };
+    const entries = field.map((p) => ({
+      name: p.name, me: false, initials: p.initials, color: p.color,
+      distance: p.distance,
+      // A live peer reports distance, not a finish time; derive theirs.
+      finishedAt: p.finishedAt !== undefined && p.finishedAt !== null
+        ? p.finishedAt
+        : (s.target && p.distance >= s.target ? p.duration || s.duration : null),
+    })).concat([mine]);
+
+    entries.sort((a, b) => {
+      if (a.finishedAt !== null && b.finishedAt !== null) return a.finishedAt - b.finishedAt;
+      if (a.finishedAt !== null) return -1;
+      if (b.finishedAt !== null) return 1;
+      return b.distance - a.distance;
+    });
+
+    return {
+      fieldSize: entries.length,
+      placing: entries.findIndex((e) => e.me) + 1,
+      results: entries.map((e, i) => ({
+        place: i + 1, name: e.name, me: e.me, initials: e.initials,
+        color: e.color, distance: e.distance, finishedAt: e.finishedAt,
+      })),
+    };
   }
 
   M.Tracker = Tracker;

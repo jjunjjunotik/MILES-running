@@ -34,6 +34,24 @@
     { key: 'apex',  name: 'Apex',  from: 80000 },
   ];
 
+  /* --- Run kinds ----------------------------------------------------------
+     A plain run and a land grab are different intentions, so they are
+     different modes. Only a Territory run can claim ground; a Race is scored
+     by who reaches the agreed distance first. ---------------------------- */
+
+  const KINDS = {
+    free:      { key: 'free',      name: 'Free Run',      badge: 'RUN',       accent: '#c8ff2e' },
+    territory: { key: 'territory', name: 'Territory Run', badge: 'TERRITORY', accent: '#8b5cf6' },
+    race:      { key: 'race',      name: 'Race',          badge: 'RACE',      accent: '#ff3d8b' },
+  };
+
+  /** A race holds you plus up to four others. */
+  const MAX_RIVALS = 4;
+
+  const RACE_DISTANCES = [1000, 3000, 5000, 10000];
+
+  const FRIEND_COLORS = ['#ff3d8b', '#2fe0ff', '#ffb020', '#2ee6a8', '#a855f7', '#ff8a4c', '#6ee7ff', '#f472b6'];
+
   /* --- Quests -------------------------------------------------------------
      Each quest measures itself against the live state, so progress is always
      consistent no matter how the state was reached (run, import, reset). - */
@@ -51,7 +69,7 @@
     },
     {
       id: 'loop-hunter', icon: '🗺️', name: 'Loop Hunter', xp: 220,
-      note: 'Close 3 loops and claim the land inside',
+      note: 'Close 3 loops on Territory runs',
       progress: (s) => ({ have: s.territories.length, need: 3 }),
     },
     {
@@ -60,14 +78,19 @@
       progress: (s) => ({ have: Stats.totalArea(s), need: 2.5e6, format: 'area' }),
     },
     {
-      id: 'duel-win', icon: '⚔️', name: 'First Blood', xp: 200,
-      note: 'Win a duo race against a friend',
-      progress: (s) => ({ have: s.activities.filter((a) => a.mode === 'duo' && a.won).length, need: 1 }),
+      id: 'duel-win', icon: '🥇', name: 'First Blood', xp: 200,
+      note: 'Win a race — cross the line first',
+      progress: (s) => ({ have: s.activities.filter((a) => a.kind === 'race' && a.placing === 1).length, need: 1 }),
     },
     {
       id: 'duo-regular', icon: '🤝', name: 'Better Together', xp: 260,
-      note: 'Run 5 duo sessions with friends',
-      progress: (s) => ({ have: s.activities.filter((a) => a.mode === 'duo').length, need: 5 }),
+      note: 'Line up for 5 races with friends',
+      progress: (s) => ({ have: s.activities.filter((a) => a.kind === 'race').length, need: 5 }),
+    },
+    {
+      id: 'full-grid', icon: '🏁', name: 'Full Grid', xp: 280,
+      note: 'Race a full field — you and four rivals',
+      progress: (s) => ({ have: s.activities.some((a) => a.kind === 'race' && a.fieldSize >= 5) ? 1 : 0, need: 1 }),
     },
     {
       id: 'streak-3', icon: '🔥', name: 'Three in a Row', xp: 240,
@@ -237,14 +260,14 @@
     // Offsets are measured from Monday so a fresh install always shows a
     // half-finished current week, whatever day it is opened.
     const plan = [
-      { day: today - 0, dist: 6400, mode: 'duo', won: true, loop: false },
-      { day: today - 1, dist: 3100, mode: 'solo', loop: true },
-      { day: today - 2, dist: 12400, mode: 'solo', loop: false },
-      { day: today - 3, dist: 5600, mode: 'duo', won: false, loop: false },
-      { day: today - 5, dist: 2600, mode: 'solo', loop: true },
-      { day: today - 8, dist: 7400, mode: 'solo', loop: false },
-      { day: today - 9, dist: 9600, mode: 'duo', won: true, loop: false },
-      { day: today - 12, dist: 5200, mode: 'solo', loop: false },
+      { day: today - 0, dist: 5000, kind: 'race', placing: 1, fieldSize: 3 },
+      { day: today - 1, dist: 3100, kind: 'territory' },
+      { day: today - 2, dist: 12400, kind: 'free' },
+      { day: today - 3, dist: 5000, kind: 'race', placing: 3, fieldSize: 4 },
+      { day: today - 5, dist: 2600, kind: 'territory' },
+      { day: today - 8, dist: 7400, kind: 'free' },
+      { day: today - 9, dist: 10000, kind: 'race', placing: 2, fieldSize: 5 },
+      { day: today - 12, dist: 5200, kind: 'free' },
     ];
 
     plan.forEach((p) => {
@@ -252,25 +275,28 @@
       const startedAt = dayStart + (6 + Math.floor(rand() * 13)) * 3600e3;
       if (startedAt > Date.now()) return;
 
+      const isLoop = p.kind === 'territory';
       const paceSec = 300 + rand() * 90;                      // 5:00–6:30 per km
       const duration = Math.round((p.dist / 1000) * paceSec);
-      const route = syntheticRoute(home, p.dist, p.loop, rand);
+      const route = syntheticRoute(home, p.dist, isLoop, rand);
       const act = {
         id: uid(),
         startedAt,
-        mode: p.mode,
-        won: p.won === undefined ? null : p.won,
-        rival: p.mode === 'duo' ? (rand() > 0.5 ? 'Mina Park' : 'Alex Ryu') : null,
+        kind: p.kind,
         distance: p.dist,
         duration,
         elevation: Math.round(20 + rand() * 90),
         route,
         splits: [],
-        loopClosed: p.loop,
-        title: p.loop ? 'Territory Loop' : p.mode === 'duo' ? 'Evening Duel' : 'Steady Run',
+        loopClosed: isLoop,
+        title: KINDS[p.kind].name,
         claimedArea: 0,
+        target: p.kind === 'race' ? p.dist : null,
+        placing: p.placing || null,
+        fieldSize: p.fieldSize || null,
+        finished: p.kind === 'race' ? true : null,
       };
-      if (p.loop) {
+      if (isLoop) {
         const area = Geo.polygonArea(route);
         act.claimedArea = area;
         territories.push({
@@ -318,6 +344,20 @@
     return pts;
   }
 
+  /** Initials, colour and a race pace derived from how much they run. */
+  function makeFriend(name, color, weekly, online) {
+    return {
+      id: name.toLowerCase().replace(/[^a-z0-9]+/g, '-') + '-' + Math.random().toString(36).slice(2, 6),
+      name,
+      initials: name.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase(),
+      color,
+      weekly: weekly || 0,
+      online: online !== false,
+      // Seconds per kilometre: the more they run, the quicker they line up.
+      pace: Math.round(M.clamp(392 - (weekly || 0) / 1000 * 1.7, 255, 400)),
+    };
+  }
+
   /* --- The store ---------------------------------------------------------- */
 
   const DEFAULT_HOME = { lat: 37.5512, lng: 126.9882 };   // Namsan, Seoul
@@ -341,10 +381,10 @@
           territories: seeded.territories,
           questClaims: {},
           friends: [
-            { id: 'alex', name: 'Alex Ryu', initials: 'AR', color: '#ff3d8b', weekly: 34200, online: true },
-            { id: 'mina', name: 'Mina Park', initials: 'MP', color: '#2fe0ff', weekly: 51800, online: true },
-            { id: 'theo', name: 'Theo Kim', initials: 'TK', color: '#ffb020', weekly: 18700, online: false },
-            { id: 'sena', name: 'Sena Cho', initials: 'SC', color: '#2ee6a8', weekly: 62400, online: true },
+            makeFriend('Alex Ryu', '#ff3d8b', 34200, true),
+            makeFriend('Mina Park', '#2fe0ff', 51800, true),
+            makeFriend('Theo Kim', '#ffb020', 18700, false),
+            makeFriend('Sena Cho', '#2ee6a8', 62400, true),
           ],
         };
         settleQuests(this.data);
@@ -373,6 +413,24 @@
       this.save();
     },
 
+    /** Adds a friend to race against. Returns the new friend, or null. */
+    addFriend(name) {
+      const clean = (name || '').trim().slice(0, 24);
+      if (!clean) return null;
+      const taken = this.data.friends.some((f) => f.name.toLowerCase() === clean.toLowerCase());
+      if (taken) return null;
+      const color = FRIEND_COLORS[this.data.friends.length % FRIEND_COLORS.length];
+      const friend = makeFriend(clean, color, 0, true);
+      this.data.friends.push(friend);
+      this.save();
+      return friend;
+    },
+
+    removeFriend(id) {
+      this.data.friends = this.data.friends.filter((f) => f.id !== id);
+      this.save();
+    },
+
     setHome(home) {
       this.data.profile.home = home;
       this.save();
@@ -383,9 +441,11 @@
       this.data.activities.unshift(activity);
       let territory = null;
       // The claimable shape is the loop that was closed, which may be shorter
-      // than the whole run if the runner carried on afterwards.
+      // than the whole run if the runner carried on afterwards. Only a
+      // Territory run takes ground — a free run or a race never does, however
+      // neatly it happens to loop.
       const polygon = activity.territoryPolygon || activity.route;
-      if (activity.loopClosed && polygon && polygon.length > 3) {
+      if (activity.kind === 'territory' && activity.loopClosed && polygon && polygon.length > 3) {
         const area = Geo.polygonArea(polygon);
         if (area > 1000) {                                   // ignore noise-sized loops
           territory = {
@@ -409,5 +469,5 @@
     },
   };
 
-  Object.assign(M, { State, Stats, QUESTS, RANKS, TIERS, questView, DEFAULT_HOME });
+  Object.assign(M, { State, Stats, QUESTS, RANKS, TIERS, KINDS, MAX_RIVALS, RACE_DISTANCES, questView, DEFAULT_HOME });
 })(window.MILES);

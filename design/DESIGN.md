@@ -9,16 +9,27 @@ app ships: `src/css/tokens.css` is the implementation of this document, and
 
 ## 1. Product idea in one line
 
-**Run alone or head-to-head with a friend, and the ground you loop around
-becomes yours.**
+**Run free, run to take ground, or race up to four friends to an agreed
+distance.**
+
+The three run kinds are the spine of the product. They never blur into each
+other: a Free Run claims nothing, a Territory Run is the only way to take
+ground, and a Race is scored purely by who crosses the agreed distance first.
+Each has its own accent, its own badge, and its own record card.
 
 Three loops carry the whole product:
 
 | Loop | Question it answers | Where it lives |
 |---|---|---|
 | **Volume** | Am I running enough? | Home header, intensity tier |
-| **Rivalry** | Am I ahead of my friend? | Duo run, feed, standings |
+| **Rivalry** | Did I beat them to the line? | Race, feed, standings |
 | **Territory** | What have I taken? | Map, Land tab, quests |
+
+| Run kind | Accent | Badge | Scored by |
+|---|---|---|---|
+| Free Run | `#c8ff2e` | `RUN` | Distance |
+| Territory Run | `#8b5cf6` | `TERRITORY` | Ground enclosed |
+| Race | `#ff3d8b` | `RACE` | Finish order |
 
 ---
 
@@ -125,24 +136,39 @@ Top to bottom, and this order is the argument the screen makes:
    left, and a narrow rail on the right holding **Territory** (violet) and
    **Quests** (amber) tiles. Both are tappable shortcuts to their tabs.
 3. **The two starts** — `Solo` (filled with the live accent gradient) and
-   `Duo` (magenta-outlined). Equal weight, side by side: the app has exactly
-   two ways in.
+   `Race` (magenta-outlined). Equal weight, side by side. Solo opens a sheet
+   asking which kind of run it is, because that choice changes what the run
+   means, not merely how it is logged.
 4. **Friends this week** — ranked bars, you highlighted in the accent.
 
 ### 6.2 Run
 
 Map fills the upper half and auto-frames your route plus the start pin. Below
-it: distance as the hero, then Time / Pace / *To start* — the third cell
-becomes the captured area once a loop closes. In a duo, a magenta head-to-head
-strip shows the gap **centred on a ±300 m window**, because two runners 80 m
-apart in a 5 km race would otherwise sit on top of each other.
+it: distance as the hero, then Time / Pace / and a third cell that answers
+whatever this run kind is asking — elevation on a free run, distance back to
+the start (then area captured) on a territory run, distance remaining in a
+race.
+
+A race adds the live standings: every runner ordered, each with a progress
+track against the agreed distance, your row in lime and your place called out
+top-right. It replaces the old two-runner gap strip, which could not hold a
+field of five.
 
 ### 6.3 Finish — the record card
 
-A 1080 × 1350 shareable canvas: wordmark, date, title, hero distance, the route
-(loop-filled violet when land was taken), a territory badge, a Time / Pace /
-Elev row, and a footer carrying the duel verdict. Themed by what the run *was*:
-violet if it claimed land, magenta if it was a duel, lime otherwise.
+A 1080 × 1350 shareable canvas, themed and badged by run kind so it is legible
+at a glance and at thumbnail size.
+
+The headline is **the one number that run was about**, not always distance:
+
+| Kind | Headline | Outcome badge |
+|---|---|---|
+| Race | `3rd of 5` | `CROSSED THE LINE 3RD` |
+| Territory | `0.21 km²` | `LOOP CLOSED · LAND TAKEN` |
+| Free | `8.20 km` | none |
+
+Underneath, the same three cells appear on every card — Distance / Time / Pace
+— so cards stay comparable however different their headlines are.
 
 ### 6.4 Land
 
@@ -156,7 +182,15 @@ Rank card (badge, name, XP to next) over a progress list. Quests are the only
 source of XP, and XP is the only source of rank: the ladder rewards intent,
 not raw mileage.
 
-### 6.6 Feed
+### 6.6 You
+
+Identity, three lifetime figures, then **Run history**: every record card you
+have earned as a filterable wall of thumbnails, each badged by kind and
+labelled with what it was about (a placing, an area, a distance). Below it,
+friends — the people who can line up in a race — with their race pace, and the
+settings.
+
+### 6.7 Feed
 
 Strava-style cards: athlete, title, relative time, route thumbnail, four
 stats, and Kudos / Card actions.
@@ -187,5 +221,5 @@ Everything decorative is disabled under `prefers-reduced-motion: reduce`.
    stroke, 22 px radius, 14 px background blur.
 4. Build six variants of every accent-bearing component, one per intensity
    tier, so the energy ramp is visible in the file rather than only in code.
-5. Screen order for the flow: Home → Duo lobby → Run → Finish → Land → Quests
-   → Feed → Profile.
+5. Screen order for the flow: Home → Solo sheet / Race lobby → Run → Finish →
+   Land → Quests → Feed → You.

@@ -217,27 +217,79 @@
 .run-grid .cell { text-align: center; padding: var(--s-3) var(--s-2); border-radius: var(--r-md); background: rgba(255,255,255,0.04); border: 1px solid var(--line); }
 .run-grid .stat-value { font-size: 19px; }
 
-/* Head-to-head strip, only shown in a duo run. */
-.versus { flex: none; display: grid; gap: var(--s-3); padding: var(--s-3); border-radius: var(--r-md); border: 1px solid rgba(255,61,139,0.3); background: rgba(255,61,139,0.07); }
-.versus-head { display: flex; align-items: center; justify-content: space-between; }
-.versus-gap { font-family: var(--font-num); font-weight: 800; font-size: 22px; letter-spacing: -0.02em; }
-.versus-gap[data-lead="me"] { color: var(--lime); }
-.versus-gap[data-lead="rival"] { color: var(--magenta); }
-
-.versus-track { position: relative; height: 34px; border-radius: var(--r-pill); background: rgba(0,0,0,0.35); border: 1px solid var(--line); overflow: hidden; }
-.versus-track i {
-  position: absolute;
-  top: 50%;
-  translate: -50% -50%;
-  width: 26px; height: 26px;
-  border-radius: 50%;
-  display: grid; place-items: center;
-  font-size: 10px; font-weight: 800;
-  color: var(--ink-900);
-  transition: left 0.6s cubic-bezier(0.3, 1, 0.4, 1);
+/* Live race board: the whole field, ordered, racing the same distance. */
+.race {
+  flex: none;
+  display: grid;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  border: 1px solid rgba(255, 61, 139, 0.3);
+  background: rgba(255, 61, 139, 0.07);
 }
-.versus-track i[data-who="me"] { background: var(--lime); }
-.versus-track i[data-who="rival"] { background: var(--magenta); color: #fff; }
+
+.race-place {
+  font-family: var(--font-num);
+  font-weight: 800;
+  font-size: 20px;
+  letter-spacing: -0.02em;
+  color: var(--magenta);
+}
+.race-place[data-lead="true"] { color: var(--ok); }
+
+.race-row { display: grid; grid-template-columns: 16px 22px 1fr 62px; align-items: center; gap: var(--s-2); }
+.race-row[data-me="true"] .race-name { color: var(--lime); font-weight: 800; }
+.race-row[data-done="true"] .race-time { color: var(--ok); }
+
+.race-pos { font-family: var(--font-num); font-size: 12px; font-weight: 700; color: var(--text-lo); }
+.race-dot { width: 18px; height: 18px; border-radius: 6px; display: grid; place-items: center; font-size: 8px; font-weight: 800; color: var(--ink-900); }
+.race-name { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.race-track { height: 5px; border-radius: var(--r-pill); background: rgba(255,255,255,0.10); overflow: hidden; margin-top: 4px; }
+.race-track > i { display: block; height: 100%; border-radius: var(--r-pill); transition: width 0.5s cubic-bezier(0.2, 1, 0.3, 1); }
+.race-time { font-family: var(--font-num); font-size: 12px; font-weight: 700; text-align: right; color: var(--text-mid); }
+
+/* Run-kind chooser */
+.kind-option {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  padding: var(--s-4);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line-strong);
+  background: rgba(255,255,255,0.04);
+  text-align: left;
+  transition: transform 0.14s ease, border-color 0.14s ease;
+}
+.kind-option:active { transform: scale(0.985); }
+.kind-option--free { border-color: rgba(200, 255, 46, 0.4); }
+.kind-option--territory { border-color: rgba(139, 92, 246, 0.45); }
+.kind-name { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
+
+/* Run history: the cards you have earned */
+.history { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-3); }
+.history-item {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--s-2);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.035);
+  text-align: left;
+  transition: transform 0.14s ease, border-color 0.14s ease;
+}
+.history-item:active { transform: scale(0.96); }
+.history-item canvas { width: 100%; aspect-ratio: 1; border-radius: var(--r-sm); background: rgba(0,0,0,0.3); }
+.history-badge { font-size: 8px; font-weight: 800; letter-spacing: 0.1em; }
+.history-item[data-kind="free"] .history-badge { color: var(--lime); }
+.history-item[data-kind="territory"] .history-badge { color: var(--violet); }
+.history-item[data-kind="race"] .history-badge { color: var(--magenta); }
+.history-value { font-family: var(--font-num); font-size: 13px; font-weight: 700; letter-spacing: -0.02em; }
+
+/* Full-width segmented control, for the race distance */
+.seg--block { display: grid; grid-template-columns: repeat(4, 1fr); }
+.seg--block button { padding: 9px 4px; font-size: 12px; }
 
 .run-controls { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); padding-bottom: var(--s-4); }
 
@@ -248,10 +300,14 @@
 .finish-head { text-align: center; padding: var(--s-7) 0 var(--s-4); }
 .finish-head h2 { font-size: 26px; }
 
-.record-card { width: 100%; border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow-2); }
+.record-card { flex: none; width: 100%; border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow-2); }
 .record-card canvas { display: block; width: 100%; height: auto; }
 
 .finish-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); padding: var(--s-4) 0; }
+
+/* Fixed-height blocks in a scrolling flex column must not be squeezed: with
+   overflow hidden on the card, shrinking silently clips the artwork. */
+.finish-head, .finish-actions, .profile-head, .kpis, .history, .rank-card { flex: none; }
 
 /* --------------------------------------------------------------------------
    TERRITORY

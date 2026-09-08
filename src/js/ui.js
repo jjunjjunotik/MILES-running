@@ -121,15 +121,37 @@
         btn.addEventListener('click', () => State.setUnits(btn.dataset.unit));
       });
 
-      $('#startSolo').addEventListener('click', () => this.beginRun({ mode: 'solo' }));
-      $('#startDuo').addEventListener('click', () => this.openDuoSheet());
+      $('#homeAvatar').addEventListener('click', () => this.go('profile'));
+      $('#startSolo').addEventListener('click', () => { $('#soloSheet').hidden = false; });
+      $('#startDuo').addEventListener('click', () => this.openRaceLobby());
       $('#locateBtn').addEventListener('click', () => this.locate());
 
+      $$('#soloSheet [data-kind]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          $('#soloSheet').hidden = true;
+          this.beginRun({ kind: btn.dataset.kind });
+        });
+      });
+      $('#soloSheet').addEventListener('click', (event) => {
+        if (event.target === $('#soloSheet')) $('#soloSheet').hidden = true;
+      });
+
+      $$('#racePicker button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          this.raceTarget = Number(btn.dataset.distance);
+          $$('#racePicker button').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+        });
+      });
+
+      $('#lobbyAddFriend').addEventListener('click', () => { if (this.promptFriend()) this.renderFriendPicker(); });
       $('#duoCancel').addEventListener('click', () => { $('#duoSheet').hidden = true; });
       $('#duoStart').addEventListener('click', () => {
-        const rival = this.pendingRival || State.data.friends[0];
+        if (!this.pendingRivals.length) {
+          this.toast('Pick at least one runner to race');
+          return;
+        }
         $('#duoSheet').hidden = true;
-        this.beginRun({ mode: 'duo', rival });
+        this.beginRun({ kind: 'race', rivals: this.pendingRivals.slice(), target: this.raceTarget });
       });
     },
 
@@ -252,32 +274,58 @@
 
     /* --- Duo lobby --------------------------------------------------------- */
 
-    openDuoSheet() {
+    openRaceLobby() {
+      this.raceTarget = this.raceTarget || 5000;
+      this.pendingRivals = State.data.friends.slice(0, 1);
+      $$('#racePicker button').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.distance) === this.raceTarget)));
+      this.renderFriendPicker();
+      $('#duoSheet').hidden = false;
+    },
+
+    renderFriendPicker() {
       const picker = $('#friendPicker');
       picker.innerHTML = '';
-      this.pendingRival = State.data.friends[0];
 
       State.data.friends.forEach((f) => {
-        const btn = el('button', {
-          class: 'friend', type: 'button',
-          'aria-pressed': String(f.id === this.pendingRival.id),
-        }, [
+        const picked = this.pendingRivals.some((r) => r.id === f.id);
+        const btn = el('button', { class: 'friend', type: 'button', 'aria-pressed': String(picked) }, [
           el('span', { class: 'friend-avatar', style: `background:${f.color}`, text: f.initials }),
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
             el('span', { style: 'font-weight:700;font-size:14px', text: f.name }),
-            el('span', { class: 'tiny', text: `${Units.distText(f.weekly)} ${Units.distLabel()} this week` }),
+            el('span', { class: 'tiny', text: `${Units.paceText(f.pace / 1000)} ${Units.paceLabel()} · ${Units.distText(f.weekly)} ${Units.distLabel()} this week` }),
           ]),
-          el('span', { class: 'chip' + (f.online ? ' chip--live' : ''), text: f.online ? 'Online' : 'Offline' }),
+          el('span', { class: 'chip' + (f.online ? ' chip--live' : ''), text: f.online ? 'Online' : 'Bot' }),
         ]);
+
         btn.addEventListener('click', () => {
-          this.pendingRival = f;
-          $$('#friendPicker .friend').forEach((b) => b.setAttribute('aria-pressed', 'false'));
-          btn.setAttribute('aria-pressed', 'true');
+          const at = this.pendingRivals.findIndex((r) => r.id === f.id);
+          if (at >= 0) {
+            this.pendingRivals.splice(at, 1);
+          } else if (this.pendingRivals.length >= M.MAX_RIVALS) {
+            this.toast(`A race holds you and <b>${M.MAX_RIVALS}</b> others — drop someone first`);
+            return;
+          } else {
+            this.pendingRivals.push(f);
+          }
+          this.renderFriendPicker();
         });
         picker.appendChild(btn);
       });
 
-      $('#duoSheet').hidden = false;
+      $('#raceCount').textContent = `${this.pendingRivals.length} of ${M.MAX_RIVALS} picked`;
+    },
+
+    /** Shared by the lobby and the profile: one prompt, one new friend. */
+    promptFriend() {
+      const name = window.prompt('Who are you adding?');
+      if (name === null) return null;
+      const friend = State.addFriend(name);
+      if (!friend) {
+        this.toast(name.trim() ? 'You already have a friend by that name' : 'That needs a name');
+        return null;
+      }
+      this.toast(`<b>${friend.name}</b> can now line up with you`);
+      return friend;
     },
 
     /* --- Run --------------------------------------------------------------- */
@@ -292,8 +340,11 @@
 
       Bus.on('run:tick', (run) => this.renderRun(run));
       Bus.on('run:position', () => this.renderRunMap());
-      Bus.on('live:peers', () => { this.renderVersus(); this.renderRunMap(); });
-      Bus.on('live:joined', (peer) => this.toast(`<b>${peer.name}</b> joined the duel — live`, null));
+      Bus.on('live:peers', () => { this.renderRaceBoard(); this.renderRunMap(); });
+      Bus.on('live:joined', (peer) => this.toast(`<b>${peer.name}</b> joined the race — live`, null));
+      Bus.on('live:finished', (bot) => this.toast(`<b>${bot.name}</b> crossed the line`));
+      // Crossing your own finish line ends the race for you.
+      Bus.on('run:finished', () => this.finishRun());
       Bus.on('run:captured', (run) => {
         const area = `${Units.areaText(run.closure.area)} ${Units.areaLabel()}`;
         $('#loopHint').hidden = false;
@@ -310,15 +361,21 @@
     },
 
     beginRun(options) {
+      const kind = M.KINDS[options.kind] || M.KINDS.free;
       const run = Tracker.start(options);
       this.go('run');
 
-      $('#runModeChip').textContent = options.mode === 'duo' ? 'DUO' : 'SOLO';
-      $('#runLiveChip').hidden = options.mode !== 'duo';
-      $('#versus').hidden = options.mode !== 'duo';
+      $('#runModeChip').textContent = kind.badge;
+      $('#runModeChip').style.color = kind.accent;
+      $('#runLiveChip').hidden = options.kind !== 'race';
+      $('#raceBoard').hidden = options.kind !== 'race';
       $('#pauseBtn').textContent = 'Pause';
       $('#loopHint').hidden = true;
-      if (options.rival) $('#versusName').textContent = 'vs ' + options.rival.name;
+      $('#finishBtn').textContent = options.kind === 'race' ? 'Give up' : 'Finish';
+
+      if (options.kind === 'race') {
+        $('#raceTarget').textContent = `${Units.distText(run.target)} ${Units.distLabel()}`;
+      }
 
       this.maps.run.setAnchor(State.data.profile.home);
       this.maps.run.mpp = 0.9;
@@ -335,42 +392,75 @@
       $('#runPaceLabel').textContent = 'Pace ' + Units.paceLabel();
       $('#runSourceChip').textContent = run.source === 'gps' ? 'GPS' : 'SIM';
 
-      const back = run.route.length > 1 ? Geo.distance(run.route[0], run.route[run.route.length - 1]) : 0;
-      $('#runLoop').textContent = run.closure
-        ? `${Units.areaText(run.closure.area)}`
-        : `${Math.round(back)} m`;
-      $('#runLoopLabel').textContent = run.closure ? `${Units.areaLabel()} captured` : 'To start';
-      $('#runLoop').style.color = run.closure ? 'var(--violet)' : '';
-
-      if (run.mode === 'duo') this.renderVersus(run);
+      // The third cell answers the question the current run kind is asking.
+      if (run.kind === 'race') {
+        const left = Math.max(0, run.target - run.distance);
+        $('#runLoop').textContent = Units.distText(left);
+        $('#runLoopLabel').textContent = `${Units.distLabel()} to go`;
+        $('#runLoop').style.color = left === 0 ? 'var(--ok)' : '';
+        this.renderRaceBoard(run);
+      } else if (run.kind === 'territory') {
+        const back = run.route.length > 1 ? Geo.distance(run.route[0], run.route[run.route.length - 1]) : 0;
+        $('#runLoop').textContent = run.closure ? Units.areaText(run.closure.area) : `${Math.round(back)} m`;
+        $('#runLoopLabel').textContent = run.closure ? `${Units.areaLabel()} captured` : 'To start';
+        $('#runLoop').style.color = run.closure ? 'var(--violet)' : '';
+      } else {
+        $('#runLoop').textContent = String(Math.round(run.elevation));
+        $('#runLoopLabel').textContent = 'Elev m';
+        $('#runLoop').style.color = '';
+      }
     },
 
-    renderVersus(run) {
+    /** The live standings: everyone, ordered, against the same distance. */
+    renderRaceBoard(run) {
       const state = run || Tracker.state;
-      if (!state || state.mode !== 'duo') return;
-      const rival = Live.list()[0];
-      if (!rival) return;
+      if (!state || state.kind !== 'race') return;
 
-      const mine = state.distance;
-      const theirs = rival.distance || 0;
-      const gap = mine - theirs;
-      const gapNode = $('#versusGap');
-      gapNode.setAttribute('data-lead', gap >= 0 ? 'me' : 'rival');
-      gapNode.textContent = `${gap >= 0 ? '+' : '−'}${Math.abs(Math.round(gap))} m`;
+      const target = state.target;
+      const field = Live.list().map((p) => ({
+        name: p.name, initials: p.initials, color: p.color, me: false,
+        distance: Math.min(p.distance, target),
+        finishedAt: p.finishedAt === undefined ? null : p.finishedAt,
+      }));
 
-      // The track shows the gap, not the absolute distance: over a 5 km race
-      // two runners 80 m apart would otherwise sit on top of each other.
-      const WINDOW = 300;                                  // metres, full deflection
-      const offset = clamp(gap / WINDOW, -1, 1) * 40;
-      $('#trackMe').style.left = `${50 + offset}%`;
-      $('#trackRival').style.left = `${50 - offset}%`;
-      $('#trackRival').textContent = (rival.initials || 'RV').slice(0, 2);
-      const rivalName = rival.name && rival.name !== State.data.profile.name
-        ? rival.name
-        : `${rival.name || 'Rival'} (rival)`;
-      $('#versusName').textContent = 'vs ' + rivalName;
-      $('#versusMine').textContent = `You — ${Units.distText(mine)} ${Units.distLabel()}`;
-      $('#versusTheirs').textContent = `${rivalName} — ${Units.distText(theirs)} ${Units.distLabel()}`;
+      field.push({
+        name: 'You', initials: State.data.profile.initials, color: '#c8ff2e', me: true,
+        distance: Math.min(state.distance, target),
+        finishedAt: state.finishedAt,
+      });
+
+      // Finishers first by their time on the line, then whoever is furthest.
+      field.sort((a, b) => {
+        if (a.finishedAt !== null && b.finishedAt !== null) return a.finishedAt - b.finishedAt;
+        if (a.finishedAt !== null) return -1;
+        if (b.finishedAt !== null) return 1;
+        return b.distance - a.distance;
+      });
+
+      const myPlace = field.findIndex((e) => e.me) + 1;
+      const place = $('#racePlace');
+      place.textContent = M.ordinal(myPlace);
+      place.setAttribute('data-lead', String(myPlace === 1));
+
+      const rows = $('#raceRows');
+      rows.innerHTML = '';
+      field.forEach((entry, i) => {
+        const done = entry.finishedAt !== null;
+        rows.appendChild(el('div', { class: 'race-row', 'data-me': String(entry.me), 'data-done': String(done) }, [
+          el('span', { class: 'race-pos', text: String(i + 1) }),
+          el('span', { class: 'race-dot', style: `background:${entry.color}`, text: (entry.initials || '?').slice(0, 2) }),
+          el('div', {}, [
+            el('span', { class: 'race-name', text: entry.name }),
+            el('span', { class: 'race-track' }, [
+              el('i', { style: `width:${clamp((entry.distance / target) * 100, 2, 100)}%;background:${entry.color}` }),
+            ]),
+          ]),
+          el('span', {
+            class: 'race-time',
+            text: done ? clock(entry.finishedAt) : `${Units.distText(entry.distance)} ${Units.distLabel()}`,
+          }),
+        ]));
+      });
     },
 
     renderRunMap() {
@@ -378,13 +468,18 @@
       if (!run) return;
       const map = this.maps.run;
       map.layers.route = run.route;
-      map.layers.territories = State.data.territories.slice(0, 8);
+      // Land is only relevant to the run that is taking it; on a race or a
+      // free run it just floods the map when you happen to start inside a plot.
+      map.layers.territories = run.kind === 'territory' ? State.data.territories.slice(0, 8) : [];
       map.layers.me = run.route[run.route.length - 1] || State.data.profile.home;
       map.layers.rivals = Live.list().filter((p) => p.position);
       map.layers.ghost = [];
 
       // Keep the runner and the start pin both in view.
       map.fit([run.route.slice(-260), [run.route[0] || map.layers.me]]);
+      // The first few strides would otherwise zoom to a couple of metres per
+      // pixel of empty street.
+      map.mpp = Math.max(map.mpp, 0.7);
       map.invalidate();
     },
 
@@ -400,13 +495,20 @@
 
       const result = State.addActivity(activity);
       this.lastActivity = activity;
+      this.cardReturn = null;
       this.showFinish(activity, result);
     },
 
     /* --- Finish ------------------------------------------------------------ */
 
     bindFinish() {
-      $('#doneBtn').addEventListener('click', () => this.go('home'));
+      $('#doneBtn').addEventListener('click', () => {
+        // A card opened from your history or the feed returns there; one
+        // finished at the end of a run goes home.
+        const back = this.cardReturn || 'home';
+        this.cardReturn = null;
+        this.go(back);
+      });
       $('#saveCardBtn').addEventListener('click', () => {
         // downloadCard reports whether it actually started a download; the
         // fallback paths report their own outcome, so don't claim success.
@@ -418,13 +520,38 @@
     showFinish(activity, result) {
       this.go('finish');
       $('#finishTitle').textContent = activity.title;
+      $('#finishEyebrow').textContent = 'Run complete';
+      $('#doneBtn').textContent = 'Done';
       M.renderCard($('#cardCanvas'), activity, {
         athlete: State.data.profile.name,
         rank: Stats.rank(State.data).current.name,
+        totalArea: Stats.totalArea(State.data),
       });
 
       const extras = $('#finishExtras');
       extras.innerHTML = '';
+
+      if (activity.kind === 'race' && activity.results) {
+        extras.appendChild(el('div', { class: 'card stack' }, [
+          el('span', { class: 'card-title', text: `Result · ${Units.distText(activity.target)} ${Units.distLabel()}` }),
+          el('div', { class: 'stack', style: 'gap:9px' }, activity.results.map((r) => el('div', { class: 'race-row', 'data-me': String(r.me), 'data-done': String(r.finishedAt !== null) }, [
+            el('span', { class: 'race-pos', text: String(r.place) }),
+            el('span', { class: 'race-dot', style: `background:${r.color}`, text: (r.initials || '?').slice(0, 2) }),
+            el('span', { class: 'race-name', text: r.name }),
+            el('span', {
+              class: 'race-time',
+              text: r.finishedAt !== null ? clock(r.finishedAt) : `${Units.distText(r.distance)} ${Units.distLabel()}`,
+            }),
+          ]))),
+        ]));
+      }
+
+      if (activity.kind === 'territory' && !result.territory) {
+        extras.appendChild(el('div', { class: 'card stack' }, [
+          el('span', { class: 'card-title', text: 'No land taken' }),
+          el('span', { class: 'tiny', text: 'The loop never closed — finish within 30 m of where you started and everything inside is yours.' }),
+        ]));
+      }
 
       if (result.territory) {
         extras.appendChild(el('div', { class: 'card stack' }, [
@@ -434,16 +561,6 @@
               el('span', { class: 'stat-value', style: 'font-size:26px;color:var(--violet)', text: `${Units.areaText(result.territory.area)} ${Units.areaLabel()}` }),
               el('span', { class: 'tiny', text: 'Enclosed by your loop and added to your land' }),
             ]),
-          ]),
-        ]));
-      }
-
-      if (activity.mode === 'duo' && activity.rival) {
-        extras.appendChild(el('div', { class: 'card stack' }, [
-          el('span', { class: 'card-title', text: 'Duel result' }),
-          el('div', { class: 'row row--between' }, [
-            el('span', { style: `font-weight:800;font-size:18px;color:${activity.won ? 'var(--ok)' : 'var(--bad)'}`, text: activity.won ? `You beat ${activity.rival}` : `${activity.rival} took it` }),
-            el('span', { class: 'tiny', text: activity.rivalDistance !== null ? `${Units.distText(activity.rivalDistance)} ${Units.distLabel()}` : '' }),
           ]),
         ]));
       }
@@ -640,9 +757,7 @@
               el('span', { style: 'font-weight:700;font-size:14px', text: item.who }),
               el('span', { class: 'tiny', text: `${a.title} · ${relTime(a.startedAt)}` }),
             ]),
-            a.mode === 'duo'
-              ? el('span', { class: 'chip', style: 'border-color:rgba(255,61,139,.45);color:#ff8ab6', text: a.won ? 'WON' : 'DUO' })
-              : el('span', { class: 'chip', text: 'SOLO' }),
+            kindChip(a),
           ]),
           el('div', { class: 'feed-body' }, [
             canvas,
@@ -669,6 +784,17 @@
         }));
       });
 
+      /** The same badge vocabulary the record cards use. */
+      function kindChip(a) {
+        const k = M.KINDS[a.kind || 'free'];
+        const won = a.kind === 'race' && a.placing === 1;
+        return el('span', {
+          class: 'chip',
+          style: `border-color:${k.accent}55;color:${k.accent}`,
+          text: a.kind === 'race' && a.placing ? (won ? 'WON' : M.ordinal(a.placing)) : k.badge,
+        });
+      }
+
       function stat(value, label) {
         return el('div', { class: 'stack', style: 'gap:2px' }, [
           el('span', { class: 'stat-value', style: 'font-size:16px', text: value }),
@@ -678,13 +804,28 @@
     },
 
     showCardPreview(activity, item) {
+      this.cardReturn = this.tab;
       this.go('finish');
       $('#finishTitle').textContent = activity.title;
+      $('#finishEyebrow').textContent = item && !item.me && item.who !== State.data.profile.name
+        ? `${item.who}'s card` : 'Record card';
+      $('#doneBtn').textContent = 'Back';
       M.renderCard($('#cardCanvas'), activity, {
         athlete: item ? item.who : State.data.profile.name,
         rank: Stats.rank(State.data).current.name,
+        totalArea: Stats.totalArea(State.data),
       });
-      $('#finishExtras').innerHTML = '';
+      const extras = $('#finishExtras');
+      extras.innerHTML = '';
+      if (activity.splits && activity.splits.length) {
+        extras.appendChild(el('div', { class: 'card stack' }, [
+          el('span', { class: 'card-title', text: 'Splits' }),
+          el('div', { class: 'stack', style: 'gap:6px' }, activity.splits.map((sp) => el('div', { class: 'row row--between' }, [
+            el('span', { class: 'tiny', text: `KM ${sp.km}` }),
+            el('span', { class: 'stat-value', style: 'font-size:13px', text: clock(sp.seconds) }),
+          ]))),
+        ]));
+      }
     },
 
     /** Friends' runs, generated once per session so the feed feels populated. */
@@ -709,15 +850,15 @@
             route.push(Geo.offset(centre, Math.cos(t) * r, Math.sin(t) * r));
           }
           const area = loop ? Geo.polygonArea(route) : 0;
+          const kind = loop ? 'territory' : rand() > 0.5 ? 'race' : 'free';
+          const fieldSize = 2 + Math.floor(rand() * 4);
           out.push({
             who: f.name, initials: f.initials, color: f.color, me: false,
             activity: {
               id: `f-${f.id}-${i}`,
               startedAt: Date.now() - (rand() * 4 + i) * 864e5,
-              mode: rand() > 0.5 ? 'duo' : 'solo',
-              won: rand() > 0.5,
-              rival: 'You',
-              title: loop ? 'Territory Loop' : 'Tempo Run',
+              kind,
+              title: M.KINDS[kind].name,
               distance,
               duration: (distance / 1000) * paceSec,
               elevation: Math.round(rand() * 120),
@@ -725,6 +866,10 @@
               splits: [],
               loopClosed: loop,
               claimedArea: area,
+              target: kind === 'race' ? Math.round(distance / 1000) * 1000 : null,
+              placing: kind === 'race' ? 1 + Math.floor(rand() * fieldSize) : null,
+              fieldSize: kind === 'race' ? fieldSize : null,
+              finished: kind === 'race' ? true : null,
             },
           });
         }
@@ -745,6 +890,16 @@
       });
 
       $('#askGeoBtn').addEventListener('click', () => this.locate());
+
+      $('#addFriendBtn').addEventListener('click', () => this.promptFriend());
+
+      $$('#historyFilter button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          this.historyKind = btn.dataset.kind;
+          $$('#historyFilter button').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+          this.renderHistory();
+        });
+      });
 
       $('#nameBtn').addEventListener('click', () => {
         const next = window.prompt('What should other runners call you?', State.data.profile.name);
@@ -776,6 +931,82 @@
       $('#kpiRuns').textContent = String(all.runs);
       $('#kpiArea').textContent = Units.areaText(Stats.totalArea(s));
       $('#kpiAreaUnit').textContent = Units.areaLabel() + ' land';
+
+      this.renderFriendList();
+      this.renderHistory();
+    },
+
+    renderFriendList() {
+      const list = $('#friendList');
+      const friends = State.data.friends;
+      list.innerHTML = '';
+      $('#friendCount').textContent = `${friends.length} racing`;
+
+      if (!friends.length) {
+        list.appendChild(el('div', { class: 'empty', text: 'No friends yet. Add one and they can line up in your next race.' }));
+        return;
+      }
+
+      friends.forEach((f) => {
+        list.appendChild(el('div', { class: 'friend' }, [
+          el('span', { class: 'friend-avatar', style: `background:${f.color}`, text: f.initials }),
+          el('div', { class: 'stack grow', style: 'gap:3px' }, [
+            el('span', { style: 'font-weight:700;font-size:14px', text: f.name }),
+            el('span', { class: 'tiny', text: `${Units.paceText(f.pace / 1000)} ${Units.paceLabel()} race pace` }),
+          ]),
+          el('button', {
+            class: 'chip', type: 'button', text: 'Remove',
+            onclick: () => {
+              if (!window.confirm(`Remove ${f.name}?`)) return;
+              State.removeFriend(f.id);
+              this.toast(`<b>${f.name}</b> removed`);
+            },
+          }),
+        ]));
+      });
+    },
+
+    /** Every card you have earned, filtered by what kind of run it was. */
+    renderHistory() {
+      const list = $('#historyList');
+      const kind = this.historyKind || 'all';
+      const runs = State.data.activities.filter((a) => kind === 'all' || (a.kind || 'free') === kind);
+      list.innerHTML = '';
+
+      if (!runs.length) {
+        list.style.display = 'block';
+        list.appendChild(el('div', { class: 'empty', text: kind === 'all' ? 'No runs yet.' : 'No runs of that kind yet.' }));
+        return;
+      }
+      list.style.display = '';
+
+      runs.forEach((a) => {
+        const k = M.KINDS[a.kind || 'free'];
+        const canvas = el('canvas');
+        // A race is remembered by where you came; land, by how much you took.
+        const value = a.kind === 'race' && a.placing
+          ? M.ordinal(a.placing)
+          : a.claimedArea
+            ? `${Units.areaText(a.claimedArea)} ${Units.areaLabel()}`
+            : `${Units.distText(a.distance)} ${Units.distLabel()}`;
+
+        const item = el('button', { class: 'history-item', type: 'button', 'data-kind': a.kind || 'free' }, [
+          canvas,
+          el('span', { class: 'history-badge', text: k.badge }),
+          el('span', { class: 'history-value', text: value }),
+          el('span', { class: 'tiny', text: relTime(a.startedAt) }),
+        ]);
+        item.addEventListener('click', () => {
+          this.lastActivity = a;
+          this.showCardPreview(a, { who: State.data.profile.name });
+        });
+        list.appendChild(item);
+        requestAnimationFrame(() => M.drawRouteThumb(canvas, a.route, {
+          stroke: k.accent,
+          fill: a.claimedArea ? 'rgba(139,92,246,0.28)' : null,
+          pad: 7, width: 2,
+        }));
+      });
     },
   };
 

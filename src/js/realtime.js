@@ -1,12 +1,12 @@
 /* ==========================================================================
    MILES · realtime
-   Live head-to-head telemetry. Two runners in a duo publish distance, pace
-   and position several times a second; each sees the other move in real time.
+   Live race telemetry. Every runner in the field publishes distance, pace and
+   position several times a second; each sees the others move in real time.
 
    Transport is pluggable. In this build it is BroadcastChannel, so two open
    tabs (or two windows) genuinely race each other with no server. A pace bot
-   stands in when the friend you invited has not joined yet, so a duo run is
-   never a dead screen. Swapping in a WebSocket means replacing `_send` and
+   stands in for each friend who has not joined yet, so a race is never a dead
+   screen. Swapping in a WebSocket means replacing `_send` and
    the channel wiring below; nothing else changes.
    ========================================================================== */
 
@@ -23,7 +23,7 @@
     room: null,
     me: null,
     peers: new Map(),
-    bot: null,
+    bots: [],
     _timer: null,
 
     /** Opens a room. `me` is the identity broadcast to the other side. */
@@ -52,7 +52,7 @@
       if (this._timer) clearInterval(this._timer);
       this.channel = null;
       this._timer = null;
-      this.bot = null;
+      this.bots = [];
       this.peers.clear();
     },
 
@@ -82,8 +82,11 @@
       const isNew = !this.peers.has(message.from);
       this.peers.set(message.from, peer);
 
-      // A real runner takes precedence over the stand-in bot.
-      if (this.bot) { this.peers.delete('bot'); this.bot = null; }
+      // A real runner takes precedence over their stand-in, if they claim one.
+      if (t.standsFor) {
+        this.peers.delete('bot:' + t.standsFor);
+        this.bots = this.bots.filter((b) => b.friendId !== t.standsFor);
+      }
       if (isNew) Bus.emit('live:joined', peer);
       Bus.emit('live:peers', this.list());
     },
@@ -108,43 +111,59 @@
        running their recent average pace, with believable variation so the
        gap opens and closes the way a real race does. --------------------- */
 
-    startBot(friend, origin) {
-      this.bot = {
-        id: 'bot',
-        isBot: true,
-        name: friend.name,
-        initials: friend.initials,
-        color: friend.color,
-        distance: 0,
-        duration: 0,
-        pace: friend.pace || 315,          // seconds per km
-        heading: Math.random() * Math.PI * 2,
-        origin,
-        position: origin,
-        phase: Math.random() * 6.28,
-      };
-      this.peers.set('bot', this.bot);
+    startBots(friends, origin) {
+      this.bots = friends.map((friend, i) => {
+        const bot = {
+          id: 'bot:' + friend.id,
+          friendId: friend.id,
+          isBot: true,
+          name: friend.name,
+          initials: friend.initials,
+          color: friend.color,
+          distance: 0,
+          duration: 0,
+          pace: friend.pace || 315,        // seconds per kilometre
+          heading: (Math.PI * 2 * i) / Math.max(1, friends.length),
+          position: origin,
+          phase: Math.random() * 6.28,
+          finishedAt: null,
+        };
+        this.peers.set(bot.id, bot);
+        return bot;
+      });
       Bus.emit('live:peers', this.list());
-      return this.bot;
+      return this.bots;
     },
 
-    /** Advances the bot by `dt` seconds of running. */
-    tickBot(dt) {
-      const bot = this.bot;
-      if (!bot) return null;
-      bot.duration += dt;
-      bot.phase += dt * 0.06;
-      // Pace drifts ±6%: surges, then settles.
-      const factor = 1 + Math.sin(bot.phase) * 0.06 + Math.sin(bot.phase * 2.7) * 0.02;
-      const speed = 1000 / (bot.pace * factor);           // m/s
-      const step = speed * dt;
-      bot.distance += step;
-      bot.currentPace = bot.pace * factor;
-      bot.heading += Math.sin(bot.phase * 1.7) * 0.06;
-      bot.position = Geo.offset(bot.position, Math.cos(bot.heading) * step, Math.sin(bot.heading) * step);
-      bot.lastSeen = Date.now();
-      this.peers.set('bot', bot);
-      return bot;
+    /**
+     * Advances every stand-in by `dt` seconds. When a target distance is set,
+     * a bot that reaches it stops and keeps the elapsed time it crossed on —
+     * that time is what decides the finishing order.
+     */
+    tickBots(dt, target) {
+      this.bots.forEach((bot) => {
+        if (bot.finishedAt !== null) return;
+        bot.duration += dt;
+        bot.phase += dt * 0.06;
+        // Pace drifts ±6%: surges, then settles.
+        const factor = 1 + Math.sin(bot.phase) * 0.06 + Math.sin(bot.phase * 2.7) * 0.02;
+        const speed = 1000 / (bot.pace * factor);         // m/s
+        const step = speed * dt;
+        bot.distance += step;
+        bot.currentPace = bot.pace * factor;
+        bot.heading += Math.sin(bot.phase * 1.7) * 0.06;
+        bot.position = Geo.offset(bot.position, Math.cos(bot.heading) * step, Math.sin(bot.heading) * step);
+        bot.lastSeen = Date.now();
+
+        if (target && bot.distance >= target) {
+          bot.distance = target;
+          // Interpolate back to the moment the line was actually crossed.
+          bot.finishedAt = bot.duration - (bot.distance - target) / speed;
+          Bus.emit('live:finished', bot);
+        }
+        this.peers.set(bot.id, bot);
+      });
+      return this.bots;
     },
   };
 

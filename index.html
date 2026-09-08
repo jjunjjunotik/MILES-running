@@ -41,7 +41,7 @@
           </div>
           <div class="row">
             <span class="chip" id="streakChip">🔥 <b id="streakValue">0</b></span>
-            <div class="avatar" id="homeAvatar">YU</div>
+            <button class="avatar" type="button" id="homeAvatar" aria-label="Open your profile">YU</button>
           </div>
         </header>
 
@@ -121,14 +121,14 @@
           <button class="start start--solo" type="button" id="startSolo">
             <svg class="start-icon" viewBox="0 0 24 24"><use href="#i-runner"/></svg>
             <span class="start-name">Solo</span>
-            <span class="start-sub">Just you, the road<br />and your territory</span>
+            <span class="start-sub">A free run, or go out<br />to take ground</span>
             <span class="start-arrow">→</span>
           </button>
 
           <button class="start start--duo" type="button" id="startDuo">
             <svg class="start-icon" viewBox="0 0 24 24"><use href="#i-duo"/></svg>
-            <span class="start-name">Duo</span>
-            <span class="start-sub">Live pace shared<br />with a friend</span>
+            <span class="start-name">Race</span>
+            <span class="start-sub">Up to 4 friends,<br />first to the finish</span>
             <span class="start-arrow">→</span>
           </button>
         </div>
@@ -168,19 +168,12 @@
           <div class="cell"><div class="stat-value" id="runLoop">0 m</div><div class="stat-label" id="runLoopLabel">To start</div></div>
         </div>
 
-        <div class="versus" id="versus" hidden>
-          <div class="versus-head">
-            <span class="stat-label" id="versusName">vs Rival</span>
-            <span class="versus-gap" id="versusGap" data-lead="me">+0 m</span>
+        <div class="race" id="raceBoard" hidden>
+          <div class="row row--between">
+            <span class="stat-label">Race to <b id="raceTarget" style="color:var(--text-hi)">5.00 km</b></span>
+            <span class="race-place" id="racePlace">1st</span>
           </div>
-          <div class="versus-track">
-            <i data-who="me" id="trackMe" style="left:0%">ME</i>
-            <i data-who="rival" id="trackRival" style="left:0%">RV</i>
-          </div>
-          <div class="row row--between tiny">
-            <span id="versusMine">You — 0.00 km</span>
-            <span id="versusTheirs">Rival — 0.00 km</span>
-          </div>
+          <div class="stack" id="raceRows" style="gap:7px"></div>
         </div>
 
         <div class="run-controls">
@@ -192,7 +185,7 @@
       <!-- ================= FINISH ================= -->
       <section class="screen" id="screen-finish">
         <div class="finish-head">
-          <span class="stat-label">Run complete</span>
+          <span class="stat-label" id="finishEyebrow">Run complete</span>
           <h2 id="finishTitle">Morning Run</h2>
         </div>
 
@@ -290,7 +283,30 @@
           <div class="kpi"><div class="stat-value" id="kpiArea">0.00</div><div class="stat-label" id="kpiAreaUnit">km² land</div></div>
         </div>
 
-        <div class="card stack" style="margin-top:var(--s-4)">
+        <div class="stack" style="margin-top:var(--s-5)">
+          <div class="row row--between">
+            <span class="card-title">Run history</span>
+            <div class="seg" id="historyFilter" role="group" aria-label="Filter history">
+              <button type="button" data-kind="all" aria-pressed="true">All</button>
+              <button type="button" data-kind="free" aria-pressed="false">Run</button>
+              <button type="button" data-kind="territory" aria-pressed="false">Land</button>
+              <button type="button" data-kind="race" aria-pressed="false">Race</button>
+            </div>
+          </div>
+          <p class="tiny">Every card you have earned. Tap one to open it full size.</p>
+          <div class="history" id="historyList"></div>
+        </div>
+
+        <div class="stack" style="margin-top:var(--s-5)">
+          <div class="row row--between">
+            <span class="card-title">Friends</span>
+            <span class="tiny" id="friendCount">0</span>
+          </div>
+          <div class="stack" id="friendList"></div>
+          <button class="btn btn--ghost btn--block" type="button" id="addFriendBtn" style="padding:11px;font-size:13px">+ Add a friend</button>
+        </div>
+
+        <div class="card stack" style="margin-top:var(--s-5)">
           <span class="card-title">Settings</span>
           <div class="setting">
             <div><div style="font-weight:700;font-size:14px">Runner name</div><div class="tiny">Shown to your rival during a duo</div></div>
@@ -325,24 +341,72 @@
       </section>
     </div>
 
-    <!-- ================= DUO LOBBY ================= -->
+    <!-- ================= SOLO: PICK A RUN KIND ================= -->
+    <div class="sheet-scrim" id="soloSheet" hidden>
+      <div class="sheet">
+        <div class="sheet-grip"></div>
+        <h3 style="font-size:20px">How are you running?</h3>
+        <p class="muted" style="margin:6px 0 var(--s-4)">
+          A free run is just the run. A territory run is the one that takes ground.
+        </p>
+        <div class="stack">
+          <button class="kind-option kind-option--free" type="button" data-kind="free">
+            <svg class="rail-icon" viewBox="0 0 24 24" style="stroke:var(--lime)"><use href="#i-runner"/></svg>
+            <div class="stack grow" style="gap:3px">
+              <span class="kind-name">Free Run</span>
+              <span class="tiny">Distance, pace and splits. No land is claimed.</span>
+            </div>
+            <span class="start-arrow" style="position:static">→</span>
+          </button>
+          <button class="kind-option kind-option--territory" type="button" data-kind="territory">
+            <svg class="rail-icon" viewBox="0 0 24 24" style="stroke:var(--violet)"><use href="#i-flag"/></svg>
+            <div class="stack grow" style="gap:3px">
+              <span class="kind-name">Territory Run</span>
+              <span class="tiny">Finish where you started. Everything inside the loop is yours.</span>
+            </div>
+            <span class="start-arrow" style="position:static">→</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= RACE LOBBY ================= -->
     <div class="sheet-scrim" id="duoSheet" hidden>
       <div class="sheet">
         <div class="sheet-grip"></div>
-        <h3 style="font-size:20px">Pick your rival</h3>
-        <p class="muted" style="margin:6px 0 var(--s-4)">
-          You will share distance, pace and position live for the whole run.
-        </p>
-        <div class="stack" id="friendPicker"></div>
+        <h3 style="font-size:20px">Set the race</h3>
+
+        <div class="stack" style="margin:var(--s-4) 0">
+          <span class="card-title">1 · Distance</span>
+          <p class="tiny">Everyone runs the same distance. First to finish it wins.</p>
+          <div class="seg seg--block" id="racePicker" role="group" aria-label="Race distance">
+            <button type="button" data-distance="1000" aria-pressed="false">1K</button>
+            <button type="button" data-distance="3000" aria-pressed="false">3K</button>
+            <button type="button" data-distance="5000" aria-pressed="true">5K</button>
+            <button type="button" data-distance="10000" aria-pressed="false">10K</button>
+          </div>
+        </div>
+
+        <div class="stack">
+          <div class="row row--between">
+            <span class="card-title">2 · Who is racing</span>
+            <span class="tiny" id="raceCount">0 of 4 picked</span>
+          </div>
+          <div class="stack" id="friendPicker"></div>
+          <button class="btn btn--ghost btn--block" type="button" id="lobbyAddFriend" style="padding:10px;font-size:13px">+ Add a friend</button>
+        </div>
+
         <div class="card card--tight" style="margin-top:var(--s-4)">
           <p class="tiny">
-            <b style="color:var(--accent)">Race for real:</b> open this page in a second tab, start a duo run
-            with the same friend there, and the two tabs will exchange live telemetry.
+            <b style="color:var(--accent)">Race for real:</b> open this page in a second tab, pick the same
+            friends and distance there, and the two tabs exchange live telemetry. Anyone who has not
+            joined is run by a pace bot at their usual speed.
           </p>
         </div>
+
         <div class="row" style="margin-top:var(--s-4);gap:var(--s-3)">
           <button class="btn grow" type="button" id="duoCancel">Cancel</button>
-          <button class="btn btn--primary grow" type="button" id="duoStart">Start duel</button>
+          <button class="btn btn--primary grow" type="button" id="duoStart">Start race</button>
         </div>
       </div>
     </div>

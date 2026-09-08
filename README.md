@@ -2,11 +2,17 @@
 
 A running app for people who would rather race a friend than a leaderboard.
 
-Run **solo** or **duo**. In a duo, both runners publish distance, pace and
-position live, and each phone shows the gap opening and closing in real time.
-Finish where you started and everything your loop encloses becomes your
-**territory**. Quests are the only source of XP, and XP is the only thing that
-moves your **rank**.
+Three ways to run, and they are deliberately separate:
+
+- **Free Run** — distance, pace, splits. Nothing is claimed.
+- **Territory Run** — finish where you started and everything your loop
+  encloses becomes yours.
+- **Race** — you and up to four friends agree a distance; whoever crosses it
+  first wins. Everyone publishes distance, pace and position live, so the
+  standings reorder as you run.
+
+Every run ends in a record card that says which of the three it was. Quests are
+the only source of XP, and XP is the only thing that moves your **rank**.
 
 No build step, no dependencies, no network calls. Open `index.html`.
 
@@ -32,11 +38,11 @@ origin genuinely race each other** with no server:
 
 1. Serve the app (`python3 -m http.server 8000`) and open it in two tabs.
 2. In each tab: **You → Runner name**, give them different names.
-3. In each tab: **Duo → pick the same friend → Start duel**.
+3. In each tab: **Race → same distance, same friends → Start race**.
 
-Each tab now shows the other's real distance, pace and position, and the
-head-to-head strip is symmetric across both. If nobody joins, a pace bot runs
-your friend's recent average so a duo is never a dead screen.
+Each tab now shows the other's real distance and position in the standings.
+Anyone who has not joined is run by a pace bot at the speed their weekly volume
+implies, so a race is never a dead screen.
 
 To put this on a real network, replace `_send` and the channel wiring in
 `src/js/realtime.js` with a WebSocket. Nothing else changes.
@@ -48,12 +54,25 @@ To put this on a real network, replace `_send` and the channel wiring in
 | Screen | What it does |
 |---|---|
 | **Home** | Weekly / monthly volume with a KM ⇄ MI switch, intensity tier, map with your location, Territory and Quest tiles, and the two start buttons |
-| **Run** | Live map, distance, pace, loop-capture readout, and the duo head-to-head strip |
-| **Finish** | The shareable record card, exportable as a PNG |
+| **Run** | Live map, distance, pace, a third cell that answers whatever the current run kind is asking, and the live race standings |
+| **Finish** | The record card, the race result table, and what the run earned |
 | **Land** | Every claim in the neighbourhood, yours and your rivals', with standings |
-| **Quests** | Nine quests, XP, and six ranks from Rookie to Apex |
+| **Quests** | Ten quests, XP, and six ranks from Rookie to Apex |
 | **Feed** | Strava-style activity cards with route thumbnails |
-| **You** | Units, simulated pace, runner name, GPS, reset |
+| **You** | Your run history as a wall of record cards, your friends, units, simulated pace, runner name, GPS, reset |
+
+### Racing
+
+Pick the distance first, then up to four friends — a race holds five runners.
+Crossing the agreed distance ends your race and fixes your place; finishers are
+ordered by the clock time they crossed on, and anyone still out on the course is
+ranked behind them, furthest first. Giving up early keeps the run and records it
+as a did-not-finish.
+
+### Your history
+
+**You → Run history** is every card you have earned, filtered by kind. Tap one
+to open it full size; Back returns you to where you opened it from.
 
 ### The interface gets more energetic the more you run
 
@@ -73,8 +92,10 @@ purpose — otherwise the app would go flat every Monday morning.
 
 ### Territory
 
-Run at least 400 m and come back within 30 m of where you started. The loop is
-**latched** the moment you pass your start point — you never have to hit Finish
+On a **Territory run** — and only there — run at least 400 m and come back
+within 30 m of where you started. A free run or a race never takes ground,
+however neatly it happens to loop. The loop is **latched** the moment you pass
+your start point — you never have to hit Finish
 while standing inside a circle — and the enclosed area (shoelace formula on a
 local metre projection) is added to your land. Run a second, wider loop and the
 bigger one replaces it.
@@ -102,8 +123,8 @@ src/css/screens.css   Per-screen layout
 src/js/core.js        Units, geometry, storage, event bus
 src/js/state.js       Data model: activities, territory, quests, ranks
 src/js/map.js         Procedural canvas map (no tile server)
-src/js/realtime.js    Live duo telemetry + pace bot
-src/js/tracker.js     Run engine: GPS, splits, loop capture
+src/js/realtime.js    Live race telemetry + pace bots
+src/js/tracker.js     Run engine: GPS, splits, loop capture, race scoring
 src/js/card.js        The 1080×1350 record card
 src/js/ui.js          Screen rendering and events
 src/js/app.js         Bootstrap
