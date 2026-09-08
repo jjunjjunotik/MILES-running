@@ -1,0 +1,80 @@
+/* ==========================================================================
+   MILES · Design tokens
+   The single source of truth for the visual language. Every screen reads
+   from here; nothing below this file hard-codes a colour.
+   ========================================================================== */
+
+:root {
+  /* --- Base surfaces (dark-first: running happens at dawn and dusk) ------ */
+  --ink-900: #05070a;
+  --ink-800: #0a0e14;
+  --ink-700: #0f151d;
+  --ink-600: #151d27;
+  --ink-500: #1d2733;
+  --ink-400: #2a3644;
+  --line:    rgba(255, 255, 255, 0.08);
+  --line-strong: rgba(255, 255, 255, 0.16);
+
+  /* --- Text ------------------------------------------------------------- */
+  --text-hi:  #f2f6fa;
+  --text-mid: #9dabbd;
+  --text-lo:  #64748b;
+
+  /* --- Brand ------------------------------------------------------------ */
+  --lime:    #c8ff2e;   /* MILES signature — you, your pace, your land     */
+  --lime-dim:#8fbb15;
+  --cyan:    #2fe0ff;   /* data, telemetry, live signal                    */
+  --magenta: #ff3d8b;   /* your rival in a duo                             */
+  --amber:   #ffb020;   /* quests, rank, reward                            */
+  --violet:  #8b5cf6;   /* territory                                       */
+
+  /* --- Semantic --------------------------------------------------------- */
+  --ok:   #2ee6a8;
+  --warn: #ffb020;
+  --bad:  #ff5964;
+
+  /* --- Intensity ramp ---------------------------------------------------
+     Drives how "alive" the whole interface feels. Set by JS on <html> as
+     --energy (0 → 1) from the runner's weekly volume. ---------------------- */
+  --energy: 0;
+  --energy-glow: calc(8px + 46px * var(--energy));
+  --energy-speed: calc(22s - 15s * var(--energy));
+  --energy-lift: calc(1px + 5px * var(--energy));
+
+  /* --- Radius & spacing -------------------------------------------------- */
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-xl: 30px;
+  --r-pill: 999px;
+
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-5: 22px;
+  --s-6: 30px;
+  --s-7: 42px;
+
+  /* --- Type -------------------------------------------------------------- */
+  --font-ui: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-num: "SF Mono", "JetBrains Mono", "Roboto Mono", ui-monospace, monospace;
+
+  /* --- Elevation --------------------------------------------------------- */
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.45);
+  --shadow-3: 0 20px 60px rgba(0, 0, 0, 0.6);
+}
+
+/* Intensity tiers. Each tier re-points the accent ramp so the app visibly
+   changes character as weekly volume climbs. */
+/* Intensity tiers. Each tier re-points the accent ramp so the app visibly
+   changes character as weekly volume climbs — a heat ramp from a low ember
+   through to a violet-white apex. No tier is ever grey: the lowest rung
+   should still feel like something worth stoking. */
+:root[data-tier="ember"] { --accent: #ff8a4c; --accent-2: #ffb020; }
+:root[data-tier="spark"] { --accent: #ffc63d; --accent-2: #c8ff2e; }
+:root[data-tier="blaze"] { --accent: #c8ff2e; --accent-2: #6ee7ff; }
+:root[data-tier="surge"] { --accent: #2fe0ff; --accent-2: #c8ff2e; }
+:root[data-tier="storm"] { --accent: #ff3d8b; --accent-2: #2fe0ff; }
+:root[data-tier="apex"]  { --accent: #a855f7; --accent-2: #ff3d8b; }

@@ -1,0 +1,369 @@
+<!doctype html>
+<html lang="en" data-tier="blaze">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#05070a" />
+  <meta name="description" content="MILES — run solo or head-to-head with a friend, share live pace, claim territory by closing loops, and level up through quests." />
+  <title>MILES</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23c8ff2e'/><text x='16' y='23' font-size='19' font-weight='800' text-anchor='middle' font-family='sans-serif' fill='%2305070a'>M</text></svg>" />
+  <link rel="stylesheet" href="src/css/tokens.css" />
+  <link rel="stylesheet" href="src/css/app.css" />
+  <link rel="stylesheet" href="src/css/screens.css" />
+</head>
+<body>
+  <!-- Shared icon set -->
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <g id="i-home"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></g>
+      <g id="i-flag"><path d="M5 21V4m0 0h11l-2 3.5L16 11H5"/></g>
+      <g id="i-target"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="3.2"/></g>
+      <g id="i-cards"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M8 15h5"/></g>
+      <g id="i-user"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></g>
+      <g id="i-crosshair"><circle cx="12" cy="12" r="6"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></g>
+      <g id="i-runner"><circle cx="14.5" cy="4.6" r="2"/><path d="M13 21l2-5-3-2.6.8-4.4-3.4 2-1.4 3M12 13.4l3.8 1.2 1.6 3.4M8 8.6 12 7"/></g>
+      <g id="i-duo"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="8.5" r="2.4"/><path d="M3 20a6 6 0 0 1 12 0M15.5 20a5 5 0 0 1 5.5-4.9"/></g>
+    </defs>
+  </svg>
+
+  <main class="phone" id="app">
+    <div class="aurora" aria-hidden="true"></div>
+    <div class="streaks" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+    <div class="toast-wrap" id="toasts" aria-live="polite"></div>
+
+    <div class="screens">
+
+      <!-- ================= HOME ================= -->
+      <section class="screen" id="screen-home" data-active="true">
+        <header class="topbar">
+          <div class="row">
+            <span class="wordmark">MILES</span>
+          </div>
+          <div class="row">
+            <span class="chip" id="streakChip">🔥 <b id="streakValue">0</b></span>
+            <div class="avatar" id="homeAvatar">YU</div>
+          </div>
+        </header>
+
+        <!-- Weekly / monthly volume, with the unit switch -->
+        <section class="volume">
+          <div class="volume-controls">
+            <div class="seg" role="group" aria-label="Time range">
+              <button type="button" data-range="week" aria-pressed="true">Weekly</button>
+              <button type="button" data-range="month" aria-pressed="false">Monthly</button>
+            </div>
+            <div class="seg" role="group" aria-label="Distance unit">
+              <button type="button" data-unit="km" aria-pressed="true">KM</button>
+              <button type="button" data-unit="mi" aria-pressed="false">MI</button>
+            </div>
+          </div>
+
+          <div class="volume-readout">
+            <span class="stat-value" id="volumeValue">0.00</span>
+            <span class="volume-unit" id="volumeUnit">km</span>
+          </div>
+
+          <div class="volume-meta">
+            <div class="stack" style="gap:4px">
+              <span class="stat-label" id="volumeLabel">This week</span>
+              <span class="delta delta--up" id="volumeDelta">—</span>
+            </div>
+            <div class="spark grow" id="volumeSpark" aria-hidden="true"></div>
+          </div>
+
+          <div class="tier">
+            <div class="stack grow" style="gap:6px">
+              <div class="row row--between">
+                <span class="tier-name" id="tierName">Blaze</span>
+                <span class="tiny" id="tierNext">—</span>
+              </div>
+              <span class="tiny" id="tierCaption">Intensity · last 7 days</span>
+              <div class="bar"><i id="tierBar" style="width:0%"></i></div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Map with my location, plus the territory and quest rail -->
+        <div class="field">
+          <div class="map-frame">
+            <canvas id="homeMap"></canvas>
+            <div class="map-overlay">
+              <span class="geo-note" id="geoNote">Simulated location</span>
+              <button class="locate" id="locateBtn" type="button" aria-label="Center on my location">
+                <svg viewBox="0 0 24 24"><use href="#i-crosshair"/></svg>
+              </button>
+            </div>
+          </div>
+
+          <div class="rail">
+            <button class="rail-tile rail-tile--territory" type="button" data-goto="territory">
+              <svg class="rail-icon" viewBox="0 0 24 24"><use href="#i-flag"/></svg>
+              <div>
+                <div class="stat-value" id="railArea">0.00</div>
+                <div class="stat-label" id="railAreaUnit">km²</div>
+              </div>
+              <div class="stat-label" style="color:var(--text-mid)">Territory</div>
+            </button>
+
+            <button class="rail-tile rail-tile--quest" type="button" data-goto="quests">
+              <svg class="rail-icon" viewBox="0 0 24 24"><use href="#i-target"/></svg>
+              <div>
+                <div class="stat-value" id="railQuest">0/9</div>
+                <div class="stat-label" id="railRank">Rookie</div>
+              </div>
+              <div class="stat-label" style="color:var(--text-mid)">Quests</div>
+            </button>
+          </div>
+        </div>
+
+        <!-- The two ways to start -->
+        <div class="starts">
+          <button class="start start--solo" type="button" id="startSolo">
+            <svg class="start-icon" viewBox="0 0 24 24"><use href="#i-runner"/></svg>
+            <span class="start-name">Solo</span>
+            <span class="start-sub">Just you, the road<br />and your territory</span>
+            <span class="start-arrow">→</span>
+          </button>
+
+          <button class="start start--duo" type="button" id="startDuo">
+            <svg class="start-icon" viewBox="0 0 24 24"><use href="#i-duo"/></svg>
+            <span class="start-name">Duo</span>
+            <span class="start-sub">Live pace shared<br />with a friend</span>
+            <span class="start-arrow">→</span>
+          </button>
+        </div>
+
+        <div class="stack" style="margin-top:var(--s-4)">
+          <div class="row row--between">
+            <span class="card-title">Friends this week</span>
+            <button class="tiny" type="button" data-goto="feed" style="color:var(--accent)">See feed</button>
+          </div>
+          <div class="card card--tight stack" id="friendBoard"></div>
+        </div>
+      </section>
+
+      <!-- ================= RUN ================= -->
+      <section class="screen run-screen" id="screen-run">
+        <header class="topbar" style="padding-top:var(--s-4)">
+          <span class="chip" id="runModeChip">SOLO</span>
+          <span class="chip chip--live" id="runLiveChip" hidden>LIVE</span>
+          <span class="chip" id="runSourceChip">SIM</span>
+        </header>
+
+        <div class="run-map">
+          <canvas id="runMap"></canvas>
+          <div class="loop-hint" id="loopHint" hidden>
+            <span>◎</span><span id="loopHintText">Back at the start — finish now to claim this loop</span>
+          </div>
+        </div>
+
+        <div class="run-primary">
+          <div class="stat-value" id="runDistance">0.00</div>
+          <div class="stat-label" id="runDistanceUnit">kilometres</div>
+        </div>
+
+        <div class="run-grid">
+          <div class="cell"><div class="stat-value" id="runTime">0:00</div><div class="stat-label">Time</div></div>
+          <div class="cell"><div class="stat-value" id="runPace">--'--"</div><div class="stat-label" id="runPaceLabel">Pace /km</div></div>
+          <div class="cell"><div class="stat-value" id="runLoop">0 m</div><div class="stat-label" id="runLoopLabel">To start</div></div>
+        </div>
+
+        <div class="versus" id="versus" hidden>
+          <div class="versus-head">
+            <span class="stat-label" id="versusName">vs Rival</span>
+            <span class="versus-gap" id="versusGap" data-lead="me">+0 m</span>
+          </div>
+          <div class="versus-track">
+            <i data-who="me" id="trackMe" style="left:0%">ME</i>
+            <i data-who="rival" id="trackRival" style="left:0%">RV</i>
+          </div>
+          <div class="row row--between tiny">
+            <span id="versusMine">You — 0.00 km</span>
+            <span id="versusTheirs">Rival — 0.00 km</span>
+          </div>
+        </div>
+
+        <div class="run-controls">
+          <button class="btn" type="button" id="pauseBtn">Pause</button>
+          <button class="btn btn--primary" type="button" id="finishBtn">Finish</button>
+        </div>
+      </section>
+
+      <!-- ================= FINISH ================= -->
+      <section class="screen" id="screen-finish">
+        <div class="finish-head">
+          <span class="stat-label">Run complete</span>
+          <h2 id="finishTitle">Morning Run</h2>
+        </div>
+
+        <div class="record-card"><canvas id="cardCanvas"></canvas></div>
+
+        <div class="finish-actions">
+          <button class="btn" type="button" id="saveCardBtn">Save card</button>
+          <button class="btn btn--primary" type="button" id="doneBtn">Done</button>
+        </div>
+
+        <div class="stack" id="finishExtras"></div>
+      </section>
+
+      <!-- ================= TERRITORY ================= -->
+      <section class="screen" id="screen-territory">
+        <header class="topbar">
+          <h1 style="font-size:22px">Territory</h1>
+          <span class="chip" id="territoryRankChip">—</span>
+        </header>
+
+        <p class="muted" style="margin-bottom:var(--s-3)">
+          Start and finish in the same place. Everything your loop encloses becomes yours.
+        </p>
+
+        <div class="territory-map"><canvas id="terrMap"></canvas></div>
+
+        <div class="card stack" style="margin-top:var(--s-3)">
+          <div class="row row--between">
+            <div>
+              <div class="stat-value" id="terrTotal" style="font-size:30px">0.00</div>
+              <div class="stat-label" id="terrTotalUnit">km² held</div>
+            </div>
+            <div style="text-align:right">
+              <div class="stat-value" id="terrCount" style="font-size:30px">0</div>
+              <div class="stat-label">Plots</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card stack" style="margin-top:var(--s-3)">
+          <span class="card-title">Neighbourhood standings</span>
+          <div id="terrBoard"></div>
+        </div>
+
+        <div class="stack" style="margin-top:var(--s-3)">
+          <span class="card-title">Your plots</span>
+          <div class="stack" id="terrList"></div>
+        </div>
+      </section>
+
+      <!-- ================= QUESTS ================= -->
+      <section class="screen" id="screen-quests">
+        <header class="topbar"><h1 style="font-size:22px">Quests</h1></header>
+
+        <div class="rank-card">
+          <div class="row">
+            <div class="rank-badge" id="rankBadge">R</div>
+            <div class="stack grow" style="gap:4px">
+              <span class="stat-label">Current rank</span>
+              <span class="rank-name" id="rankName">Rookie</span>
+              <span class="tiny" id="rankNext">— XP to next rank</span>
+            </div>
+          </div>
+          <div class="bar"><i id="rankBar" style="width:0%"></i></div>
+        </div>
+
+        <div class="stack" style="margin-top:var(--s-4)">
+          <span class="card-title">Active quests</span>
+          <div class="stack" id="questList"></div>
+        </div>
+      </section>
+
+      <!-- ================= FEED ================= -->
+      <section class="screen" id="screen-feed">
+        <header class="topbar"><h1 style="font-size:22px">Feed</h1></header>
+        <div class="stack" id="feedList"></div>
+      </section>
+
+      <!-- ================= PROFILE ================= -->
+      <section class="screen" id="screen-profile">
+        <header class="topbar"><h1 style="font-size:22px">Profile</h1></header>
+
+        <div class="profile-head">
+          <div class="profile-avatar" id="profileAvatar">YU</div>
+          <div class="stack" style="gap:4px">
+            <span style="font-size:20px;font-weight:800" id="profileName">You</span>
+            <span class="muted" id="profileHandle">@you</span>
+            <span class="chip" id="profileRank" style="align-self:flex-start">Rookie</span>
+          </div>
+        </div>
+
+        <div class="kpis">
+          <div class="kpi"><div class="stat-value" id="kpiDistance">0</div><div class="stat-label" id="kpiDistanceUnit">km total</div></div>
+          <div class="kpi"><div class="stat-value" id="kpiRuns">0</div><div class="stat-label">Runs</div></div>
+          <div class="kpi"><div class="stat-value" id="kpiArea">0.00</div><div class="stat-label" id="kpiAreaUnit">km² land</div></div>
+        </div>
+
+        <div class="card stack" style="margin-top:var(--s-4)">
+          <span class="card-title">Settings</span>
+          <div class="setting">
+            <div><div style="font-weight:700;font-size:14px">Runner name</div><div class="tiny">Shown to your rival during a duo</div></div>
+            <button class="btn btn--ghost" type="button" id="nameBtn" style="padding:8px 14px;font-size:12px">You</button>
+          </div>
+          <div class="setting">
+            <div><div style="font-weight:700;font-size:14px">Units</div><div class="tiny">Distance, pace and area</div></div>
+            <div class="seg">
+              <button type="button" data-unit="km" aria-pressed="true">KM</button>
+              <button type="button" data-unit="mi" aria-pressed="false">MI</button>
+            </div>
+          </div>
+          <div class="setting">
+            <div><div style="font-weight:700;font-size:14px">Simulated pace</div><div class="tiny">Speeds up runs without GPS</div></div>
+            <div class="seg" id="demoSpeedSeg">
+              <button type="button" data-speed="1" aria-pressed="false">1×</button>
+              <button type="button" data-speed="12" aria-pressed="true">12×</button>
+              <button type="button" data-speed="40" aria-pressed="false">40×</button>
+            </div>
+          </div>
+          <div class="setting">
+            <div><div style="font-weight:700;font-size:14px">Location</div><div class="tiny" id="geoStatus">Not requested</div></div>
+            <button class="btn btn--ghost" type="button" id="askGeoBtn" style="padding:8px 14px;font-size:12px">Enable</button>
+          </div>
+        </div>
+
+        <div class="card stack" style="margin-top:var(--s-3)">
+          <span class="card-title">Data</span>
+          <p class="tiny">Everything stays in this browser. Nothing is uploaded.</p>
+          <button class="btn btn--danger btn--block" type="button" id="resetBtn">Reset all MILES data</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- ================= DUO LOBBY ================= -->
+    <div class="sheet-scrim" id="duoSheet" hidden>
+      <div class="sheet">
+        <div class="sheet-grip"></div>
+        <h3 style="font-size:20px">Pick your rival</h3>
+        <p class="muted" style="margin:6px 0 var(--s-4)">
+          You will share distance, pace and position live for the whole run.
+        </p>
+        <div class="stack" id="friendPicker"></div>
+        <div class="card card--tight" style="margin-top:var(--s-4)">
+          <p class="tiny">
+            <b style="color:var(--accent)">Race for real:</b> open this page in a second tab, start a duo run
+            with the same friend there, and the two tabs will exchange live telemetry.
+          </p>
+        </div>
+        <div class="row" style="margin-top:var(--s-4);gap:var(--s-3)">
+          <button class="btn grow" type="button" id="duoCancel">Cancel</button>
+          <button class="btn btn--primary grow" type="button" id="duoStart">Start duel</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= TAB BAR ================= -->
+    <nav class="tabbar" id="tabbar" role="tablist">
+      <button type="button" role="tab" data-tab="home" aria-selected="true"><svg viewBox="0 0 24 24"><use href="#i-home"/></svg>Home</button>
+      <button type="button" role="tab" data-tab="territory" aria-selected="false"><svg viewBox="0 0 24 24"><use href="#i-flag"/></svg>Land</button>
+      <button type="button" role="tab" data-tab="quests" aria-selected="false"><svg viewBox="0 0 24 24"><use href="#i-target"/></svg>Quests</button>
+      <button type="button" role="tab" data-tab="feed" aria-selected="false"><svg viewBox="0 0 24 24"><use href="#i-cards"/></svg>Feed</button>
+      <button type="button" role="tab" data-tab="profile" aria-selected="false"><svg viewBox="0 0 24 24"><use href="#i-user"/></svg>You</button>
+    </nav>
+  </main>
+
+  <script src="src/js/core.js"></script>
+  <script src="src/js/state.js"></script>
+  <script src="src/js/map.js"></script>
+  <script src="src/js/realtime.js"></script>
+  <script src="src/js/tracker.js"></script>
+  <script src="src/js/card.js"></script>
+  <script src="src/js/ui.js"></script>
+  <script src="src/js/app.js"></script>
+</body>
+</html>

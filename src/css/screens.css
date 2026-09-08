@@ -1,0 +1,364 @@
+/* ==========================================================================
+   MILES · Screen-specific layout
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   HOME · volume header
+   -------------------------------------------------------------------------- */
+
+.volume {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-3);
+  padding: var(--s-4);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: linear-gradient(160deg, rgba(255,255,255,0.07), rgba(255,255,255,0.015));
+  box-shadow: 0 0 var(--energy-glow) -12px var(--accent);
+}
+
+.volume-controls { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
+
+.volume-readout { display: flex; align-items: baseline; gap: var(--s-2); }
+.volume-readout .stat-value {
+  font-size: clamp(46px, 15vw, 62px);
+  line-height: 0.92;
+  text-shadow: 0 0 calc(var(--energy) * 30px) var(--accent);
+}
+.volume-unit { font-size: 16px; font-weight: 700; color: var(--text-mid); letter-spacing: 0.06em; }
+
+.volume-meta { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
+
+.delta { font-size: 12px; font-weight: 700; }
+.delta--up { color: var(--ok); }
+.delta--down { color: var(--text-lo); }
+
+/* Seven-bar sparkline of the last week / weeks. */
+.spark { display: flex; align-items: flex-end; gap: 3px; height: 34px; }
+.spark i {
+  flex: 1;
+  min-height: 3px;
+  border-radius: 2px;
+  background: linear-gradient(180deg, var(--accent), var(--accent-2));
+  opacity: 0.55;
+  transition: height 0.4s ease;
+}
+.spark i[data-today="true"] { opacity: 1; box-shadow: 0 0 10px var(--accent); }
+
+/* Tier ribbon: the "more you run, the more alive it gets" readout. */
+.tier {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  padding-top: var(--s-3);
+  border-top: 1px solid var(--line);
+}
+.tier-name {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+/* --------------------------------------------------------------------------
+   HOME · map + side rail
+   -------------------------------------------------------------------------- */
+
+.field {
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr 104px;
+  gap: var(--s-3);
+  margin-top: var(--s-3);
+}
+
+.map-frame {
+  position: relative;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  background: var(--ink-800);
+  min-height: 260px;
+}
+.map-frame canvas { display: block; width: 100%; height: 100%; }
+
+.map-overlay {
+  position: absolute;
+  inset: 0;
+  padding: var(--s-3);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  pointer-events: none;
+}
+.map-overlay > * { pointer-events: auto; }
+
+.locate {
+  align-self: flex-end;
+  width: 34px; height: 34px;
+  border-radius: var(--r-pill);
+  display: grid; place-items: center;
+  background: rgba(8, 11, 16, 0.8);
+  border: 1px solid var(--line-strong);
+  backdrop-filter: blur(10px);
+}
+.locate svg { width: 16px; height: 16px; stroke: var(--accent); fill: none; stroke-width: 2; }
+
+.geo-note {
+  align-self: flex-start;
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  padding: 5px 9px;
+  border-radius: var(--r-pill);
+  background: rgba(8, 11, 16, 0.78);
+  border: 1px solid var(--line);
+  color: var(--text-mid);
+  backdrop-filter: blur(10px);
+}
+
+.rail { display: flex; flex-direction: column; gap: var(--s-3); }
+
+.rail-tile {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--s-2);
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: linear-gradient(165deg, rgba(255,255,255,0.06), rgba(255,255,255,0.015));
+  text-align: left;
+  transition: transform 0.14s ease, border-color 0.14s ease;
+}
+.rail-tile:active { transform: scale(0.97); }
+.rail-tile--territory { border-color: rgba(139, 92, 246, 0.35); }
+.rail-tile--quest { border-color: rgba(255, 176, 32, 0.35); }
+
+.rail-tile .stat-value { font-size: 20px; }
+.rail-tile--territory .stat-value { color: var(--violet); }
+.rail-tile--quest .stat-value { color: var(--amber); }
+.rail-icon { width: 18px; height: 18px; stroke-width: 1.8; fill: none; }
+.rail-tile--territory .rail-icon { stroke: var(--violet); }
+.rail-tile--quest .rail-icon { stroke: var(--amber); }
+
+/* --------------------------------------------------------------------------
+   HOME · the two start buttons
+   -------------------------------------------------------------------------- */
+
+.starts { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); margin-top: var(--s-4); }
+
+.start {
+  position: relative;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s-2);
+  padding: var(--s-4);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line-strong);
+  min-height: 116px;
+  text-align: left;
+  transition: transform 0.14s ease;
+}
+.start:active { transform: scale(0.975); }
+
+.start--solo {
+  background: linear-gradient(150deg, var(--accent), var(--accent-2));
+  color: var(--ink-900);
+  box-shadow: 0 10px calc(18px + 26px * var(--energy)) -14px var(--accent);
+}
+.start--duo {
+  background: linear-gradient(150deg, rgba(255,61,139,0.22), rgba(255,255,255,0.03));
+  border-color: rgba(255, 61, 139, 0.45);
+}
+
+.start-name { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; }
+.start-sub { font-size: 11px; font-weight: 600; opacity: 0.78; line-height: 1.35; }
+.start-icon { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 1.9; }
+.start--duo .start-icon { stroke: var(--magenta); }
+.start-arrow { position: absolute; right: 14px; bottom: 14px; font-size: 16px; opacity: 0.6; }
+
+/* --------------------------------------------------------------------------
+   RUN screen
+   -------------------------------------------------------------------------- */
+
+/* The run screen must never scroll: a runner glancing at their phone mid-km
+   should see the same layout every time, so the map absorbs the slack. */
+.run-screen { padding-top: var(--s-4); overflow: hidden; }
+
+.run-map { position: relative; flex: 1 1 auto; min-height: 150px; border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--line); }
+.run-map canvas { display: block; width: 100%; height: 100%; }
+
+.loop-hint {
+  position: absolute;
+  left: var(--s-3); right: var(--s-3); bottom: var(--s-3);
+  padding: 9px 12px;
+  border-radius: var(--r-md);
+  background: rgba(8, 11, 16, 0.86);
+  border: 1px solid rgba(139, 92, 246, 0.5);
+  font-size: 11px;
+  font-weight: 700;
+  color: #d3c4ff;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  backdrop-filter: blur(10px);
+}
+.loop-hint[hidden] { display: none; }
+
+.run-primary { flex: none; text-align: center; padding: var(--s-3) 0 var(--s-1); }
+.run-primary .stat-value { font-size: clamp(60px, 20vw, 82px); line-height: 0.9; }
+
+.run-grid { flex: none; display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-2); margin: var(--s-3) 0; }
+.run-grid .cell { text-align: center; padding: var(--s-3) var(--s-2); border-radius: var(--r-md); background: rgba(255,255,255,0.04); border: 1px solid var(--line); }
+.run-grid .stat-value { font-size: 19px; }
+
+/* Head-to-head strip, only shown in a duo run. */
+.versus { flex: none; display: grid; gap: var(--s-3); padding: var(--s-3); border-radius: var(--r-md); border: 1px solid rgba(255,61,139,0.3); background: rgba(255,61,139,0.07); }
+.versus-head { display: flex; align-items: center; justify-content: space-between; }
+.versus-gap { font-family: var(--font-num); font-weight: 800; font-size: 22px; letter-spacing: -0.02em; }
+.versus-gap[data-lead="me"] { color: var(--lime); }
+.versus-gap[data-lead="rival"] { color: var(--magenta); }
+
+.versus-track { position: relative; height: 34px; border-radius: var(--r-pill); background: rgba(0,0,0,0.35); border: 1px solid var(--line); overflow: hidden; }
+.versus-track i {
+  position: absolute;
+  top: 50%;
+  translate: -50% -50%;
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  font-size: 10px; font-weight: 800;
+  color: var(--ink-900);
+  transition: left 0.6s cubic-bezier(0.3, 1, 0.4, 1);
+}
+.versus-track i[data-who="me"] { background: var(--lime); }
+.versus-track i[data-who="rival"] { background: var(--magenta); color: #fff; }
+
+.run-controls { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); padding-bottom: var(--s-4); }
+
+/* --------------------------------------------------------------------------
+   FINISH · the shareable record card
+   -------------------------------------------------------------------------- */
+
+.finish-head { text-align: center; padding: var(--s-7) 0 var(--s-4); }
+.finish-head h2 { font-size: 26px; }
+
+.record-card { width: 100%; border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow-2); }
+.record-card canvas { display: block; width: 100%; height: auto; }
+
+.finish-actions { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); padding: var(--s-4) 0; }
+
+/* --------------------------------------------------------------------------
+   TERRITORY
+   -------------------------------------------------------------------------- */
+
+.territory-map { position: relative; flex: none; height: 240px; border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--line); }
+.territory-map canvas { display: block; width: 100%; height: 100%; }
+
+.owner-row { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) 0; border-bottom: 1px solid var(--line); }
+.owner-row:last-child { border-bottom: none; }
+.owner-swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+
+.plot { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3); border-radius: var(--r-md); background: rgba(255,255,255,0.035); border: 1px solid var(--line); }
+.plot canvas { width: 52px; height: 52px; border-radius: var(--r-sm); background: rgba(0,0,0,0.3); flex: none; }
+
+/* --------------------------------------------------------------------------
+   QUESTS & RANK
+   -------------------------------------------------------------------------- */
+
+.rank-card { display: flex; flex-direction: column; gap: var(--s-3); padding: var(--s-4); border-radius: var(--r-lg); border: 1px solid rgba(255,176,32,0.3); background: linear-gradient(160deg, rgba(255,176,32,0.16), rgba(255,255,255,0.02)); }
+.rank-badge {
+  width: 58px; height: 58px;
+  border-radius: 18px;
+  display: grid; place-items: center;
+  font-size: 22px; font-weight: 800;
+  color: var(--ink-900);
+  background: linear-gradient(140deg, var(--amber), var(--accent));
+  box-shadow: 0 8px 26px -10px var(--amber);
+  flex: none;
+}
+.rank-name { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
+
+.quest {
+  display: flex;
+  gap: var(--s-3);
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.035);
+}
+.quest[data-done="true"] { border-color: rgba(46,230,168,0.35); background: rgba(46,230,168,0.07); }
+.quest-icon {
+  width: 38px; height: 38px;
+  border-radius: 12px;
+  display: grid; place-items: center;
+  font-size: 17px;
+  background: rgba(255,255,255,0.06);
+  flex: none;
+}
+.quest[data-done="true"] .quest-icon { background: rgba(46,230,168,0.16); }
+.quest-name { font-size: 14px; font-weight: 700; }
+.quest-xp { font-size: 11px; font-weight: 800; color: var(--amber); flex: none; }
+.quest[data-done="true"] .quest-xp { color: var(--ok); }
+
+/* --------------------------------------------------------------------------
+   FEED
+   -------------------------------------------------------------------------- */
+
+.feed-card { border-radius: var(--r-lg); border: 1px solid var(--line); background: rgba(255,255,255,0.035); overflow: hidden; }
+.feed-head { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3); }
+.feed-body { display: grid; grid-template-columns: 96px 1fr; gap: var(--s-3); padding: 0 var(--s-3) var(--s-3); }
+.feed-body canvas { width: 96px; height: 96px; border-radius: var(--r-md); background: rgba(0,0,0,0.35); }
+.feed-stats { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-2) var(--s-3); align-content: center; }
+.feed-foot { display: flex; gap: var(--s-2); padding: var(--s-3); border-top: 1px solid var(--line); }
+
+/* --------------------------------------------------------------------------
+   PROFILE
+   -------------------------------------------------------------------------- */
+
+.profile-head { display: flex; align-items: center; gap: var(--s-4); padding: var(--s-5) 0 var(--s-4); }
+.profile-avatar {
+  width: 68px; height: 68px;
+  border-radius: 24px;
+  display: grid; place-items: center;
+  font-size: 24px; font-weight: 800;
+  color: var(--ink-900);
+  background: linear-gradient(140deg, var(--accent), var(--accent-2));
+}
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s-3); }
+.kpi { padding: var(--s-3); border-radius: var(--r-md); background: rgba(255,255,255,0.04); border: 1px solid var(--line); text-align: center; }
+.kpi .stat-value { font-size: 20px; }
+
+.setting { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-3) 0; border-bottom: 1px solid var(--line); }
+.setting:last-child { border-bottom: none; }
+
+/* --------------------------------------------------------------------------
+   DUO lobby sheet
+   -------------------------------------------------------------------------- */
+
+.friend {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--line);
+  background: rgba(255,255,255,0.035);
+  text-align: left;
+  transition: border-color 0.14s ease;
+}
+.friend[aria-pressed="true"] { border-color: var(--magenta); background: rgba(255,61,139,0.1); }
+.friend-avatar {
+  width: 40px; height: 40px;
+  border-radius: 14px;
+  display: grid; place-items: center;
+  font-weight: 800; font-size: 14px;
+  color: var(--ink-900);
+  flex: none;
+}
