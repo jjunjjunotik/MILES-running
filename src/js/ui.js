@@ -408,8 +408,10 @@
     bindFinish() {
       $('#doneBtn').addEventListener('click', () => this.go('home'));
       $('#saveCardBtn').addEventListener('click', () => {
-        M.downloadCard($('#cardCanvas'), `miles-${new Date(this.lastActivity.startedAt).toISOString().slice(0, 10)}.png`);
-        this.toast('Record card saved as <b>PNG</b>');
+        // downloadCard reports whether it actually started a download; the
+        // fallback paths report their own outcome, so don't claim success.
+        const saved = M.downloadCard($('#cardCanvas'), `miles-${new Date(this.lastActivity.startedAt).toISOString().slice(0, 10)}.png`);
+        if (saved) this.toast('Record card saved as <b>PNG</b>');
       });
     },
 
