@@ -24,7 +24,6 @@
       <g id="i-runner"><circle cx="14.5" cy="4.6" r="2"/><path d="M13 21l2-5-3-2.6.8-4.4-3.4 2-1.4 3M12 13.4l3.8 1.2 1.6 3.4M8 8.6 12 7"/></g>
       <g id="i-duo"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="8.5" r="2.4"/><path d="M3 20a6 6 0 0 1 12 0M15.5 20a5 5 0 0 1 5.5-4.9"/></g>
       <g id="i-crew"><circle cx="12" cy="6" r="2.5"/><circle cx="5" cy="10" r="2.2"/><circle cx="19" cy="10" r="2.2"/><path d="M7.5 19a4.5 4.5 0 0 1 9 0M1.5 16a3.8 3.8 0 0 1 5-2.6M22.5 16a3.8 3.8 0 0 0-5-2.6"/></g>
-      <g id="i-coach"><path d="M12 3.2 5 6.4v5c0 4.2 2.9 7.6 7 9.4 4.1-1.8 7-5.2 7-9.4v-5z"/><path d="M9.4 11.8l1.9 1.9 3.5-3.9"/></g>
     </defs>
   </svg>
 
@@ -279,62 +278,6 @@
         </div>
       </section>
 
-      <!-- ================= COACH ================= -->
-      <section class="screen" id="screen-coach">
-        <header class="topbar">
-          <h1 style="font-size:22px">Coach</h1>
-          <span class="chip" id="coachSource">Offline</span>
-        </header>
-
-        <div class="seg seg--block" id="coachTabs" role="group" aria-label="Coach section" style="grid-template-columns:repeat(3,1fr)">
-          <button type="button" data-coach="plan" aria-pressed="true">Plan</button>
-          <button type="button" data-coach="form" aria-pressed="false">Form</button>
-          <button type="button" data-coach="ask" aria-pressed="false">Ask</button>
-        </div>
-
-        <!-- Plan -->
-        <div class="coach-pane" id="coachPane-plan">
-          <div class="card stack" style="margin-top:var(--s-4)">
-            <span class="card-title">Build a plan</span>
-            <p class="tiny">Built from what you have actually been running, not a template.</p>
-
-            <label class="field-label" for="planGoal">Goal</label>
-            <select class="input" id="planGoal"></select>
-
-            <div class="row" style="gap:var(--s-3)">
-              <div class="stack grow" style="gap:6px">
-                <label class="field-label" for="planWeeks">Weeks</label>
-                <select class="input" id="planWeeks"></select>
-              </div>
-              <div class="stack grow" style="gap:6px">
-                <label class="field-label" for="planDays">Runs / week</label>
-                <select class="input" id="planDays"></select>
-              </div>
-            </div>
-
-            <button class="btn btn--primary btn--block" type="button" id="buildPlanBtn">Build my plan</button>
-          </div>
-          <div class="stack" id="planOut" style="margin-top:var(--s-4)"></div>
-        </div>
-
-        <!-- Form -->
-        <div class="coach-pane" id="coachPane-form" hidden>
-          <div class="stack" id="formOut" style="margin-top:var(--s-4)"></div>
-          <button class="btn btn--block" type="button" id="formCheckBtn" style="margin-top:var(--s-3)">Ask the coach about my form</button>
-          <div class="stack" id="formAdvice" style="margin-top:var(--s-3)"></div>
-        </div>
-
-        <!-- Ask -->
-        <div class="coach-pane" id="coachPane-ask" hidden>
-          <div class="chat" id="chatLog"></div>
-          <div class="chat-suggestions" id="chatSuggestions"></div>
-          <form class="chat-input" id="chatForm">
-            <input class="input grow" id="chatText" placeholder="Ask your coach anything" autocomplete="off" />
-            <button class="btn btn--primary" type="submit" id="chatSend">Send</button>
-          </form>
-        </div>
-      </section>
-
       <!-- ================= FEED ================= -->
       <section class="screen" id="screen-feed">
         <header class="topbar"><h1 style="font-size:22px">Feed</h1></header>
@@ -403,10 +346,6 @@
               <button type="button" data-speed="12" aria-pressed="true">12×</button>
               <button type="button" data-speed="40" aria-pressed="false">40×</button>
             </div>
-          </div>
-          <div class="setting">
-            <div><div style="font-weight:700;font-size:14px">Coach AI</div><div class="tiny" id="coachStatus">Offline coaching</div></div>
-            <button class="btn btn--ghost" type="button" id="coachEndpointBtn" style="padding:8px 14px;font-size:12px">Set endpoint</button>
           </div>
           <div class="setting">
             <div><div style="font-weight:700;font-size:14px">Location</div><div class="tiny" id="geoStatus">Not requested</div></div>
@@ -504,7 +443,6 @@
     <nav class="tabbar" id="tabbar" role="tablist">
       <button type="button" role="tab" data-tab="home" aria-selected="true"><svg viewBox="0 0 24 24"><use href="#i-home"/></svg>Home</button>
       <button type="button" role="tab" data-tab="crew" aria-selected="false"><svg viewBox="0 0 24 24"><use href="#i-crew"/></svg>Crew</button>
-      <button type="button" role="tab" data-tab="coach" aria-selected="false"><svg viewBox="0 0 24 24"><use href="#i-coach"/></svg>Coach</button>
       <button type="button" role="tab" data-tab="territory" aria-selected="false"><svg viewBox="0 0 24 24"><use href="#i-flag"/></svg>Land</button>
       <button type="button" role="tab" data-tab="quests" aria-selected="false"><svg viewBox="0 0 24 24"><use href="#i-target"/></svg>Quests</button>
       <button type="button" role="tab" data-tab="profile" aria-selected="false"><svg viewBox="0 0 24 24"><use href="#i-user"/></svg>You</button>
@@ -514,7 +452,6 @@
   <script src="src/js/core.js"></script>
   <script src="src/js/state.js"></script>
   <script src="src/js/crew.js"></script>
-  <script src="src/js/coach.js"></script>
   <script src="src/js/map.js"></script>
   <script src="src/js/realtime.js"></script>
   <script src="src/js/tracker.js"></script>

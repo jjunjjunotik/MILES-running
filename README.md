@@ -14,9 +14,8 @@ Three ways to run, and they are deliberately separate:
 Every run ends in a record card that says which of the three it was. Quests are
 the only source of XP, and XP is the only thing that moves your **rank**.
 
-Around that: **crews** (find the clubs near you, or start one and run it) and a
-**coach** that reads your actual training — a plan built from your real volume,
-form work aimed at what your data suggests, and an assistant you can ask.
+Around that: **crews** — find the running clubs near you, or start one and run
+it yourself.
 
 No build step, no dependencies, no network calls. Open `index.html`.
 
@@ -64,8 +63,7 @@ To put this on a real network, replace `_send` and the channel wiring in
 | **Quests** | Ten quests, XP, and six ranks from Rookie to Apex |
 | **Feed** | Strava-style activity cards with route thumbnails |
 | **Crew** | The crews near you, and the one you are in — captains manage it from here |
-| **Coach** | Training plan, running form, and an assistant that knows your numbers |
-| **You** | Your run history as a wall of record cards, your friends, units, simulated pace, runner name, coach endpoint, GPS, reset |
+| **You** | Your run history as a wall of record cards, your friends, units, simulated pace, runner name, GPS, reset |
 
 The **Feed** is reached from Home ("See feed").
 
@@ -78,93 +76,6 @@ implies: approve or decline join requests, promote members to pacer, remove
 people, edit the crew's name, tagline and regular run, hand the crew to someone
 else, or disband it. Everything else is refused for anyone who is not the
 captain.
-
-### Coach
-
-Three surfaces, all reading your real training:
-
-- **Plan** — pick a goal (5K, 10K, half, consistency, or territory), a length
-  and how many days a week. The progression is computed locally from your
-  trailing 7-day volume: roughly 10% a week, every fourth week a cutback, the
-  long run kept under a third of the week. A model then comments on the plan
-  rather than replacing it, so the mileage maths stays trustworthy.
-- **Form** — general form cues, plus the two or three flags your own data
-  argues for (a streak with no rest day, a long run that is too big a share of
-  the week).
-- **Ask** — an assistant with your training in its context.
-
-It will not diagnose an injury, offline or online.
-
-#### Where the model lives — and why there is no API key in this app
-
-The app is a static front end, so it **never holds an Anthropic API key**: a key
-shipped to a browser is a key you have given away. Three backends are tried in
-order, and the Coach screen always says which one answered:
-
-1. **Published as an Artifact** — `claude.use("sample")`, so the viewer's own
-   Claude answers. Nothing to host, no key.
-2. **A proxy you run** — `server/coach-proxy.mjs` holds the key server-side and
-   calls Claude with the official SDK (`@anthropic-ai/sdk`, `claude-opus-5`,
-   adaptive thinking, server-side refusal fallbacks):
-
-   ```bash
-   npm install                            # installs @anthropic-ai/sdk
-   export ANTHROPIC_API_KEY=sk-ant-...    # get one at console.anthropic.com
-   npm run coach                          # → http://localhost:8787/coach
-   ```
-
-   Then in the app: **You → Coach AI → Set endpoint** →
-   `http://localhost:8787/coach`. The Coach header should change from
-   `Offline coaching` to `Coach endpoint`.
-
-   The key lives in the shell that starts the proxy — never in the app, never
-   in a file you commit. Forget it and the proxy says so plainly instead of
-   failing cryptically. If you deploy this, put it behind your own auth and
-   rate limiting and narrow `ALLOW_ORIGIN`: every answer is billed to your key.
-
-   `COACH_MODEL` overrides the model (default `claude-opus-5`), `PORT` the port.
-3. **Offline coaching** — a deterministic coach that still reads your data and
-   answers the common questions. This is the default, so the feature is never a
-   dead button.
-
-### Racing
-
-Pick the distance first, then up to four friends — a race holds five runners.
-Crossing the agreed distance ends your race and fixes your place; finishers are
-ordered by the clock time they crossed on, and anyone still out on the course is
-ranked behind them, furthest first. Giving up early keeps the run and records it
-as a did-not-finish.
-
-### Your history
-
-**You → Run history** is every card you have earned, filtered by kind. Tap one
-to open it full size; Back returns you to where you opened it from.
-
-### The interface gets more energetic the more you run
-
-Trailing 7-day volume drives a single `--energy` value that changes the accent
-ramp, the speed of the moving backdrop, the glow on the hero number and the
-speed streaks. It uses a rolling window rather than the calendar week on
-purpose — otherwise the app would go flat every Monday morning.
-
-| Tier | Trailing 7 days |
-|---|---|
-| Ember | 0 – 10 km |
-| Spark | 10 – 20 km |
-| Blaze | 20 – 35 km |
-| Surge | 35 – 55 km |
-| Storm | 55 – 80 km |
-| Apex | 80 km + |
-
-### Territory
-
-On a **Territory run** — and only there — run at least 400 m and come back
-within 30 m of where you started. A free run or a race never takes ground,
-however neatly it happens to loop. The loop is **latched** the moment you pass
-your start point — you never have to hit Finish
-while standing inside a circle — and the enclosed area (shoelace formula on a
-local metre projection) is added to your land. Run a second, wider loop and the
-bigger one replaces it.
 
 ---
 
@@ -189,14 +100,12 @@ src/css/screens.css   Per-screen layout
 src/js/core.js        Units, geometry, storage, event bus
 src/js/state.js       Data model: activities, territory, quests, ranks, crews
 src/js/crew.js        Crews: discovery, membership, captain's tools
-src/js/coach.js       Coach: AI adapter, plan builder, offline coaching
 src/js/map.js         Procedural canvas map (no tile server)
 src/js/realtime.js    Live race telemetry + pace bots
 src/js/tracker.js     Run engine: GPS, splits, loop capture, race scoring
 src/js/card.js        The 1080×1350 record card
 src/js/ui.js          Screen rendering and events
 src/js/app.js         Bootstrap
-server/coach-proxy.mjs  Keeps the API key server-side and calls Claude
 design/DESIGN.md      Full design specification
 design/tokens.json    Tokens Studio format, importable into Figma
 ```
@@ -216,7 +125,6 @@ on top in true metres.
 ## Not included
 
 This is a complete, working front end with a local data model. It has no
-backend of its own: friends, crews and their activity are generated locally,
-live telemetry is device-local, and there is no account system. The one server
-in the repo, `server/coach-proxy.mjs`, exists solely so the API key has
-somewhere to live that is not the browser. Those are the seams to build on.
+backend: friends, crews and their activity are generated locally, live
+telemetry is device-local, and there is no account system. Those are the seams
+to build on.

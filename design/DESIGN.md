@@ -25,7 +25,6 @@ Three loops carry the whole product:
 | **Rivalry** | Did I beat them to the line? | Race, feed, standings |
 | **Territory** | What have I taken? | Map, Land tab, quests |
 | **Belonging** | Who do I run with? | Crew |
-| **Guidance** | What should I run next? | Coach |
 
 | Run kind | Accent | Badge | Scored by |
 |---|---|---|---|
@@ -206,18 +205,7 @@ menu — pacer, hand over, remove — plus Edit and Disband. The model refuses
 every captain action for anyone who is not the captain, rather than only
 hiding the buttons.
 
-### 6.8 Coach
-
-Three tabs — Plan, Form, Ask — with a chip in the header naming which backend
-answered: `Claude · live`, `Coach endpoint`, or `Offline coaching`. The chip is
-not decoration; a coach whose source is invisible is a coach you cannot judge.
-
-The plan's numbers are always computed locally from real training, and the
-model comments on them. That split is deliberate: mileage progression is
-arithmetic and should be inspectable, while the judgement around it is what a
-model is actually for.
-
-### 6.9 Feed
+### 6.8 Feed
 
 Strava-style cards: athlete, title, relative time, route thumbnail, four
 stats, and Kudos / Card actions.
@@ -249,4 +237,4 @@ Everything decorative is disabled under `prefers-reduced-motion: reduce`.
 4. Build six variants of every accent-bearing component, one per intensity
    tier, so the energy ramp is visible in the file rather than only in code.
 5. Screen order for the flow: Home → Solo sheet / Race lobby → Run → Finish →
-   Crew → Coach → Land → Quests → Feed → You.
+   Crew → Land → Quests → Feed → You.

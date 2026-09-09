@@ -234,7 +234,7 @@ p { margin: 0; }
   position: relative;
   z-index: 2;
   display: grid;
-  grid-template-columns: repeat(6, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: var(--s-1);
   padding: var(--s-2) var(--s-3) calc(var(--s-3) + env(safe-area-inset-bottom));
   background: rgba(5, 7, 10, 0.82);
@@ -250,13 +250,13 @@ p { margin: 0; }
   padding: 6px 0;
   border-radius: var(--r-md);
   color: var(--text-lo);
-  font-size: 8.5px;
+  font-size: 9px;
   font-weight: 700;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   transition: color 0.15s ease;
 }
-.tabbar button svg { width: 19px; height: 19px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+.tabbar button svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; }
 .tabbar button[aria-selected="true"] { color: var(--accent); }
 
 /* --- Toast --------------------------------------------------------------- */

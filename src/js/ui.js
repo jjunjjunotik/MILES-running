@@ -9,7 +9,7 @@
 
   const { $, $$, el, State, Stats, Units, Geo, Bus, Tracker, Live, clamp, clock, relTime } = M;
 
-  const TAB_SCREENS = ['home', 'crew', 'coach', 'territory', 'quests', 'feed', 'profile'];
+  const TAB_SCREENS = ['home', 'crew', 'territory', 'quests', 'feed', 'profile'];
 
   const UI = {
     tab: 'home',
@@ -29,7 +29,6 @@
       this.bindFinish();
       this.bindProfile();
       this.bindCrew();
-      this.bindCoach();
 
       Bus.on('state:changed', () => this.renderAll());
       this.renderAll();
@@ -76,7 +75,6 @@
       if (tab === 'territory') this.renderTerritory();
       if (tab === 'feed') this.renderFeed();
       if (tab === 'crew') this.renderCrew();
-      if (tab === 'coach') this.renderCoach();
       if (tab === 'home') this.maps.home.invalidate();
     },
 
@@ -1073,236 +1071,6 @@
     },
 
 
-    /* --- Coach ---------------------------------------------------------------
-       Plan, form and an assistant. The plan's mileage maths is always computed
-       locally from real training; a model adds the words around it. ------- */
-
-    bindCoach() {
-      $$('#coachTabs button').forEach((btn) => {
-        btn.addEventListener('click', () => {
-          this.coachTab = btn.dataset.coach;
-          $$('#coachTabs button').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
-          ['plan', 'form', 'ask'].forEach((k) => { $('#coachPane-' + k).hidden = k !== this.coachTab; });
-          if (this.coachTab === 'form') this.renderForm();
-          if (this.coachTab === 'ask') this.renderChat();
-        });
-      });
-
-      const goal = $('#planGoal');
-      Object.values(M.Coach.GOALS).forEach((g) => goal.appendChild(el('option', { value: g.key, text: `${g.name} — ${g.detail}` })));
-      const weeks = $('#planWeeks');
-      [2, 4, 6, 8, 12].forEach((w) => weeks.appendChild(el('option', { value: String(w), text: `${w} weeks` })));
-      weeks.value = '4';
-      const days = $('#planDays');
-      [2, 3, 4, 5, 6].forEach((d) => days.appendChild(el('option', { value: String(d), text: `${d} runs` })));
-      days.value = '4';
-
-      $('#buildPlanBtn').addEventListener('click', () => this.buildPlan());
-      $('#formCheckBtn').addEventListener('click', () => this.askAboutForm());
-
-      $('#chatForm').addEventListener('submit', (event) => {
-        event.preventDefault();
-        const text = $('#chatText').value.trim();
-        if (!text) return;
-        $('#chatText').value = '';
-        this.sendToCoach(text);
-      });
-    },
-
-    async renderCoach() {
-      this.coachTab = this.coachTab || 'plan';
-      const provider = await M.Coach.provider();
-      const label = { artifact: 'Claude · live', proxy: 'Coach endpoint', offline: 'Offline coaching' }[provider];
-      $('#coachSource').textContent = label;
-      $('#coachSource').className = 'chip' + (provider === 'offline' ? '' : ' chip--live');
-      if ($('#coachStatus')) $('#coachStatus').textContent = label;
-
-      if (State.data.coach.plan) this.renderPlan(State.data.coach.plan);
-      if (this.coachTab === 'form') this.renderForm();
-      if (this.coachTab === 'ask') this.renderChat();
-    },
-
-    buildPlan() {
-      const plan = M.Coach.buildPlan(State.data, {
-        goal: $('#planGoal').value,
-        weeks: Number($('#planWeeks').value),
-        days: Number($('#planDays').value),
-      });
-      State.setPlan(plan);
-      this.renderPlan(plan);
-      this.toast(`<b>${plan.weeksCount}-week</b> plan built from your last 7 days`);
-      this.annotatePlan(plan);
-    },
-
-    renderPlan(plan) {
-      const out = $('#planOut');
-      out.innerHTML = '';
-      const total = plan.weeks.reduce((sum, w) => sum + w.volume, 0);
-
-      out.appendChild(el('div', { class: 'card stack' }, [
-        el('div', { class: 'row row--between' }, [
-          el('div', { class: 'stack', style: 'gap:2px' }, [
-            el('span', { class: 'card-title', text: 'Your plan' }),
-            el('span', { style: 'font-weight:800;font-size:17px', text: plan.goal.name }),
-          ]),
-          el('div', { class: 'stack', style: 'gap:2px;align-items:flex-end' }, [
-            el('span', { class: 'stat-value', style: 'font-size:19px', text: Units.distText(total) }),
-            el('span', { class: 'stat-label', text: Units.distLabel() + ' total' }),
-          ]),
-        ]),
-        el('span', { class: 'tiny', text: `${plan.weeksCount} weeks · ${plan.daysPerWeek} runs a week · every fourth week easier` }),
-      ]));
-
-      const advice = el('div', { class: 'stack', id: 'planAdvice' });
-      out.appendChild(advice);
-
-      plan.weeks.forEach((week) => {
-        const block = el('div', { class: 'plan-week', 'data-down': String(week.down) }, [
-          el('div', { class: 'plan-week-head' }, [
-            el('div', { class: 'stack', style: 'gap:2px' }, [
-              el('span', { style: 'font-weight:800;font-size:14px', text: `Week ${week.index}` }),
-              week.note ? el('span', { class: 'tiny', text: week.note }) : el('span', { class: 'tiny', text: week.down ? 'Recovery' : 'Build' }),
-            ]),
-            el('div', { class: 'stack', style: 'gap:2px;align-items:flex-end' }, [
-              el('span', { class: 'stat-value', style: 'font-size:15px', text: Units.distText(week.volume) }),
-              el('span', { class: 'stat-label', text: Units.distLabel() }),
-            ]),
-          ]),
-        ]);
-
-        week.sessions.forEach((session) => {
-          const kind = M.Coach.SESSIONS[session.type];
-          block.appendChild(el('div', { class: 'session', 'data-type': session.type }, [
-            el('span', { class: 'session-type', style: `color:${kind.tone}`, text: kind.name }),
-            el('span', { class: 'session-note', text: session.note || 'Full day off' }),
-            el('span', { class: 'session-dist', text: session.distance ? `${Units.distText(session.distance)} ${Units.distLabel()}` : '—' }),
-          ]));
-        });
-        out.appendChild(block);
-      });
-    },
-
-    /** Asks the model to comment on the plan the app just computed. */
-    async annotatePlan(plan) {
-      const advice = $('#planAdvice');
-      if (!advice) return;
-      advice.innerHTML = '';
-      advice.appendChild(el('div', { class: 'form-note', 'data-tone': 'info' }, [
-        el('h4', { text: 'Coach' }),
-        el('p', { class: 'bubble--thinking', text: 'Reading your training…' }),
-      ]));
-
-      const summary = plan.weeks
-        .map((w) => `Week ${w.index}: ${Units.distText(w.volume)} ${Units.distLabel()}${w.down ? ' (recovery)' : ''}`)
-        .join('; ');
-
-      const result = await M.Coach.ask(
-        [{
-          role: 'user',
-          content: `I set the goal "${plan.goal.name}" over ${plan.weeksCount} weeks, ${plan.daysPerWeek} runs a week. `
-            + `The app built this progression: ${summary}. `
-            + 'In at most 120 words: say whether this suits my current training, name the one session that matters most, and the one mistake I am most likely to make.',
-        }],
-        { kind: 'plan' }
-      );
-
-      advice.innerHTML = '';
-      advice.appendChild(el('div', { class: 'form-note', 'data-tone': 'info' }, [
-        el('h4', { text: result.source === 'offline' ? 'Coach · offline' : 'Coach' }),
-        el('p', { text: result.text }),
-      ]));
-    },
-
-    renderForm() {
-      const { notes, flags } = M.Coach.formNotes(State.data);
-      const out = $('#formOut');
-      out.innerHTML = '';
-
-      if (flags.length) {
-        out.appendChild(el('span', { class: 'card-title', text: 'From your data' }));
-        flags.forEach((flag) => out.appendChild(el('div', { class: 'form-note', 'data-tone': flag.tone }, [
-          el('h4', { text: flag.title }),
-          el('p', { text: flag.body }),
-        ])));
-      }
-
-      out.appendChild(el('span', { class: 'card-title', text: 'Healthy running form' }));
-      notes.forEach((note) => out.appendChild(el('div', { class: 'form-note' }, [
-        el('h4', { text: note.title }),
-        el('p', { text: note.body }),
-      ])));
-      out.appendChild(el('p', { class: 'tiny', text: 'General coaching, not medical advice. Pain that persists is for a physio, not an app.' }));
-    },
-
-    async askAboutForm() {
-      const box = $('#formAdvice');
-      box.innerHTML = '';
-      box.appendChild(el('div', { class: 'form-note' }, [el('p', { class: 'bubble--thinking', text: 'Reading your training…' })]));
-
-      const result = await M.Coach.ask([{
-        role: 'user',
-        content: 'Look at my recent training and tell me, in at most 120 words, the two form or habit changes that would help me most right now, and why — based on my numbers, not general advice.',
-      }], { kind: 'form' });
-
-      box.innerHTML = '';
-      box.appendChild(el('div', { class: 'form-note', 'data-tone': 'info' }, [
-        el('h4', { text: result.source === 'offline' ? 'Coach · offline' : 'Coach' }),
-        el('p', { text: result.text }),
-      ]));
-    },
-
-    renderChat() {
-      const log = $('#chatLog');
-      const chat = State.data.coach.chat;
-      log.innerHTML = '';
-
-      if (!chat.length) {
-        log.appendChild(el('div', { class: 'bubble bubble--coach' }, [
-          el('span', { text: `I can see your training — ${Units.distText(Stats.rolling7(State.data))} ${Units.distLabel()} in the last 7 days, rank ${Stats.rank(State.data).current.name}. Ask me anything about it.` }),
-        ]));
-      }
-      chat.forEach((turn) => {
-        log.appendChild(el('div', { class: 'bubble bubble--' + (turn.role === 'user' ? 'me' : 'coach'), text: turn.content }));
-      });
-      log.scrollTop = log.scrollHeight;
-
-      const suggestions = $('#chatSuggestions');
-      suggestions.innerHTML = '';
-      [
-        'Am I running too much?',
-        'How do I get faster?',
-        'What should I run tomorrow?',
-        'How do I take more territory?',
-      ].forEach((text) => {
-        suggestions.appendChild(el('button', {
-          class: 'chip', type: 'button', text,
-          onclick: () => this.sendToCoach(text),
-        }));
-      });
-    },
-
-    async sendToCoach(text) {
-      const chat = State.data.coach.chat.slice();
-      chat.push({ role: 'user', content: text });
-      State.setChat(chat);
-      this.renderChat();
-
-      const log = $('#chatLog');
-      const pending = el('div', { class: 'bubble bubble--coach bubble--thinking', text: 'Thinking…' });
-      log.appendChild(pending);
-      log.scrollTop = log.scrollHeight;
-      $('#chatSend').disabled = true;
-
-      const result = await M.Coach.ask(State.data.coach.chat.slice(-8));
-
-      $('#chatSend').disabled = false;
-      const next = State.data.coach.chat.slice();
-      next.push({ role: 'assistant', content: result.text });
-      State.setChat(next);
-      this.renderChat();
-      if (result.note) this.toast(result.note);
-    },
-
     /* --- Quests ------------------------------------------------------------- */
 
     renderQuests() {
@@ -1506,17 +1274,6 @@
       $('#askGeoBtn').addEventListener('click', () => this.locate());
 
       $('#addFriendBtn').addEventListener('click', () => this.promptFriend());
-
-      $('#coachEndpointBtn').addEventListener('click', () => {
-        const next = window.prompt(
-          'Coach endpoint URL.\n\nThis app never holds an API key. Run server/coach-proxy.mjs (or your own) and paste its URL here.\nLeave empty for offline coaching.',
-          State.data.coach.endpoint || 'http://localhost:8787/coach'
-        );
-        if (next === null) return;
-        State.setCoachEndpoint(next);
-        this.toast(next.trim() ? 'Coach endpoint saved' : 'Back to offline coaching');
-        this.renderCoach();
-      });
 
       $$('#historyFilter button').forEach((btn) => {
         btn.addEventListener('click', () => {
