@@ -1,0 +1,14 @@
+{
+  "name": "miles-running",
+  "version": "1.0.0",
+  "private": true,
+  "description": "MILES — a running app with races, territory, crews and an AI coach.",
+  "type": "module",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "coach": "node server/coach-proxy.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.71.0"
+  }
+}

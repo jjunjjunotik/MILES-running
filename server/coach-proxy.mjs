@@ -129,12 +129,19 @@ const server = http.createServer(async (req, res) => {
 
     send(res, 200, { text, model: response.model, usage: response.usage });
   } catch (error) {
-    const status = error?.status && Number.isInteger(error.status) ? error.status : 500;
-    // 401/403 almost always means the key or profile is missing.
-    const message = status === 401 || status === 403
-      ? 'The proxy could not authenticate with Anthropic. Set ANTHROPIC_API_KEY or run `ant auth login`.'
-      : error?.message || 'The coach request failed.';
-    console.error('[coach-proxy]', status, error?.message || error);
+    // A missing key throws client-side, before any HTTP call, so it arrives
+    // with no status at all — catch that case by shape, not by status code.
+    const raw = error?.message || String(error);
+    const noCredentials = /resolve authentication method|apiKey or authToken/i.test(raw);
+    const status = noCredentials ? 401
+      : (error?.status && Number.isInteger(error.status) ? error.status : 500);
+
+    const message = noCredentials || status === 401 || status === 403
+      ? 'No Anthropic credentials. Set ANTHROPIC_API_KEY before starting this proxy '
+        + '(export ANTHROPIC_API_KEY=sk-ant-... && npm run coach), or run `ant auth login`.'
+      : raw || 'The coach request failed.';
+
+    console.error('[coach-proxy]', status, message);
     send(res, status >= 400 && status < 600 ? status : 500, { error: message });
   }
 });

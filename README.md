@@ -108,14 +108,21 @@ order, and the Coach screen always says which one answered:
    adaptive thinking, server-side refusal fallbacks):
 
    ```bash
-   npm install @anthropic-ai/sdk
-   export ANTHROPIC_API_KEY=sk-ant-...    # or run `ant auth login`
-   node server/coach-proxy.mjs
+   npm install                            # installs @anthropic-ai/sdk
+   export ANTHROPIC_API_KEY=sk-ant-...    # get one at console.anthropic.com
+   npm run coach                          # → http://localhost:8787/coach
    ```
 
-   Then **You → Coach AI → endpoint** → `http://localhost:8787/coach`. If you
-   deploy it, put it behind your own auth and rate limiting and narrow
-   `ALLOW_ORIGIN` — every answer is billed to your key.
+   Then in the app: **You → Coach AI → Set endpoint** →
+   `http://localhost:8787/coach`. The Coach header should change from
+   `Offline coaching` to `Coach endpoint`.
+
+   The key lives in the shell that starts the proxy — never in the app, never
+   in a file you commit. Forget it and the proxy says so plainly instead of
+   failing cryptically. If you deploy this, put it behind your own auth and
+   rate limiting and narrow `ALLOW_ORIGIN`: every answer is billed to your key.
+
+   `COACH_MODEL` overrides the model (default `claude-opus-5`), `PORT` the port.
 3. **Offline coaching** — a deterministic coach that still reads your data and
    answers the common questions. This is the default, so the feature is never a
    dead button.
