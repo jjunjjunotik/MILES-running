@@ -380,6 +380,8 @@
           activities: seeded.activities,
           territories: seeded.territories,
           questClaims: {},
+          crews: [],
+          coach: { endpoint: '', plan: null, chat: [] },
           friends: [
             makeFriend('Alex Ryu', '#ff3d8b', 34200, true),
             makeFriend('Mina Park', '#2fe0ff', 51800, true),
@@ -391,6 +393,16 @@
         this.save();
       }
       Units.system = this.data.units;
+
+      // Migrations for state saved by an earlier version.
+      if (!this.data.crews) this.data.crews = [];
+      if (!this.data.coach) this.data.coach = { endpoint: '', plan: null, chat: [] };
+      if (!this.data.crews.length && M.Crew) {
+        this.data.crews = M.Crew.seedNearby(this.data.profile.home);
+        this.save();
+      }
+      if (M.Coach) M.Coach.endpoint = this.data.coach.endpoint || '';
+
       return this.data;
     },
 
@@ -428,6 +440,31 @@
 
     removeFriend(id) {
       this.data.friends = this.data.friends.filter((f) => f.id !== id);
+      this.save();
+    },
+
+    /** Runs a Crew action against the live state and persists the result. */
+    crewAction(fn) {
+      const result = fn(this.data) || {};
+      if (!result.error) this.save();
+      return result;
+    },
+
+    setCoachEndpoint(url) {
+      const clean = (url || '').trim();
+      this.data.coach.endpoint = clean;
+      if (M.Coach) M.Coach.endpoint = clean;
+      this.save();
+    },
+
+    setPlan(plan) {
+      this.data.coach.plan = plan;
+      this.save();
+    },
+
+    setChat(chat) {
+      // Keep the transcript bounded; it is a coaching thread, not an archive.
+      this.data.coach.chat = chat.slice(-40);
       this.save();
     },
 

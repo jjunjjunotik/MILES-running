@@ -24,6 +24,8 @@ Three loops carry the whole product:
 | **Volume** | Am I running enough? | Home header, intensity tier |
 | **Rivalry** | Did I beat them to the line? | Race, feed, standings |
 | **Territory** | What have I taken? | Map, Land tab, quests |
+| **Belonging** | Who do I run with? | Crew |
+| **Guidance** | What should I run next? | Coach |
 
 | Run kind | Accent | Badge | Scored by |
 |---|---|---|---|
@@ -190,7 +192,32 @@ labelled with what it was about (a placing, an area, a distance). Below it,
 friends — the people who can line up in a race — with their race pace, and the
 settings.
 
-### 6.7 Feed
+### 6.7 Crew
+
+Your crew first (or the invitation to start one), then the local crews sorted by
+how far their turf is from yours. A crew card carries the icon, tagline, size,
+weekly volume and distance — enough to choose without opening it.
+
+The crew sheet is one screen with three registers, in the order a captain
+needs them: **join requests** (the thing waiting on a decision), **the roster**
+with role tags, then **the actions**. What you see depends on who you are:
+a visitor gets Join, a member gets Leave, a captain gets the roster's `⋯`
+menu — pacer, hand over, remove — plus Edit and Disband. The model refuses
+every captain action for anyone who is not the captain, rather than only
+hiding the buttons.
+
+### 6.8 Coach
+
+Three tabs — Plan, Form, Ask — with a chip in the header naming which backend
+answered: `Claude · live`, `Coach endpoint`, or `Offline coaching`. The chip is
+not decoration; a coach whose source is invisible is a coach you cannot judge.
+
+The plan's numbers are always computed locally from real training, and the
+model comments on them. That split is deliberate: mileage progression is
+arithmetic and should be inspectable, while the judgement around it is what a
+model is actually for.
+
+### 6.9 Feed
 
 Strava-style cards: athlete, title, relative time, route thumbnail, four
 stats, and Kudos / Card actions.
@@ -222,4 +249,4 @@ Everything decorative is disabled under `prefers-reduced-motion: reduce`.
 4. Build six variants of every accent-bearing component, one per intensity
    tier, so the energy ramp is visible in the file rather than only in code.
 5. Screen order for the flow: Home → Solo sheet / Race lobby → Run → Finish →
-   Land → Quests → Feed → You.
+   Crew → Coach → Land → Quests → Feed → You.

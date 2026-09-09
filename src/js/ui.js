@@ -9,7 +9,7 @@
 
   const { $, $$, el, State, Stats, Units, Geo, Bus, Tracker, Live, clamp, clock, relTime } = M;
 
-  const TAB_SCREENS = ['home', 'territory', 'quests', 'feed', 'profile'];
+  const TAB_SCREENS = ['home', 'crew', 'coach', 'territory', 'quests', 'feed', 'profile'];
 
   const UI = {
     tab: 'home',
@@ -28,6 +28,8 @@
       this.bindRun();
       this.bindFinish();
       this.bindProfile();
+      this.bindCrew();
+      this.bindCoach();
 
       Bus.on('state:changed', () => this.renderAll());
       this.renderAll();
@@ -73,6 +75,8 @@
 
       if (tab === 'territory') this.renderTerritory();
       if (tab === 'feed') this.renderFeed();
+      if (tab === 'crew') this.renderCrew();
+      if (tab === 'coach') this.renderCoach();
       if (tab === 'home') this.maps.home.invalidate();
     },
 
@@ -96,6 +100,7 @@
       this.renderProfile();
       if (this.tab === 'territory') this.renderTerritory();
       if (this.tab === 'feed') this.renderFeed();
+      if (this.tab === 'crew') this.renderCrew();
     },
 
     /** The core "run more, feel more alive" rule, applied to the whole app. */
@@ -689,6 +694,615 @@
       return land;
     },
 
+
+    /* --- Crew ---------------------------------------------------------------
+       A crew is a club with a home turf. Captains get the tools to run it. */
+
+    bindCrew() {
+      $('#createCrewBtn').addEventListener('click', () => this.openCreateCrew());
+      $('#crewSheet').addEventListener('click', (event) => {
+        if (event.target === $('#crewSheet')) $('#crewSheet').hidden = true;
+      });
+    },
+
+    renderCrew() {
+      const state = State.data;
+      const mine = M.Crew.mine(state);
+      const host = $('#myCrew');
+      host.innerHTML = '';
+
+      if (mine) {
+        host.appendChild(this.crewHero(mine));
+      } else {
+        const pending = M.Crew.all(state).find((c) => c.pendingMe);
+        host.appendChild(el('div', { class: 'card stack' }, [
+          el('span', { class: 'card-title', text: pending ? 'Waiting on a captain' : 'No crew yet' }),
+          el('p', {
+            class: 'muted',
+            text: pending
+              ? `${pending.name} reviews every request. You will get in when their captain says so.`
+              : 'Join one of the crews near you, or start your own and run it yourself.',
+          }),
+          el('button', {
+            class: 'btn btn--primary btn--block', type: 'button', text: 'Start a crew',
+            onclick: () => this.openCreateCrew(),
+          }),
+        ]));
+      }
+
+      const nearby = M.Crew.nearby(state);
+      $('#nearbyCount').textContent = `${nearby.length} within 5 ${Units.distLabel()}`;
+      const list = $('#nearbyCrews');
+      list.innerHTML = '';
+      nearby.forEach((crew) => {
+        const card = el('button', { class: 'crew-card', type: 'button' }, [
+          el('span', { class: 'crew-badge', style: `border-color:${crew.color}55`, text: crew.emoji }),
+          el('div', { class: 'stack grow', style: 'gap:3px' }, [
+            el('span', { style: 'font-weight:700;font-size:14px', text: crew.name }),
+            el('span', { class: 'tiny truncate', text: crew.tagline }),
+            el('span', { class: 'tiny', style: `color:${crew.color}`, text: `${M.Crew.memberCount(crew)} runners · ${Units.distText(M.Crew.weeklyVolume(crew))} ${Units.distLabel()} this week` }),
+          ]),
+          el('div', { class: 'stack', style: 'gap:4px;align-items:flex-end;flex:none' }, [
+            el('span', { class: 'stat-value', style: 'font-size:14px', text: Units.distText(crew.distance) }),
+            el('span', { class: 'stat-label', text: Units.distLabel() + ' away' }),
+          ]),
+        ]);
+        card.addEventListener('click', () => this.openCrewSheet(crew.id));
+        list.appendChild(card);
+      });
+    },
+
+    crewHero(crew) {
+      const isLeader = M.Crew.isLeader(crew);
+      const band = M.Crew.paceBand(crew);
+      return el('div', { class: 'crew-hero' }, [
+        el('div', { class: 'row' }, [
+          el('span', { class: 'crew-badge', style: `border-color:${crew.color}66`, text: crew.emoji }),
+          el('div', { class: 'stack grow', style: 'gap:3px' }, [
+            el('span', { class: 'crew-name', text: crew.name }),
+            el('span', { class: 'tiny', text: crew.tagline }),
+          ]),
+          el('span', { class: 'role-tag', 'data-role': isLeader ? 'leader' : 'member', text: isLeader ? 'Captain' : 'Member' }),
+        ]),
+        el('div', { class: 'crew-stats' }, [
+          statCell(String(M.Crew.memberCount(crew)), 'Runners'),
+          statCell(Units.distText(M.Crew.weeklyVolume(crew)), Units.distLabel() + ' / week'),
+          statCell(band ? Units.paceText(band[0] / 1000) : '—', 'Best pace'),
+        ]),
+        el('div', { class: 'row row--between' }, [
+          el('span', { class: 'tiny', text: `Meets ${crew.schedule.day} · ${crew.schedule.time} · ${crew.schedule.spot}` }),
+        ]),
+        el('button', {
+          class: 'btn btn--block' + (isLeader ? ' btn--primary' : ''), type: 'button',
+          text: isLeader ? `Manage crew${crew.requests.length ? ` · ${crew.requests.length} waiting` : ''}` : 'Open crew',
+          onclick: () => this.openCrewSheet(crew.id),
+        }),
+      ]);
+
+      function statCell(value, label) {
+        return el('div', { class: 'cell' }, [
+          el('div', { class: 'stat-value', text: value }),
+          el('div', { class: 'stat-label', text: label }),
+        ]);
+      }
+    },
+
+    openCreateCrew() {
+      if (M.Crew.mine(State.data)) {
+        this.toast('Leave your current crew first');
+        return;
+      }
+      const body = $('#crewSheetBody');
+      body.innerHTML = '';
+
+      const name = el('input', { class: 'input', id: 'newCrewName', placeholder: 'Crew name', maxlength: '28' });
+      const tagline = el('input', { class: 'input', id: 'newCrewTagline', placeholder: 'One line about the crew', maxlength: '60' });
+      const spot = el('input', { class: 'input', id: 'newCrewSpot', placeholder: 'Where you meet' });
+      const day = el('select', { class: 'input' });
+      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach((d) => day.appendChild(el('option', { value: d, text: d })));
+      day.value = 'Sat';
+      const time = el('input', { class: 'input', type: 'time', value: '08:00' });
+      const emoji = el('select', { class: 'input' });
+      ['🏃', '🔥', '⚡', '🌅', '⛰️', '🏴', '🌙', '🐺'].forEach((e) => emoji.appendChild(el('option', { value: e, text: e })));
+      const open = el('select', { class: 'input' }, [
+        el('option', { value: 'open', text: 'Anyone can join' }),
+        el('option', { value: 'review', text: 'I approve each request' }),
+      ]);
+
+      body.appendChild(el('div', { class: 'stack' }, [
+        el('h3', { style: 'font-size:20px', text: 'Start a crew' }),
+        el('p', { class: 'muted', text: 'You will be its captain, which means the member list is yours to run.' }),
+        el('label', { class: 'field-label', text: 'Name' }), name,
+        el('label', { class: 'field-label', text: 'Tagline' }), tagline,
+        el('div', { class: 'row', style: 'gap:var(--s-3)' }, [
+          el('div', { class: 'stack grow', style: 'gap:6px' }, [el('label', { class: 'field-label', text: 'Icon' }), emoji]),
+          el('div', { class: 'stack grow', style: 'gap:6px' }, [el('label', { class: 'field-label', text: 'Joining' }), open]),
+        ]),
+        el('label', { class: 'field-label', text: 'Regular run' }),
+        el('div', { class: 'row', style: 'gap:var(--s-3)' }, [day, time]),
+        spot,
+        el('div', { class: 'row', style: 'gap:var(--s-3);margin-top:var(--s-3)' }, [
+          el('button', { class: 'btn grow', type: 'button', text: 'Cancel', onclick: () => { $('#crewSheet').hidden = true; } }),
+          el('button', {
+            class: 'btn btn--primary grow', type: 'button', text: 'Found it',
+            onclick: () => {
+              const result = State.crewAction((state) => M.Crew.create(state, {
+                name: name.value, tagline: tagline.value, emoji: emoji.value,
+                day: day.value, time: time.value, spot: spot.value,
+                openJoin: open.value === 'open',
+              }));
+              if (result.error) { this.toast(result.error); return; }
+              $('#crewSheet').hidden = true;
+              this.renderCrew();
+              this.toast(`<b>${result.crew.name}</b> is yours — ${result.crew.requests.length} runners already asked to join`);
+            },
+          }),
+        ]),
+      ]));
+
+      $('#crewSheet').hidden = false;
+      setTimeout(() => name.focus(), 60);
+    },
+
+    openCrewSheet(crewId) {
+      const crew = M.Crew.all(State.data).find((c) => c.id === crewId);
+      if (!crew) return;
+      this.activeCrew = crewId;
+      const isLeader = M.Crew.isLeader(crew);
+      const mine = M.Crew.mine(State.data);
+      const isMember = !!mine && mine.id === crew.id;
+      const body = $('#crewSheetBody');
+      body.innerHTML = '';
+
+      const parts = [
+        el('div', { class: 'row' }, [
+          el('span', { class: 'crew-badge', style: `border-color:${crew.color}66`, text: crew.emoji }),
+          el('div', { class: 'stack grow', style: 'gap:3px' }, [
+            el('span', { class: 'crew-name', text: crew.name }),
+            el('span', { class: 'tiny', text: crew.tagline }),
+          ]),
+        ]),
+        el('div', { class: 'crew-stats' }, [
+          cell(String(M.Crew.memberCount(crew)), 'Runners'),
+          cell(Units.distText(M.Crew.weeklyVolume(crew)), Units.distLabel() + ' / week'),
+          isMember
+            ? cell(new Date(crew.foundedAt).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }), 'Founded')
+            : cell(Units.distText(crew.distance), Units.distLabel() + ' away'),
+        ]),
+        el('p', { class: 'tiny', text: `Meets ${crew.schedule.day} at ${crew.schedule.time} · ${crew.schedule.spot}` }),
+      ];
+
+      // Captain's desk: requests first, because they are the thing waiting.
+      if (isLeader && crew.requests.length) {
+        parts.push(el('span', { class: 'card-title', text: `Join requests · ${crew.requests.length}` }));
+        crew.requests.forEach((person) => {
+          parts.push(el('div', { class: 'request' }, [
+            el('span', { class: 'friend-avatar', style: `background:${person.color}`, text: person.initials }),
+            el('div', { class: 'stack grow', style: 'gap:2px' }, [
+              el('span', { style: 'font-weight:700;font-size:14px', text: person.name }),
+              el('span', { class: 'tiny', text: `${Units.distText(person.weekly)} ${Units.distLabel()} a week · asked ${relTime(person.at || Date.now())}` }),
+            ]),
+            el('button', {
+              class: 'icon-btn icon-btn--ok', type: 'button', text: '✓', 'aria-label': 'Approve',
+              onclick: () => {
+                const r = State.crewAction((st) => M.Crew.approve(st, crew.id, person.id));
+                if (r.error) { this.toast(r.error); return; }
+                this.toast(`<b>${r.joiner.name}</b> is in`);
+                this.openCrewSheet(crew.id);
+                this.renderCrew();
+              },
+            }),
+            el('button', {
+              class: 'icon-btn icon-btn--no', type: 'button', text: '✕', 'aria-label': 'Decline',
+              onclick: () => {
+                State.crewAction((st) => M.Crew.decline(st, crew.id, person.id));
+                this.openCrewSheet(crew.id);
+                this.renderCrew();
+              },
+            }),
+          ]));
+        });
+      }
+
+      parts.push(el('span', { class: 'card-title', text: `Members · ${crew.members.length}` }));
+      const roster = el('div', { class: 'stack', style: 'gap:0' });
+      crew.members.slice().sort((a, b) => (a.role === 'leader' ? -1 : b.role === 'leader' ? 1 : b.weekly - a.weekly)).forEach((member) => {
+        const isMe = member.id === 'me';
+        const row = el('div', { class: 'member' }, [
+          el('span', { class: 'friend-avatar', style: `background:${member.color}`, text: member.initials }),
+          el('div', { class: 'stack grow', style: 'gap:2px' }, [
+            el('span', {
+              style: `font-weight:${isMe ? 800 : 600};font-size:14px;color:${isMe ? 'var(--accent)' : 'var(--text-hi)'}`,
+              // Don't write "You (you)" when that is literally their name.
+              text: isMe && member.name.toLowerCase() !== 'you' ? `${member.name} (you)` : member.name,
+            }),
+            el('span', { class: 'tiny', text: `${Units.distText(member.weekly)} ${Units.distLabel()} this week` }),
+          ]),
+          el('span', { class: 'role-tag', 'data-role': member.role, text: M.Crew.ROLES[member.role] }),
+        ]);
+        if (isLeader && !isMe) {
+          row.appendChild(el('button', {
+            class: 'icon-btn', type: 'button', text: '⋯', 'aria-label': 'Manage ' + member.name,
+            onclick: () => this.manageMember(crew.id, member.id),
+          }));
+        }
+        roster.appendChild(row);
+      });
+      parts.push(roster);
+
+      // Actions depend on who you are to this crew.
+      const actions = [];
+      if (isLeader) {
+        actions.push(el('button', { class: 'btn grow', type: 'button', text: 'Edit crew', onclick: () => this.editCrew(crew.id) }));
+        actions.push(el('button', {
+          class: 'btn btn--danger grow', type: 'button', text: 'Disband',
+          onclick: () => {
+            if (!window.confirm(`Disband ${crew.name}? This cannot be undone.`)) return;
+            State.crewAction((st) => M.Crew.disband(st, crew.id));
+            $('#crewSheet').hidden = true;
+            this.renderCrew();
+            this.toast('Crew disbanded');
+          },
+        }));
+      } else if (isMember) {
+        actions.push(el('button', {
+          class: 'btn btn--danger btn--block', type: 'button', text: 'Leave crew',
+          onclick: () => {
+            const r = State.crewAction((st) => M.Crew.leave(st, crew.id));
+            if (r.error) { this.toast(r.error); return; }
+            $('#crewSheet').hidden = true;
+            this.renderCrew();
+            this.toast('You left the crew');
+          },
+        }));
+      } else {
+        actions.push(el('button', {
+          class: 'btn btn--primary btn--block', type: 'button',
+          text: crew.pendingMe ? 'Request sent' : crew.openJoin ? 'Join crew' : 'Ask to join',
+          onclick: () => {
+            if (crew.pendingMe) return;
+            const r = State.crewAction((st) => M.Crew.join(st, crew.id));
+            if (r.error) { this.toast(r.error); return; }
+            $('#crewSheet').hidden = true;
+            this.renderCrew();
+            this.toast(r.pending ? `Request sent to <b>${crew.name}</b>` : `You are in <b>${crew.name}</b>`);
+          },
+        }));
+      }
+      parts.push(el('div', { class: 'row', style: 'gap:var(--s-3);margin-top:var(--s-4)' }, actions));
+
+      parts.forEach((node) => body.appendChild(node));
+      $('#crewSheet').hidden = false;
+
+      function cell(value, label) {
+        return el('div', { class: 'cell' }, [
+          el('div', { class: 'stat-value', text: value }),
+          el('div', { class: 'stat-label', text: label }),
+        ]);
+      }
+    },
+
+    manageMember(crewId, memberId) {
+      const crew = M.Crew.all(State.data).find((c) => c.id === crewId);
+      const member = crew && crew.members.find((m) => m.id === memberId);
+      if (!member) return;
+      const body = $('#crewSheetBody');
+      body.innerHTML = '';
+
+      const act = (fn, message) => {
+        const r = State.crewAction(fn);
+        if (r.error) { this.toast(r.error); return; }
+        if (message) this.toast(message);
+        this.openCrewSheet(crewId);
+        this.renderCrew();
+      };
+
+      body.appendChild(el('div', { class: 'stack' }, [
+        el('div', { class: 'row' }, [
+          el('span', { class: 'friend-avatar', style: `background:${member.color}`, text: member.initials }),
+          el('div', { class: 'stack grow', style: 'gap:2px' }, [
+            el('span', { style: 'font-weight:800;font-size:17px', text: member.name }),
+            el('span', { class: 'tiny', text: `${M.Crew.ROLES[member.role]} · joined ${relTime(member.joinedAt)}` }),
+          ]),
+        ]),
+        member.role === 'pacer'
+          ? el('button', { class: 'btn btn--block', type: 'button', text: 'Demote to member', onclick: () => act((st) => M.Crew.setRole(st, crewId, memberId, 'member'), `${member.name} is a member`) })
+          : el('button', { class: 'btn btn--block', type: 'button', text: 'Make a pacer', onclick: () => act((st) => M.Crew.setRole(st, crewId, memberId, 'pacer'), `${member.name} leads the pack now`) }),
+        el('button', {
+          class: 'btn btn--block', type: 'button', text: 'Hand over the crew',
+          onclick: () => {
+            if (!window.confirm(`Make ${member.name} captain? You become a member.`)) return;
+            act((st) => M.Crew.handOver(st, crewId, memberId), `${member.name} is now captain`);
+          },
+        }),
+        el('button', {
+          class: 'btn btn--danger btn--block', type: 'button', text: 'Remove from crew',
+          onclick: () => {
+            if (!window.confirm(`Remove ${member.name}?`)) return;
+            act((st) => M.Crew.remove(st, crewId, memberId), `${member.name} removed`);
+          },
+        }),
+        el('button', { class: 'btn btn--ghost btn--block', type: 'button', text: 'Back', onclick: () => this.openCrewSheet(crewId) }),
+      ]));
+    },
+
+    editCrew(crewId) {
+      const crew = M.Crew.all(State.data).find((c) => c.id === crewId);
+      if (!crew) return;
+      const body = $('#crewSheetBody');
+      body.innerHTML = '';
+
+      const name = el('input', { class: 'input', value: crew.name, maxlength: '28' });
+      const tagline = el('input', { class: 'input', value: crew.tagline, maxlength: '60' });
+      const spot = el('input', { class: 'input', value: crew.schedule.spot });
+      const time = el('input', { class: 'input', type: 'time', value: crew.schedule.time });
+      const day = el('select', { class: 'input' });
+      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Tue & Thu', 'Mon & Fri'].forEach((d) => day.appendChild(el('option', { value: d, text: d })));
+      day.value = crew.schedule.day;
+      const open = el('select', { class: 'input' }, [
+        el('option', { value: 'open', text: 'Anyone can join' }),
+        el('option', { value: 'review', text: 'I approve each request' }),
+      ]);
+      open.value = crew.openJoin ? 'open' : 'review';
+
+      body.appendChild(el('div', { class: 'stack' }, [
+        el('h3', { style: 'font-size:20px', text: 'Edit crew' }),
+        el('label', { class: 'field-label', text: 'Name' }), name,
+        el('label', { class: 'field-label', text: 'Tagline' }), tagline,
+        el('label', { class: 'field-label', text: 'Joining' }), open,
+        el('label', { class: 'field-label', text: 'Regular run' }),
+        el('div', { class: 'row', style: 'gap:var(--s-3)' }, [day, time]),
+        spot,
+        el('div', { class: 'row', style: 'gap:var(--s-3);margin-top:var(--s-3)' }, [
+          el('button', { class: 'btn grow', type: 'button', text: 'Back', onclick: () => this.openCrewSheet(crewId) }),
+          el('button', {
+            class: 'btn btn--primary grow', type: 'button', text: 'Save',
+            onclick: () => {
+              const r = State.crewAction((st) => M.Crew.edit(st, crewId, {
+                name: name.value, tagline: tagline.value, openJoin: open.value === 'open',
+                schedule: { day: day.value, time: time.value, spot: spot.value },
+              }));
+              if (r.error) { this.toast(r.error); return; }
+              this.toast('Crew updated');
+              this.openCrewSheet(crewId);
+              this.renderCrew();
+            },
+          }),
+        ]),
+      ]));
+    },
+
+
+    /* --- Coach ---------------------------------------------------------------
+       Plan, form and an assistant. The plan's mileage maths is always computed
+       locally from real training; a model adds the words around it. ------- */
+
+    bindCoach() {
+      $$('#coachTabs button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          this.coachTab = btn.dataset.coach;
+          $$('#coachTabs button').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+          ['plan', 'form', 'ask'].forEach((k) => { $('#coachPane-' + k).hidden = k !== this.coachTab; });
+          if (this.coachTab === 'form') this.renderForm();
+          if (this.coachTab === 'ask') this.renderChat();
+        });
+      });
+
+      const goal = $('#planGoal');
+      Object.values(M.Coach.GOALS).forEach((g) => goal.appendChild(el('option', { value: g.key, text: `${g.name} — ${g.detail}` })));
+      const weeks = $('#planWeeks');
+      [2, 4, 6, 8, 12].forEach((w) => weeks.appendChild(el('option', { value: String(w), text: `${w} weeks` })));
+      weeks.value = '4';
+      const days = $('#planDays');
+      [2, 3, 4, 5, 6].forEach((d) => days.appendChild(el('option', { value: String(d), text: `${d} runs` })));
+      days.value = '4';
+
+      $('#buildPlanBtn').addEventListener('click', () => this.buildPlan());
+      $('#formCheckBtn').addEventListener('click', () => this.askAboutForm());
+
+      $('#chatForm').addEventListener('submit', (event) => {
+        event.preventDefault();
+        const text = $('#chatText').value.trim();
+        if (!text) return;
+        $('#chatText').value = '';
+        this.sendToCoach(text);
+      });
+    },
+
+    async renderCoach() {
+      this.coachTab = this.coachTab || 'plan';
+      const provider = await M.Coach.provider();
+      const label = { artifact: 'Claude · live', proxy: 'Coach endpoint', offline: 'Offline coaching' }[provider];
+      $('#coachSource').textContent = label;
+      $('#coachSource').className = 'chip' + (provider === 'offline' ? '' : ' chip--live');
+      if ($('#coachStatus')) $('#coachStatus').textContent = label;
+
+      if (State.data.coach.plan) this.renderPlan(State.data.coach.plan);
+      if (this.coachTab === 'form') this.renderForm();
+      if (this.coachTab === 'ask') this.renderChat();
+    },
+
+    buildPlan() {
+      const plan = M.Coach.buildPlan(State.data, {
+        goal: $('#planGoal').value,
+        weeks: Number($('#planWeeks').value),
+        days: Number($('#planDays').value),
+      });
+      State.setPlan(plan);
+      this.renderPlan(plan);
+      this.toast(`<b>${plan.weeksCount}-week</b> plan built from your last 7 days`);
+      this.annotatePlan(plan);
+    },
+
+    renderPlan(plan) {
+      const out = $('#planOut');
+      out.innerHTML = '';
+      const total = plan.weeks.reduce((sum, w) => sum + w.volume, 0);
+
+      out.appendChild(el('div', { class: 'card stack' }, [
+        el('div', { class: 'row row--between' }, [
+          el('div', { class: 'stack', style: 'gap:2px' }, [
+            el('span', { class: 'card-title', text: 'Your plan' }),
+            el('span', { style: 'font-weight:800;font-size:17px', text: plan.goal.name }),
+          ]),
+          el('div', { class: 'stack', style: 'gap:2px;align-items:flex-end' }, [
+            el('span', { class: 'stat-value', style: 'font-size:19px', text: Units.distText(total) }),
+            el('span', { class: 'stat-label', text: Units.distLabel() + ' total' }),
+          ]),
+        ]),
+        el('span', { class: 'tiny', text: `${plan.weeksCount} weeks · ${plan.daysPerWeek} runs a week · every fourth week easier` }),
+      ]));
+
+      const advice = el('div', { class: 'stack', id: 'planAdvice' });
+      out.appendChild(advice);
+
+      plan.weeks.forEach((week) => {
+        const block = el('div', { class: 'plan-week', 'data-down': String(week.down) }, [
+          el('div', { class: 'plan-week-head' }, [
+            el('div', { class: 'stack', style: 'gap:2px' }, [
+              el('span', { style: 'font-weight:800;font-size:14px', text: `Week ${week.index}` }),
+              week.note ? el('span', { class: 'tiny', text: week.note }) : el('span', { class: 'tiny', text: week.down ? 'Recovery' : 'Build' }),
+            ]),
+            el('div', { class: 'stack', style: 'gap:2px;align-items:flex-end' }, [
+              el('span', { class: 'stat-value', style: 'font-size:15px', text: Units.distText(week.volume) }),
+              el('span', { class: 'stat-label', text: Units.distLabel() }),
+            ]),
+          ]),
+        ]);
+
+        week.sessions.forEach((session) => {
+          const kind = M.Coach.SESSIONS[session.type];
+          block.appendChild(el('div', { class: 'session', 'data-type': session.type }, [
+            el('span', { class: 'session-type', style: `color:${kind.tone}`, text: kind.name }),
+            el('span', { class: 'session-note', text: session.note || 'Full day off' }),
+            el('span', { class: 'session-dist', text: session.distance ? `${Units.distText(session.distance)} ${Units.distLabel()}` : '—' }),
+          ]));
+        });
+        out.appendChild(block);
+      });
+    },
+
+    /** Asks the model to comment on the plan the app just computed. */
+    async annotatePlan(plan) {
+      const advice = $('#planAdvice');
+      if (!advice) return;
+      advice.innerHTML = '';
+      advice.appendChild(el('div', { class: 'form-note', 'data-tone': 'info' }, [
+        el('h4', { text: 'Coach' }),
+        el('p', { class: 'bubble--thinking', text: 'Reading your training…' }),
+      ]));
+
+      const summary = plan.weeks
+        .map((w) => `Week ${w.index}: ${Units.distText(w.volume)} ${Units.distLabel()}${w.down ? ' (recovery)' : ''}`)
+        .join('; ');
+
+      const result = await M.Coach.ask(
+        [{
+          role: 'user',
+          content: `I set the goal "${plan.goal.name}" over ${plan.weeksCount} weeks, ${plan.daysPerWeek} runs a week. `
+            + `The app built this progression: ${summary}. `
+            + 'In at most 120 words: say whether this suits my current training, name the one session that matters most, and the one mistake I am most likely to make.',
+        }],
+        { kind: 'plan' }
+      );
+
+      advice.innerHTML = '';
+      advice.appendChild(el('div', { class: 'form-note', 'data-tone': 'info' }, [
+        el('h4', { text: result.source === 'offline' ? 'Coach · offline' : 'Coach' }),
+        el('p', { text: result.text }),
+      ]));
+    },
+
+    renderForm() {
+      const { notes, flags } = M.Coach.formNotes(State.data);
+      const out = $('#formOut');
+      out.innerHTML = '';
+
+      if (flags.length) {
+        out.appendChild(el('span', { class: 'card-title', text: 'From your data' }));
+        flags.forEach((flag) => out.appendChild(el('div', { class: 'form-note', 'data-tone': flag.tone }, [
+          el('h4', { text: flag.title }),
+          el('p', { text: flag.body }),
+        ])));
+      }
+
+      out.appendChild(el('span', { class: 'card-title', text: 'Healthy running form' }));
+      notes.forEach((note) => out.appendChild(el('div', { class: 'form-note' }, [
+        el('h4', { text: note.title }),
+        el('p', { text: note.body }),
+      ])));
+      out.appendChild(el('p', { class: 'tiny', text: 'General coaching, not medical advice. Pain that persists is for a physio, not an app.' }));
+    },
+
+    async askAboutForm() {
+      const box = $('#formAdvice');
+      box.innerHTML = '';
+      box.appendChild(el('div', { class: 'form-note' }, [el('p', { class: 'bubble--thinking', text: 'Reading your training…' })]));
+
+      const result = await M.Coach.ask([{
+        role: 'user',
+        content: 'Look at my recent training and tell me, in at most 120 words, the two form or habit changes that would help me most right now, and why — based on my numbers, not general advice.',
+      }], { kind: 'form' });
+
+      box.innerHTML = '';
+      box.appendChild(el('div', { class: 'form-note', 'data-tone': 'info' }, [
+        el('h4', { text: result.source === 'offline' ? 'Coach · offline' : 'Coach' }),
+        el('p', { text: result.text }),
+      ]));
+    },
+
+    renderChat() {
+      const log = $('#chatLog');
+      const chat = State.data.coach.chat;
+      log.innerHTML = '';
+
+      if (!chat.length) {
+        log.appendChild(el('div', { class: 'bubble bubble--coach' }, [
+          el('span', { text: `I can see your training — ${Units.distText(Stats.rolling7(State.data))} ${Units.distLabel()} in the last 7 days, rank ${Stats.rank(State.data).current.name}. Ask me anything about it.` }),
+        ]));
+      }
+      chat.forEach((turn) => {
+        log.appendChild(el('div', { class: 'bubble bubble--' + (turn.role === 'user' ? 'me' : 'coach'), text: turn.content }));
+      });
+      log.scrollTop = log.scrollHeight;
+
+      const suggestions = $('#chatSuggestions');
+      suggestions.innerHTML = '';
+      [
+        'Am I running too much?',
+        'How do I get faster?',
+        'What should I run tomorrow?',
+        'How do I take more territory?',
+      ].forEach((text) => {
+        suggestions.appendChild(el('button', {
+          class: 'chip', type: 'button', text,
+          onclick: () => this.sendToCoach(text),
+        }));
+      });
+    },
+
+    async sendToCoach(text) {
+      const chat = State.data.coach.chat.slice();
+      chat.push({ role: 'user', content: text });
+      State.setChat(chat);
+      this.renderChat();
+
+      const log = $('#chatLog');
+      const pending = el('div', { class: 'bubble bubble--coach bubble--thinking', text: 'Thinking…' });
+      log.appendChild(pending);
+      log.scrollTop = log.scrollHeight;
+      $('#chatSend').disabled = true;
+
+      const result = await M.Coach.ask(State.data.coach.chat.slice(-8));
+
+      $('#chatSend').disabled = false;
+      const next = State.data.coach.chat.slice();
+      next.push({ role: 'assistant', content: result.text });
+      State.setChat(next);
+      this.renderChat();
+      if (result.note) this.toast(result.note);
+    },
+
     /* --- Quests ------------------------------------------------------------- */
 
     renderQuests() {
@@ -892,6 +1506,17 @@
       $('#askGeoBtn').addEventListener('click', () => this.locate());
 
       $('#addFriendBtn').addEventListener('click', () => this.promptFriend());
+
+      $('#coachEndpointBtn').addEventListener('click', () => {
+        const next = window.prompt(
+          'Coach endpoint URL.\n\nThis app never holds an API key. Run server/coach-proxy.mjs (or your own) and paste its URL here.\nLeave empty for offline coaching.',
+          State.data.coach.endpoint || 'http://localhost:8787/coach'
+        );
+        if (next === null) return;
+        State.setCoachEndpoint(next);
+        this.toast(next.trim() ? 'Coach endpoint saved' : 'Back to offline coaching');
+        this.renderCoach();
+      });
 
       $$('#historyFilter button').forEach((btn) => {
         btn.addEventListener('click', () => {
