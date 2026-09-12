@@ -241,17 +241,14 @@
       <section class="screen" id="screen-quests">
         <header class="topbar"><h1 style="font-size:22px">Quests</h1></header>
 
-        <div class="rank-card">
-          <div class="row">
-            <div class="rank-badge" id="rankBadge">R</div>
-            <div class="stack grow" style="gap:4px">
-              <span class="stat-label">Current rank</span>
-              <span class="rank-name" id="rankName">Rookie</span>
-              <span class="tiny" id="rankNext">— XP to next rank</span>
-            </div>
-          </div>
-          <div class="bar"><i id="rankBar" style="width:0%"></i></div>
+        <!-- Swipe sideways to walk the ladder: each rank is a disc whose ring
+             is the XP earned inside that rank's band. -->
+        <div class="rank-deck" id="rankDeck" tabindex="0" role="group"
+             aria-label="Rank ladder — swipe or use arrow keys">
+          <div class="rank-track" id="rankTrack"></div>
         </div>
+        <div class="rank-dots" id="rankDots"></div>
+        <div class="rank-detail" id="rankDetail"></div>
 
         <div class="stack" style="margin-top:var(--s-4)">
           <span class="card-title">Active quests</span>

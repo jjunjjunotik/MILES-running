@@ -189,9 +189,19 @@ thumbnails.
 
 ### 6.5 Quests
 
-Rank card (badge, name, XP to next) over a progress list. Quests are the only
-source of XP, and XP is the only source of rank: the ladder rewards intent,
-not raw mileage.
+The rank **ladder** sits on top: one disc per rank, swiped sideways. The letter
+is in the circle and the XP is the ring around it, so the shape carries the
+number — a full ring is a rank behind you, an empty one is a rank you have not
+reached. The ring measures XP *inside that rank's band*, not lifetime total,
+which is why every reached rank reads 100% instead of shrinking as you climb.
+
+Neighbours peek at both edges and fade out rather than being cut, so the
+gesture is discoverable without a hint; dots below take a tap, and arrow keys
+work. Under the deck, one card explains whichever rank you are looking at —
+behind you, where you are, or ahead — and names the quest closest to completion.
+
+Quests are the only source of XP, and XP is the only source of rank: the ladder
+rewards intent, not raw mileage.
 
 ### 6.6 You
 

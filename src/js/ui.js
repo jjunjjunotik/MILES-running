@@ -1075,14 +1075,7 @@
 
     renderQuests() {
       const s = State.data;
-      const rank = Stats.rank(s);
-
-      $('#rankBadge').textContent = rank.current.badge;
-      $('#rankName').textContent = rank.current.name;
-      $('#rankNext').textContent = rank.next
-        ? `${rank.next.xp - rank.xp} XP to ${rank.next.name} · ${rank.xp} XP earned`
-        : `Top rank reached · ${rank.xp} XP`;
-      $('#rankBar').style.width = `${clamp(rank.progress * 100, 3, 100)}%`;
+      this.renderRankLadder();
 
       const list = $('#questList');
       list.innerHTML = '';
@@ -1109,6 +1102,197 @@
           ]),
         ]));
       });
+    },
+
+
+    /* --- Rank ladder ---------------------------------------------------------
+       Every rank is a disc; its ring is the XP earned inside that rank's band.
+       Swipe sideways to look back at what you passed and ahead at what is
+       next. ---------------------------------------------------------------- */
+
+    /** Where each rank stands relative to the XP you have earned. */
+    rankStates() {
+      const xp = Stats.xp(State.data);
+      return M.RANKS.map((rank, i) => {
+        const next = M.RANKS[i + 1] || null;
+        const band = next ? next.xp - rank.xp : 0;
+        const into = clamp(xp - rank.xp, 0, band || 1);
+
+        let state = 'locked';
+        if (next && xp >= next.xp) state = 'done';
+        else if (xp >= rank.xp) state = 'current';
+
+        return {
+          rank,
+          next,
+          state,
+          xp,
+          earned: into,
+          band,
+          // A rank you have passed shows a full ring; one you have not
+          // reached shows an empty one.
+          progress: state === 'done' ? 1 : state === 'locked' ? 0 : (band ? into / band : 1),
+        };
+      });
+    },
+
+    renderRankLadder() {
+      const entries = this.rankStates();
+      const track = $('#rankTrack');
+      const dots = $('#rankDots');
+      track.innerHTML = '';
+      dots.innerHTML = '';
+
+      const R = 46;                               // ring radius in viewBox units
+      const CIRCUMFERENCE = 2 * Math.PI * R;
+      const TONE = { done: '#2ee6a8', current: '#ffb020', locked: 'rgba(255,255,255,0.18)' };
+
+      entries.forEach((entry, i) => {
+        const tone = TONE[entry.state];
+        const pct = Math.round(entry.progress * 100);
+
+        const ring = el('div', { class: 'rank-ring', html: `
+          <svg viewBox="0 0 110 110" aria-hidden="true">
+            <circle class="track" cx="55" cy="55" r="${R}" stroke-width="7"></circle>
+            <circle class="fill" cx="55" cy="55" r="${R}" stroke-width="7" stroke="${tone}"
+                    stroke-dasharray="${CIRCUMFERENCE.toFixed(2)}"
+                    stroke-dashoffset="${(CIRCUMFERENCE * (1 - entry.progress)).toFixed(2)}"></circle>
+          </svg>` });
+
+        ring.appendChild(el('div', { class: 'rank-face' }, [
+          el('span', { class: 'rank-letter', text: entry.rank.badge }),
+          el('span', { class: 'rank-pct', text: entry.state === 'locked' ? 'Locked' : `${pct}%` }),
+        ]));
+
+        const slide = el('div', {
+          class: 'rank-slide',
+          'data-state': entry.state,
+          'data-focused': String(entry.state === 'current'),
+          role: 'button',
+          tabindex: '-1',
+          'aria-label': `${entry.rank.name}, ${entry.state}`,
+        }, [
+          ring,
+          el('span', { class: 'rank-slide-name', text: entry.rank.name }),
+          el('span', {
+            class: 'rank-slide-xp',
+            text: entry.state === 'done' ? 'Reached'
+              : entry.state === 'current' && entry.band ? `${entry.earned} / ${entry.band} XP`
+                : entry.state === 'current' ? `${entry.xp} XP`
+                  : `${entry.rank.xp} XP`,
+          }),
+        ]);
+
+        slide.addEventListener('click', () => this.focusRank(i));
+        track.appendChild(slide);
+
+        const dot = el('button', {
+          type: 'button',
+          'aria-label': entry.rank.name,
+          'aria-current': String(entry.state === 'current'),
+        });
+        dot.addEventListener('click', () => this.focusRank(i));
+        dots.appendChild(dot);
+      });
+
+      // Open on the rank you are actually on.
+      const start = Math.max(0, entries.findIndex((e) => e.state === 'current'));
+      this.rankIndex = start;
+      this.showRankDetail(start);
+
+      const deck = $('#rankDeck');
+      if (!deck.dataset.bound) {
+        deck.dataset.bound = 'true';
+        // Native scrolling does the swiping; this only reports where it landed.
+        deck.addEventListener('scroll', () => {
+          clearTimeout(this._rankScroll);
+          this._rankScroll = setTimeout(() => this.syncRankFocus(), 90);
+        }, { passive: true });
+
+        deck.addEventListener('keydown', (event) => {
+          if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+          event.preventDefault();
+          this.focusRank(this.rankIndex + (event.key === 'ArrowRight' ? 1 : -1));
+        });
+      }
+
+      // Jump without animating on first paint, so it opens already centred.
+      requestAnimationFrame(() => this.focusRank(start, 'auto'));
+    },
+
+    /** Centres a rank in the deck; the scroll handler updates the rest. */
+    focusRank(index, behavior) {
+      const slides = $$('#rankTrack .rank-slide');
+      const at = clamp(index, 0, slides.length - 1);
+      const slide = slides[at];
+      if (!slide) return;
+      const deck = $('#rankDeck');
+      deck.scrollTo({
+        left: slide.offsetLeft - (deck.clientWidth - slide.offsetWidth) / 2,
+        behavior: behavior || 'smooth',
+      });
+      this.markRank(at);
+    },
+
+    /** Works out which disc the deck came to rest on. */
+    syncRankFocus() {
+      const deck = $('#rankDeck');
+      const centre = deck.scrollLeft + deck.clientWidth / 2;
+      let best = 0;
+      let bestGap = Infinity;
+      $$('#rankTrack .rank-slide').forEach((slide, i) => {
+        const gap = Math.abs(slide.offsetLeft + slide.offsetWidth / 2 - centre);
+        if (gap < bestGap) { bestGap = gap; best = i; }
+      });
+      this.markRank(best);
+    },
+
+    markRank(index) {
+      if (this.rankIndex === index && $('#rankDetail').childNodes.length) return;
+      this.rankIndex = index;
+      $$('#rankTrack .rank-slide').forEach((slide, i) => slide.setAttribute('data-focused', String(i === index)));
+      $$('#rankDots button').forEach((dot, i) => dot.setAttribute('aria-current', String(i === index)));
+      this.showRankDetail(index);
+    },
+
+    showRankDetail(index) {
+      const entry = this.rankStates()[index];
+      if (!entry) return;
+      const box = $('#rankDetail');
+      box.setAttribute('data-state', entry.state);
+      box.innerHTML = '';
+
+      const eyebrow = entry.state === 'done' ? 'Behind you'
+        : entry.state === 'current' ? 'Where you are' : 'Ahead of you';
+
+      let body;
+      if (entry.state === 'done') {
+        body = `You passed ${entry.rank.name} at ${entry.rank.xp} XP. It is yours for good — rank never drops.`;
+      } else if (entry.state === 'current' && entry.next) {
+        const left = entry.next.xp - entry.xp;
+        body = `${entry.earned} of ${entry.band} XP earned in this band. ${left} XP more and you are a ${entry.next.name}.`;
+      } else if (entry.state === 'current') {
+        body = `Top of the ladder, on ${entry.xp} XP. There is nothing above this one.`;
+      } else {
+        body = `${entry.rank.xp} XP unlocks ${entry.rank.name} — ${entry.rank.xp - entry.xp} XP from where you are now.`;
+      }
+
+      box.appendChild(el('span', { class: 'stat-label', text: eyebrow }));
+      box.appendChild(el('h3', { text: entry.rank.name }));
+      box.appendChild(el('p', { text: body }));
+
+      if (entry.state !== 'done') {
+        const next = M.QUESTS
+          .map((q) => M.questView(State.data, q))
+          .filter((v) => !v.complete)
+          .sort((a, b) => b.ratio - a.ratio)[0];
+        if (next) {
+          box.appendChild(el('span', {
+            class: 'tiny',
+            text: `Closest quest: ${next.quest.name} — ${Math.round(next.ratio * 100)}% done, worth ${next.quest.xp} XP.`,
+          }));
+        }
+      }
     },
 
     /* --- Feed ---------------------------------------------------------------- */
