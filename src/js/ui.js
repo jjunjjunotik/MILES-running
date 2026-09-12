@@ -613,7 +613,8 @@
       map.layers.route = [];
       map.layers.me = s.profile.home;
       map.layers.rivals = [];
-      const all = map.layers.territories.map((t) => t.polygon);
+      const all = map.layers.territories.map((t) =>
+        (t.pieces && t.pieces.length ? t.pieces[0].ring : t.polygon));
       if (all.length) map.fit(all.concat([[s.profile.home]]));
       map.invalidate();
 
@@ -624,7 +625,7 @@
         s.friends.map((f) => ({
           name: f.name,
           color: f.color,
-          area: rivalLand.filter((t) => t.owner === f.id).reduce((a, t) => a + t.area, 0),
+          area: rivalLand.filter((t) => t.owner === f.id).reduce((a, t) => a + (t.area || 0), 0),
         }))
       ).sort((a, b) => b.area - a.area);
 
@@ -644,52 +645,31 @@
         list.appendChild(el('div', { class: 'empty', text: 'No land yet. Run a loop back to your starting point and everything inside becomes yours.' }));
         return;
       }
+      // How much of a claim later claims have taken back.
+      const lost = (t) => Math.max(0, Geo.polygonArea(t.polygon) - (t.area || 0));
+
       s.territories.forEach((t) => {
         const canvas = el('canvas');
         const row = el('div', { class: 'plot' }, [
           canvas,
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
             el('span', { style: 'font-weight:700;font-size:14px', text: `${Units.areaText(t.area)} ${Units.areaLabel()}` }),
-            el('span', { class: 'tiny', text: relTime(t.claimedAt) }),
+            el('span', { class: 'tiny', text: lost(t) ? `${relTime(t.claimedAt)} · ${Units.areaText(lost(t))} ${Units.areaLabel()} taken since` : relTime(t.claimedAt) }),
           ]),
-          el('span', { class: 'chip', text: 'Held' }),
+          el('span', { class: 'chip', text: (t.pieces || []).length > 1 ? `${t.pieces.length} parts` : 'Held' }),
         ]);
         list.appendChild(row);
-        requestAnimationFrame(() => M.drawRouteThumb(canvas, t.polygon, {
-          stroke: '#8b5cf6', fill: 'rgba(139,92,246,0.28)', pad: 6, width: 1.8,
-        }));
+        // Draw what is still held, so the shape matches the number beside it.
+        requestAnimationFrame(() => {
+          if (t.pieces && t.pieces.length) M.drawLandThumb(canvas, t.pieces);
+          else M.drawRouteThumb(canvas, t.polygon, { stroke: '#8b5cf6', fill: 'rgba(139,92,246,0.28)', pad: 6, width: 1.8 });
+        });
       });
     },
 
-    /** Neighbours' claims: stable per friend, so the map never reshuffles. */
+    /** Neighbours' claims. The store owns them and keeps them non-overlapping. */
     rivalTerritories() {
-      if (this._rivalLand) return this._rivalLand;
-      const home = State.data.profile.home;
-      const land = [];
-      State.data.friends.forEach((f, idx) => {
-        const rand = M.rng(1000 + idx * 77);
-        // Sized like real running loops so the standings are an actual
-        // contest rather than a walkover.
-        const count = 2 + Math.floor(rand() * 2);
-        for (let c = 0; c < count; c++) {
-          const cx = (rand() - 0.5) * 2600;
-          const cy = (rand() - 0.5) * 2600;
-          const radius = 260 + rand() * 320;
-          const centre = Geo.offset(home, cx, cy);
-          const polygon = [];
-          for (let i = 0; i < 16; i++) {
-            const t = (i / 16) * Math.PI * 2;
-            const r = radius * (0.75 + Math.sin(t * 3 + idx) * 0.2);
-            polygon.push(Geo.offset(centre, Math.cos(t) * r, Math.sin(t) * r));
-          }
-          land.push({
-            id: `${f.id}-${c}`, owner: f.id, color: f.color,
-            polygon, area: Geo.polygonArea(polygon), claimedAt: Date.now() - rand() * 6e8,
-          });
-        }
-      });
-      this._rivalLand = land;
-      return land;
+      return State.data.rivalLand || [];
     },
 
 
@@ -1479,7 +1459,6 @@
 
       $('#resetBtn').addEventListener('click', () => {
         if (!window.confirm('Delete every run, territory and quest on this device?')) return;
-        this._rivalLand = null;
         this._friendFeed = null;
         State.reset();
         this.go('home');

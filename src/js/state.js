@@ -344,6 +344,36 @@
     return pts;
   }
 
+  /** The neighbours' claims. Generated once, then resolved like any other. */
+  function seedRivalLand(state) {
+    const home = state.profile.home;
+    const land = [];
+    state.friends.forEach((friend, idx) => {
+      const rand = M.rng(1000 + idx * 77);
+      const count = 2 + Math.floor(rand() * 2);
+      for (let c = 0; c < count; c++) {
+        const centre = Geo.offset(home, (rand() - 0.5) * 2600, (rand() - 0.5) * 2600);
+        const radius = 260 + rand() * 320;
+        const polygon = [];
+        for (let i = 0; i < 16; i++) {
+          const t = (i / 16) * Math.PI * 2;
+          const r = radius * (0.75 + Math.sin(t * 3 + idx) * 0.2);
+          polygon.push(Geo.offset(centre, Math.cos(t) * r, Math.sin(t) * r));
+        }
+        land.push({
+          id: `${friend.id}-${c}`,
+          owner: friend.id,
+          ownerName: friend.name,
+          color: friend.color,
+          polygon,
+          area: Geo.polygonArea(polygon),
+          claimedAt: Date.now() - Math.floor(rand() * 900 + 1) * 864e5,
+        });
+      }
+    });
+    return land;
+  }
+
   /** Initials, colour and a race pace derived from how much they run. */
   function makeFriend(name, color, weekly, online) {
     return {
@@ -381,6 +411,7 @@
           territories: seeded.territories,
           questClaims: {},
           crews: [],
+          rivalLand: [],
           friends: [
             makeFriend('Alex Ryu', '#ff3d8b', 34200, true),
             makeFriend('Mina Park', '#2fe0ff', 51800, true),
@@ -395,6 +426,13 @@
 
       // Migrations for state saved by an earlier version.
       if (!this.data.crews) this.data.crews = [];
+      if (!this.data.rivalLand) this.data.rivalLand = [];
+      if (!this.data.rivalLand.length) {
+        this.data.rivalLand = seedRivalLand(this.data);
+        this.resolveLand();
+      }
+      // Claims saved before territory became exclusive have no `pieces`.
+      if (this.data.territories.some((t) => !t.pieces)) this.resolveLand();
       if (this.data.coach) delete this.data.coach;      // the coach feature is gone
       if (!this.data.crews.length && M.Crew) {
         this.data.crews = M.Crew.seedNearby(this.data.profile.home);
@@ -441,6 +479,16 @@
       this.save();
     },
 
+    /**
+     * Recomputes who holds what. Every claim — yours and your neighbours' —
+     * gives up any ground a later claim encloses, so no two plots overlap.
+     */
+    resolveLand() {
+      const claims = this.data.territories.concat(this.data.rivalLand || []);
+      if (claims.length) M.Land.resolve(claims, this.data.profile.home);
+      return claims;
+    },
+
     /** Runs a Crew action against the live state and persists the result. */
     crewAction(fn) {
       const result = fn(this.data) || {};
@@ -473,8 +521,12 @@
           this.data.territories.unshift(territory);
         }
       }
+      if (territory) this.resolveLand();
       const unlocked = settleQuests(this.data);
       this.save();
+      // The claim may have been trimmed by a later one, though a brand new run
+      // is normally the latest thing on the map.
+      if (territory) activity.claimedArea = territory.area;
       return { territory, unlocked };
     },
 

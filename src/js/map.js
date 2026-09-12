@@ -180,20 +180,34 @@
     _drawTerritories() {
       const ctx = this.ctx;
       this.layers.territories.forEach((t) => {
-        if (!t.polygon || t.polygon.length < 3) return;
         const mine = t.owner === 'me' || !t.owner;
         const stroke = t.color || (mine ? '#8b5cf6' : '#ff3d8b');
+
+        // `pieces` is what is still held after later claims took their share;
+        // fall back to the raw loop for anything not yet resolved. A piece may
+        // carry voids, so the path is filled even-odd.
+        const pieces = t.pieces && t.pieces.length
+          ? t.pieces
+          : (t.polygon && t.polygon.length >= 3 ? [{ ring: t.polygon, holes: [] }] : []);
+        if (!pieces.length) return;
+
         ctx.beginPath();
-        t.polygon.forEach((p, i) => {
-          const s = this.toScreen(p);
-          if (i === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y);
+        pieces.forEach((piece) => {
+          const trace = (ring) => {
+            ring.forEach((p, i) => {
+              const s = this.toScreen(p);
+              if (i === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y);
+            });
+            ctx.closePath();
+          };
+          trace(piece.ring);
+          (piece.holes || []).forEach(trace);
         });
-        ctx.closePath();
         // Rivals' land is tinted in their own colour so the map reads as a
         // contested neighbourhood at a glance.
         ctx.fillStyle = mine ? 'rgba(139, 92, 246, 0.19)' : stroke;
         ctx.globalAlpha = mine ? 1 : 0.15;
-        ctx.fill();
+        ctx.fill('evenodd');
         ctx.globalAlpha = 1;
         ctx.lineWidth = 1.6;
         ctx.strokeStyle = stroke;
@@ -338,6 +352,54 @@
     ctx.stroke();
   }
 
+  /** Thumbnail of land actually held: rings with their voids, filled even-odd. */
+  function drawLandThumb(canvas, pieces, options) {
+    const opts = Object.assign({ stroke: '#8b5cf6', fill: 'rgba(139,92,246,0.28)', pad: 6, width: 1.8 }, options || {});
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    const rect = canvas.getBoundingClientRect();
+    const w = rect.width || canvas.width || 52;
+    const h = rect.height || canvas.height || 52;
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, w, h);
+    if (!pieces || !pieces.length) return;
+
+    const origin = pieces[0].ring[0];
+    const rings = [];
+    pieces.forEach((piece) => {
+      rings.push(piece.ring.map((p) => Geo.project(p, origin)));
+      (piece.holes || []).forEach((hole) => rings.push(hole.map((p) => Geo.project(p, origin))));
+    });
+
+    const all = [].concat.apply([], rings);
+    const minX = Math.min.apply(null, all.map((p) => p.x));
+    const maxX = Math.max.apply(null, all.map((p) => p.x));
+    const minY = Math.min.apply(null, all.map((p) => p.y));
+    const maxY = Math.max.apply(null, all.map((p) => p.y));
+    const scale = Math.min((w - opts.pad * 2) / Math.max(1, maxX - minX), (h - opts.pad * 2) / Math.max(1, maxY - minY));
+    const ox = (w - (maxX - minX) * scale) / 2 - minX * scale;
+    const oy = (h - (maxY - minY) * scale) / 2 - minY * scale;
+
+    ctx.beginPath();
+    rings.forEach((ring) => {
+      ring.forEach((p, i) => {
+        const x = p.x * scale + ox;
+        const y = p.y * scale + oy;
+        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+      });
+      ctx.closePath();
+    });
+    ctx.fillStyle = opts.fill;
+    ctx.fill('evenodd');
+    ctx.lineJoin = ctx.lineCap = 'round';
+    ctx.lineWidth = opts.width;
+    ctx.strokeStyle = opts.stroke;
+    ctx.stroke();
+  }
+
   M.MapView = MapView;
   M.drawRouteThumb = drawRouteThumb;
+  M.drawLandThumb = drawLandThumb;
 })(window.MILES);

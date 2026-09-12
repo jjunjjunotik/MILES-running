@@ -187,6 +187,15 @@ A neighbourhood map of every claim — yours in violet, each rival tinted in
 their own colour — over total area held, standings, and your plots as
 thumbnails.
 
+**Territory is exclusive.** Where two loops enclose the same ground, the one
+claimed later owns it and the earlier claim gives up that part, so no two plots
+on the map ever overlap. A claim therefore has two shapes: the loop you ran,
+which never changes and is what the record card draws, and what you still hold
+of it, which is what the map, the thumbnails and every area figure use. A later
+loop landing inside an earlier one leaves a void rather than a smaller ring —
+plots are drawn even-odd so a void reads as a hole in your land, and a plot cut
+in two says how many parts it is now in.
+
 ### 6.5 Quests
 
 The rank **ladder** sits on top: one disc per rank, swiped sideways. The letter

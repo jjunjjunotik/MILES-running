@@ -79,6 +79,55 @@ captain.
 
 ---
 
+### Racing
+
+Pick the distance first, then up to four friends — a race holds five runners.
+Crossing the agreed distance ends your race and fixes your place; finishers are
+ordered by the clock time they crossed on, and anyone still out on the course is
+ranked behind them, furthest first. Giving up early keeps the run and records it
+as a did-not-finish.
+
+### Your history
+
+**You → Run history** is every card you have earned, filtered by kind. Tap one
+to open it full size; Back returns you to where you opened it from.
+
+### The interface gets more energetic the more you run
+
+Trailing 7-day volume drives a single `--energy` value that changes the accent
+ramp, the speed of the moving backdrop, the glow on the hero number and the
+speed streaks. It uses a rolling window rather than the calendar week on
+purpose — otherwise the app would go flat every Monday morning.
+
+| Tier | Trailing 7 days |
+|---|---|
+| Ember | 0 – 10 km |
+| Spark | 10 – 20 km |
+| Blaze | 20 – 35 km |
+| Surge | 35 – 55 km |
+| Storm | 55 – 80 km |
+| Apex | 80 km + |
+
+### Territory
+
+Territory is **exclusive**: where two loops enclose the same ground, whoever
+claimed it later owns it and the earlier claim gives up that part. No two plots
+on the map overlap, and no area is counted twice. A claim keeps two shapes — the
+loop you actually ran, which never changes and is what the record card draws,
+and what you still hold of it, which is what the map, the thumbnails and every
+area figure use. A later loop landing inside an earlier one leaves a hole in it;
+one cutting across can leave it in two parts, and the plot list says so.
+
+On a **Territory run** — and only there — run at least 400 m and come back
+within 30 m of where you started. A free run or a race never takes ground,
+however neatly it happens to loop. The loop is **latched** the moment you pass
+your start point — you never have to hit Finish
+while standing inside a circle — and the enclosed area (shoelace formula on a
+local metre projection) is added to your land. Run a second, wider loop and the
+bigger one replaces it.
+
+---
+
 ## Location
 
 Real GPS is used whenever the browser grants it (`watchPosition`). If it is
@@ -100,6 +149,8 @@ src/css/screens.css   Per-screen layout
 src/js/core.js        Units, geometry, storage, event bus
 src/js/state.js       Data model: activities, territory, quests, ranks, crews
 src/js/crew.js        Crews: discovery, membership, captain's tools
+src/js/clip.js        Polygon difference (Greiner-Hormann), so land cannot overlap
+src/js/land.js        Resolves every claim against the ones made after it
 src/js/map.js         Procedural canvas map (no tile server)
 src/js/realtime.js    Live race telemetry + pace bots
 src/js/tracker.js     Run engine: GPS, splits, loop capture, race scoring
