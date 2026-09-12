@@ -27,6 +27,11 @@ body {
 }
 
 button { font-family: inherit; color: inherit; cursor: pointer; border: none; background: none; }
+
+/* Every icon in the app is a stroked path. Square ends and mitred corners are
+   what make an icon set read as hard; rounding them softens the whole UI for
+   the cost of one rule. */
+svg { stroke-linecap: round; stroke-linejoin: round; }
 h1, h2, h3, h4 { margin: 0; font-weight: 700; letter-spacing: -0.02em; }
 p { margin: 0; }
 
@@ -157,8 +162,8 @@ p { margin: 0; }
 .card--tight { padding: var(--s-3); border-radius: var(--r-md); }
 
 .card-title {
-  font-size: 11px;
-  letter-spacing: 0.14em;
+  font-size: 11.5px;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-lo);
   font-weight: 700;
@@ -175,9 +180,9 @@ p { margin: 0; }
   border-radius: var(--r-pill);
 }
 .seg button {
-  font-size: 11px;
+  font-size: 11.5px;
   font-weight: 700;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-lo);
   padding: 6px 12px;
@@ -221,8 +226,8 @@ p { margin: 0; }
 }
 
 .stat-label {
-  font-size: 10px;
-  letter-spacing: 0.14em;
+  font-size: 11px;
+  letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--text-lo);
   font-weight: 700;
@@ -250,13 +255,13 @@ p { margin: 0; }
   padding: 6px 0;
   border-radius: var(--r-md);
   color: var(--text-lo);
-  font-size: 9px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
   transition: color 0.15s ease;
 }
-.tabbar button svg { width: 20px; height: 20px; stroke: currentColor; fill: none; stroke-width: 1.8; }
+.tabbar button svg { width: 23px; height: 23px; stroke: currentColor; fill: none; stroke-width: 1.7; }
+.tabbar button[aria-selected="true"] { font-weight: 700; }
 .tabbar button[aria-selected="true"] { color: var(--accent); }
 
 /* --- Toast --------------------------------------------------------------- */
@@ -341,7 +346,7 @@ p { margin: 0; }
 .stack { display: flex; flex-direction: column; gap: var(--s-3); }
 .grow { flex: 1; min-width: 0; }
 .muted { color: var(--text-mid); font-size: 13px; }
-.tiny { font-size: 11px; color: var(--text-lo); }
+.tiny { font-size: 11.5px; color: var(--text-lo); line-height: 1.45; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .chip {

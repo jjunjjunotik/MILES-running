@@ -101,6 +101,11 @@ the person you are racing. Nothing is coloured decoratively.
 
 Two families only.
 
+Small labels are the app's most repeated text, so they are set to be read, not
+to look technical: 11 px and up, with tracking wide enough to space the caps and
+no wider. The tab bar is the one place that drops the uppercase entirely — five
+words a thumb aims at should read as words.
+
 - **UI** — Inter / SF Pro Text / system sans. Weights 600, 700, 800.
 - **Numbers** — SF Mono / JetBrains Mono / any tabular mono. Every measured
   value uses it, so digits never jitter as they tick.
@@ -112,7 +117,8 @@ Two families only.
 | Screen title | 22 px | 700 | −0.02 em |
 | Card value | 19–30 px | 700 | −0.03 em |
 | Body | 13–14 px | 600 | 0 |
-| Label (all caps) | 10–11 px | 700 | 0.14 em |
+| Label (all caps) | 11–11.5 px | 700 | 0.07–0.08 em |
+| Tab label | 11.5 px | 600 (700 active) | 0.005 em, sentence case |
 | Wordmark | 20 px | 800 | 0.24 em |
 
 ---
@@ -120,6 +126,10 @@ Two families only.
 ## 5. Geometry
 
 Radii: `10 / 16 / 22 / 30 / 999` px. Spacing scale: `4 / 8 / 12 / 16 / 22 / 30 / 42`.
+
+Every icon is a stroked path with round caps and joins (`svg { stroke-linecap:
+round; stroke-linejoin: round }`). Square ends are what make an icon set read as
+hard, and one rule settles it for all of them.
 Frame: 430 × 932 (iPhone 16 Pro Max), safe-area aware, capped at `max-width: 430px`.
 
 ---

@@ -293,6 +293,17 @@
 
 .run-controls { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); padding-bottom: var(--s-4); }
 
+/* On a short screen a full five-runner race is taller than the viewport, and
+   the map has already hit its floor. Give the map a lower floor and take the
+   rest out of the hero, so the run screen still never scrolls. */
+@media (max-height: 720px) {
+  .run-map { min-height: 104px; }
+  .run-primary { padding: var(--s-2) 0 0; }
+  .run-primary .stat-value { font-size: clamp(42px, 14vw, 58px); }
+  .run-grid { margin: var(--s-2) 0; }
+  .run-grid .cell { padding: var(--s-2); }
+}
+
 /* --------------------------------------------------------------------------
    FINISH · the shareable record card
    -------------------------------------------------------------------------- */
