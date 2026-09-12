@@ -1142,6 +1142,7 @@
       const dots = $('#rankDots');
       track.innerHTML = '';
       dots.innerHTML = '';
+      track.appendChild(el('i', { class: 'rank-spacer', 'aria-hidden': 'true' }));
 
       const R = 46;                               // ring radius in viewBox units
       const CIRCUMFERENCE = 2 * Math.PI * R;
@@ -1194,6 +1195,8 @@
         dot.addEventListener('click', () => this.focusRank(i));
         dots.appendChild(dot);
       });
+
+      track.appendChild(el('i', { class: 'rank-spacer', 'aria-hidden': 'true' }));
 
       // Open on the rank you are actually on.
       const start = Math.max(0, entries.findIndex((e) => e.state === 'current'));
