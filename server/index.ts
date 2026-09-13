@@ -1,12 +1,14 @@
+// 반드시 첫 import. 다른 모듈이 최상위에서 키를 읽기 전에 .env 를 로드한다.
+import { ENV_FILE_PATH } from "./env.js";
 import express from "express";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   AnalyzeError,
   SUPPORTED_MEDIA_TYPES,
+  activeProvider,
   analyzeNailPhoto,
   hasCredentials,
-  MODEL,
   type SupportedMediaType,
 } from "./analyze.js";
 import { buildDemoAnalysis } from "../shared/demo.js";
@@ -51,11 +53,14 @@ const analyzeLimiter = createRateLimiter({
 });
 
 app.get("/api/health", (_req, res) => {
+  const provider = activeProvider();
   res.json({
     ok: true,
-    configured: hasCredentials(),
+    configured: provider.hasCredentials(),
     demoAvailable: ALLOW_DEMO,
-    model: MODEL,
+    // 모델 이름은 공개해도 무해하다. 키는 어떤 형태로도 내보내지 않는다.
+    provider: provider.label,
+    model: provider.model,
   });
 });
 
@@ -135,7 +140,12 @@ app.post("/api/analyze", sameOriginOnly, analyzeLimiter, async (req, res) => {
       });
     }
 
-    return send(200, { ok: true, demo: false, model: MODEL, analysis });
+    return send(200, {
+      ok: true,
+      demo: false,
+      model: activeProvider().model,
+      analysis,
+    });
   } catch (err) {
     if (err instanceof AnalyzeError) {
       // 오류 메시지만 남기고 이미지나 요청 본문은 남기지 않는다.
@@ -165,18 +175,24 @@ app.get(/^\/(?!api\/).*/, (_req, res) => {
 app.listen(PORT, () => {
   console.log(`NailSense API listening on http://localhost:${PORT}`);
 
-  if (!hasCredentials()) {
+  const provider = activeProvider();
+  const keyName =
+    provider.id === "gemini" ? "GEMINI_API_KEY" : "ANTHROPIC_API_KEY";
+
+  if (!provider.hasCredentials()) {
     console.log(
       ALLOW_DEMO
-        ? "ANTHROPIC_API_KEY 가 없어 데모 응답으로 동작합니다."
-        : "ANTHROPIC_API_KEY 가 없고 데모도 꺼져 있어 분석 요청이 거절됩니다.",
+        ? `${keyName} 가 없어 데모 응답으로 동작합니다.`
+        : `${keyName} 가 없고 데모도 꺼져 있어 분석 요청이 거절됩니다.`,
     );
   } else {
     // 키가 설정되었다는 사실만 알리고, 값이나 일부는 절대 찍지 않는다.
-    console.log("ANTHROPIC_API_KEY 가 설정되었습니다. 실제 분석으로 동작합니다.");
+    console.log(
+      `분석 프로바이더: ${provider.label} (${provider.model}) · ${keyName} 설정됨`,
+    );
   }
 
-  for (const warning of auditCredentials()) {
+  for (const warning of auditCredentials(ENV_FILE_PATH)) {
     console.warn(`[보안] ${warning}`);
   }
 });

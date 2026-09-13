@@ -42,7 +42,7 @@ Claude 비전 모델이 6개 항목을 관찰해 설명하고, 일반적인 생�
 
 | 새는 경로 | 막는 장치 |
 |---|---|
-| 클라이언트 번들에 섞여 들어감 | `npm run check:secrets` 가 `dist/`·`demo/` 를 훑고, 빌드가 이를 자동 실행해 실패시킵니다 |
+| 클라이언트 번들에 섞여 들어감 | `npm run check:secrets` 가 `dist/`·`demo/` 를 훑고, 빌드가 이를 자동 실행해 실패시킵니다 (Anthropic `sk-ant-`, Google `AIza` 등) |
 | git 에 커밋됨 | `.gitignore` 가 `.env*` 를 제외하고, `.githooks/pre-commit` 이 커밋 전에 검사합니다 |
 | 로그·오류 응답에 찍힘 | 서버는 요청 본문을 로깅하지 않고, 로그로 나가는 문자열은 `redact()` 를 거칩니다 |
 | 엔드포인트가 공개되어 남이 대신 씀 | `/api/analyze` 에 같은 출처 검사와 IP별·전체 속도 제한이 걸려 있습니다 |
@@ -56,10 +56,14 @@ Claude 비전 모델이 6개 항목을 관찰해 설명하고, 일반적인 생�
 ```bash
 cp .env.example .env
 chmod 600 .env                       # 본인만 읽도록
-# .env 를 편집기로 열어 ANTHROPIC_API_KEY 를 채웁니다
+# .env 를 편집기로 열어 GEMINI_API_KEY (또는 ANTHROPIC_API_KEY) 를 채웁니다
 git config core.hooksPath .githooks  # 커밋 전 자격증명 검사 켜기 (권장)
 npm run dev
 ```
+
+`.env` 는 서버가 기동할 때 Node 내장 `process.loadEnvFile` 로 읽습니다.
+이미 설정된 환경변수는 덮어쓰지 않으므로, 배포 환경에서는 `.env` 없이
+환경변수만 주입해도 됩니다.
 
 키를 터미널 명령에 직접 쓰면 셸 히스토리에 남습니다. `.env` 파일에 넣으세요.
 
@@ -135,23 +139,42 @@ npm start                   # 다른 터미널에서
 npm run smoke               # 업로드 → 분석 → 공유 카드 → 기록까지 한 번 돌려보고 스크린샷 저장
 ```
 
-## 분석 요청
+## 분석 프로바이더
 
-`server/analyze.ts` 가 `claude-opus-5` 에 이미지와 함께 요청을 보내고,
-구조화된 출력(`output_config.format`)으로 정해진 형태만 돌려받습니다.
+**Gemini** 와 **Claude** 를 모두 지원합니다. 키가 설정된 쪽이 자동으로 선택되고,
+둘 다 있으면 Gemini 를 씁니다. `ANALYSIS_PROVIDER=gemini|claude` 로 명시할 수 있으며,
+어느 쪽이 쓰이는지는 서버 기동 로그에 찍힙니다.
 
-- 시스템 프롬프트는 요청마다 동일하며 프롬프트 캐싱이 걸려 있습니다.
-- 정책상 거절되면 같은 호출 안에서 대체 모델로 재시도합니다
-  (`fallbacks: "default"`). 체인 전체가 거절하면 사용자에게 다시 찍도록 안내합니다.
+두 프로바이더는 **같은 시스템 프롬프트와 같은 출력 스키마**를 씁니다.
+프로바이더를 바꿔도 진단 금지 규칙과 화면이 받는 데이터 모양이 달라지지 않습니다.
+
+| | Gemini | Claude |
+|---|---|---|
+| 환경변수 | `GEMINI_API_KEY` | `ANTHROPIC_API_KEY` |
+| 기본 모델 | `gemini-2.5-flash` (`GEMINI_MODEL`) | `claude-opus-5` (`ANTHROPIC_MODEL`) |
+| 구조화 출력 | `responseJsonSchema` + `responseMimeType` | `output_config.format` |
+| 키 전달 | `x-goog-api-key` 헤더 | `x-api-key` 헤더 |
+
+- 응답은 스키마를 걸어 받은 뒤에도 **서버에서 zod 로 한 번 더 검증**합니다.
+  바깥에서 온 문자열을 그대로 믿지 않습니다.
 - 모델이 6개 항목을 빠뜨리거나 순서를 바꿔도 서버에서 보정합니다.
+- 안전 정책으로 거절되거나(`declined`), 응답이 잘리거나, 형식이 어긋나면
+  각각 구분된 오류로 사용자에게 안내합니다.
+- Claude 쪽은 정책 거절 시 같은 호출 안에서 대체 모델로 재시도합니다
+  (`fallbacks: "default"`).
 
 ## 구조
 
 ```
 shared/analysis.ts     화면과 서버가 함께 쓰는 타입·라벨 (의존성 없음)
 server/schema.ts       모델 출력 스키마 (zod, 서버 전용)
-server/prompt.ts       시스템 프롬프트
-server/analyze.ts      Claude 호출과 오류 매핑
+server/prompt.ts       시스템 프롬프트 (프로바이더 공용)
+server/analysis-core.ts 프로바이더 공통 타입·오류·결과 보정
+server/claude.ts       Claude 호출과 오류 매핑
+server/gemini.ts       Gemini 호출과 오류 매핑
+server/analyze.ts      프로바이더 선택
+server/env.ts          .env 로드 (다른 모듈보다 먼저)
+server/security.ts     키 마스킹, 속도 제한, 오리진 검사, 보안 헤더
 server/index.ts        API 프록시 + 정적 파일 서빙
 web/src/lib/           이미지 전처리, 로컬 저장소, API 클라이언트, 공유 카드 렌더링
 web/src/screens/       홈 / 스캔 / 결과 / 기록 / 프로필

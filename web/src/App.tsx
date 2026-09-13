@@ -41,6 +41,7 @@ export function App() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [result, setResult] = useState<ResultView | null>(null);
   const [demoMode, setDemoMode] = useState(false);
+  const [provider, setProvider] = useState<string | null>(null);
 
   // 이전 결과의 blob URL 을 확실히 해제하기 위해 ref 로 들고 있는다.
   const currentUrl = useRef<string | null>(null);
@@ -56,7 +57,9 @@ export function App() {
   useEffect(() => {
     setSettings(loadSettings());
     void health().then((info) => {
-      if (info) setDemoMode(!info.configured && info.demoAvailable);
+      if (!info) return;
+      setDemoMode(!info.configured && info.demoAvailable);
+      setProvider(info.configured ? (info.provider ?? null) : null);
     });
     // 데모 빌드는 예시 기록을 먼저 심고 목록을 읽는다.
     void (async () => {
@@ -172,6 +175,7 @@ export function App() {
           onChangeSettings={updateSettings}
           onChanged={refreshRecords}
           demoMode={demoMode}
+          provider={provider}
         />
       )}
 

@@ -80,10 +80,14 @@ export async function analyze(args: AnalyzeArgs): Promise<AnalyzeResult> {
 export interface HealthInfo {
   configured: boolean;
   demoAvailable: boolean;
+  /** 어떤 모델로 분석하는지. 키는 어떤 형태로도 내려오지 않는다. */
+  provider?: string;
+  model?: string;
 }
 
 export async function health(): Promise<HealthInfo | null> {
   if (STANDALONE_DEMO) return { configured: false, demoAvailable: true };
+
   try {
     const response = await fetch("/api/health");
     if (!response.ok) return null;

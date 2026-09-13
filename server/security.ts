@@ -11,16 +11,24 @@ import fs from "node:fs";
  *  4) 엔드포인트가 공개되어 남이 대신 씀 -> 아래 속도 제한과 오리진 검사가 막는다.
  */
 
-const KEY_PATTERN = /sk-ant-[A-Za-z0-9_-]{8,}/g;
+/** 로그로 나갈 수 있는 자격증명 패턴. 프로바이더를 추가하면 여기도 늘린다. */
+const KEY_PATTERNS: { re: RegExp; mask: string }[] = [
+  { re: /sk-ant-[A-Za-z0-9_-]{8,}/g, mask: "sk-ant-***" },
+  { re: /AIza[0-9A-Za-z_-]{35}/g, mask: "AIza***" },
+];
 
 /** 로그나 오류 메시지에 키가 섞여도 밖으로 나가지 않게 지운다. */
 export function redact(text: string): string {
-  return text.replace(KEY_PATTERN, "sk-ant-***");
+  let out = text;
+  for (const { re, mask } of KEY_PATTERNS) out = out.replace(re, mask);
+  return out;
 }
 
-export function looksLikeApiKey(value: string): boolean {
-  return /^sk-ant-/.test(value);
-}
+/** 각 프로바이더 키의 생김새. 값 자체는 절대 밖으로 내보내지 않는다. */
+const KEY_SHAPES: { name: string; looksRight: (value: string) => boolean }[] = [
+  { name: "ANTHROPIC_API_KEY", looksRight: (v) => v.startsWith("sk-ant-") },
+  { name: "GEMINI_API_KEY", looksRight: (v) => v.startsWith("AIza") },
+];
 
 /**
  * 키 설정 상태를 점검한다. 값 자체는 절대 출력하지 않는다.
@@ -28,17 +36,17 @@ export function looksLikeApiKey(value: string): boolean {
  */
 export function auditCredentials(envPath = ".env"): string[] {
   const warnings: string[] = [];
-  const key = process.env.ANTHROPIC_API_KEY ?? "";
 
-  if (key) {
-    if (!looksLikeApiKey(key)) {
-      warnings.push(
-        "ANTHROPIC_API_KEY 형식이 예상과 다릅니다. 값을 다시 확인하세요.",
-      );
+  for (const { name, looksRight } of KEY_SHAPES) {
+    const key = process.env[name] ?? "";
+    if (!key) continue;
+
+    if (!looksRight(key.trim())) {
+      warnings.push(`${name} 형식이 예상과 다릅니다. 값을 다시 확인하세요.`);
     }
     if (key !== key.trim()) {
       warnings.push(
-        "ANTHROPIC_API_KEY 앞뒤에 공백이 있습니다. 따옴표나 줄바꿈이 섞였는지 확인하세요.",
+        `${name} 앞뒤에 공백이 있습니다. 따옴표나 줄바꿈이 섞였는지 확인하세요.`,
       );
     }
   }

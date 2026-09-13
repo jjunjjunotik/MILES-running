@@ -23,12 +23,14 @@ export function ProfileScreen({
   settings,
   records,
   demoMode,
+  provider,
   onChangeSettings,
   onChanged,
 }: {
   settings: Settings;
   records: NailRecord[];
   demoMode: boolean;
+  provider: string | null;
   onChangeSettings: (settings: Settings) => void;
   onChanged: () => Promise<void> | void;
 }) {
@@ -199,7 +201,7 @@ export function ProfileScreen({
             body={
               demoMode
                 ? "현재 서버에 API 키가 없어 데모 모드로 동작 중입니다. 실제 분석 대신 샘플 결과가 표시됩니다."
-                : "사진은 서버를 거쳐 Claude 비전 모델에 전달되고, 정해진 6개 항목의 관찰 결과만 구조화된 형식으로 돌려받습니다."
+                : `사진은 서버를 거쳐 ${provider ?? "AI"} 비전 모델에 전달되고, 정해진 6개 항목의 관찰 결과만 구조화된 형식으로 돌려받습니다. API 키는 서버에만 있으며 이 화면으로 내려오지 않습니다.`
             }
           />
         </div>
