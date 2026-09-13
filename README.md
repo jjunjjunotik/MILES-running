@@ -70,6 +70,17 @@ npm start                   # 같은 서버가 API 와 dist/ 를 함께 서빙 (
 `ANTHROPIC_API_KEY` 가 없으면 샘플 결과로 동작해 UI를 그대로 확인할 수 있습니다.
 이때 화면과 응답 양쪽에 데모 표시가 붙습니다. `ALLOW_DEMO_FALLBACK=false` 로 끌 수 있습니다.
 
+### 서버 없이 열리는 단일 HTML 데모
+
+```bash
+npm run build:demo          # demo/nailsense-demo.html 생성
+```
+
+분석 요청이 네트워크로 나가지 않고 샘플 결과로 대체되는 빌드입니다.
+파일 하나만 브라우저로 열면 동작하며, 링크를 처음 연 사람이 빈 화면을 보지 않도록
+예시 기록 3건이 함께 들어갑니다. 같이 만들어지는 `demo/artifact.html` 은
+바깥 `<html>` 래퍼 없이 본문만 담은 게시용 파일입니다.
+
 ### 스모크 테스트
 
 ```bash

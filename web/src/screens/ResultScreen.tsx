@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   DISCLAIMER_LONG,
   FINGER_LABELS,
@@ -15,6 +15,7 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   CameraIcon,
+  DownloadIcon,
   MinusIcon,
   ResultIcon,
   ShareIcon,
@@ -25,6 +26,7 @@ import {
   Empty,
   Notice,
   ScoreRing,
+  Sheet,
   TopBar,
   formatDate,
 } from "../components/ui";
@@ -44,6 +46,16 @@ export function ResultScreen({
 }) {
   const [sharing, setSharing] = useState(false);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
+  const [cardUrl, setCardUrl] = useState<string | null>(null);
+  const cardBlob = useRef<Blob | null>(null);
+
+  // 카드 미리보기용 blob URL 은 시트를 닫을 때 함께 해제한다.
+  useEffect(
+    () => () => {
+      if (cardUrl) URL.revokeObjectURL(cardUrl);
+    },
+    [cardUrl],
+  );
 
   // 같은 손가락의 바로 이전 기록과 비교한다. 부위가 다르면 비교하지 않는다.
   const previous = useMemo(() => {
@@ -92,7 +104,12 @@ export function ResultScreen({
       )
     : null;
 
-  async function share() {
+  const cardFilename = `nailsense-${new Date(result.createdAt)
+    .toISOString()
+    .slice(0, 10)}.png`;
+
+  /** 카드를 그려 미리보기 시트로 먼저 보여 준다. 저장은 사용자가 고른다. */
+  async function buildCard() {
     if (sharing || !result) return;
     setSharing(true);
     setShareMessage(null);
@@ -102,19 +119,32 @@ export function ResultScreen({
         partLabel,
         nickname: settings.nickname,
       });
-      const how = await shareOrDownload(
-        blob,
-        `nailsense-${new Date(result.createdAt).toISOString().slice(0, 10)}.png`,
-      );
-      setShareMessage(
-        how === "downloaded"
-          ? "카드 이미지를 내려받았어요."
-          : "공유 시트를 열었어요.",
-      );
+      cardBlob.current = blob;
+      setCardUrl(URL.createObjectURL(blob));
     } catch {
       setShareMessage("카드를 만들지 못했어요. 다시 시도해 주세요.");
     } finally {
       setSharing(false);
+    }
+  }
+
+  async function saveCard() {
+    if (!cardBlob.current) return;
+    try {
+      const how = await shareOrDownload(cardBlob.current, cardFilename);
+      if (how === "declined") {
+        setShareMessage(null);
+        return;
+      }
+      setShareMessage(
+        how === "downloaded"
+          ? "카드 이미지를 저장했어요."
+          : "공유 시트를 열었어요.",
+      );
+    } catch {
+      setShareMessage(
+        "이 환경에서는 바로 저장할 수 없어요. 이미지를 길게 눌러 저장해 주세요.",
+      );
     }
   }
 
@@ -181,7 +211,7 @@ export function ResultScreen({
         <div className="btn-row mt-12">
           <button
             className="btn btn-ghost"
-            onClick={() => void share()}
+            onClick={() => void buildCard()}
             disabled={sharing}
           >
             <ShareIcon size={17} />
@@ -269,6 +299,37 @@ export function ResultScreen({
           다른 손톱도 스캔하기
         </button>
       </main>
+
+      {cardUrl && (
+        <Sheet onClose={() => setCardUrl(null)}>
+          <h3 style={{ margin: "0 0 12px", fontSize: 17 }}>공유 카드</h3>
+          <img
+            src={cardUrl}
+            alt="공유용 요약 카드 미리보기"
+            style={{
+              width: "100%",
+              borderRadius: "var(--radius)",
+              border: "1px solid var(--line)",
+              display: "block",
+            }}
+          />
+          <div className="btn-row mt-16">
+            <button
+              className="btn btn-secondary"
+              onClick={() => setCardUrl(null)}
+            >
+              닫기
+            </button>
+            <button className="btn btn-primary" onClick={() => void saveCard()}>
+              <DownloadIcon size={17} />
+              저장 · 공유
+            </button>
+          </div>
+          <div className="small muted center mt-8">
+            이미지를 길게 눌러 저장할 수도 있어요.
+          </div>
+        </Sheet>
+      )}
     </>
   );
 }

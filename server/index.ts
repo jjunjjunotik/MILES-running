@@ -9,7 +9,7 @@ import {
   MODEL,
   type SupportedMediaType,
 } from "./analyze.js";
-import { buildDemoAnalysis } from "./demo.js";
+import { buildDemoAnalysis } from "../shared/demo.js";
 import type { AnalyzeResponse } from "../shared/analysis.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));

@@ -9,6 +9,7 @@
     "dev:server": "tsx watch server/index.ts",
     "dev:web": "vite",
     "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "build:demo": "node scripts/build-demo.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit",
     "start": "tsx server/index.ts",
     "preview": "vite preview",

@@ -14,6 +14,10 @@ let dbPromise: Promise<IDBDatabase> | null = null;
 function openDb(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise((resolve, reject) => {
+    if (typeof indexedDB === "undefined") {
+      reject(new Error("이 환경에서는 저장소를 쓸 수 없습니다."));
+      return;
+    }
     const request = indexedDB.open(DB_NAME, DB_VERSION);
     request.onupgradeneeded = () => {
       const db = request.result;
@@ -51,53 +55,122 @@ function tx<T>(
   );
 }
 
+
+/**
+ * IndexedDB 를 쓸 수 없는 환경(시크릿 모드, 샌드박스된 프레임 등)을 위한 대체 저장소.
+ * 탭을 닫으면 사라지지만, 앱이 빈 껍데기가 되지는 않게 해 준다.
+ */
+const memoryRecords = new Map<string, NailRecord>();
+const memoryImages = new Map<string, Blob>();
+let useMemory = false;
+
+export function isUsingMemoryStore(): boolean {
+  return useMemory;
+}
+
+async function withDb<T>(
+  run: () => Promise<T>,
+  fallback: () => T,
+): Promise<T> {
+  if (useMemory) return fallback();
+  try {
+    return await run();
+  } catch {
+    useMemory = true;
+    return fallback();
+  }
+}
+
 export async function saveRecord(
   record: NailRecord,
   image: Blob | null,
 ): Promise<void> {
-  await tx([STORE_RECORDS, STORE_IMAGES], "readwrite", (t) => {
-    t.objectStore(STORE_RECORDS).put(record);
-    if (image) t.objectStore(STORE_IMAGES).put(image, record.id);
-  });
+  await withDb(
+    async () => {
+      await tx([STORE_RECORDS, STORE_IMAGES], "readwrite", (t) => {
+        t.objectStore(STORE_RECORDS).put(record);
+        if (image) t.objectStore(STORE_IMAGES).put(image, record.id);
+      });
+    },
+    () => {
+      memoryRecords.set(record.id, record);
+      if (image) memoryImages.set(record.id, image);
+    },
+  );
 }
 
 export async function listRecords(): Promise<NailRecord[]> {
-  const all = await tx<NailRecord[]>([STORE_RECORDS], "readonly", (t) =>
-    t.objectStore(STORE_RECORDS).getAll(),
+  const all = await withDb(
+    async () =>
+      await tx<NailRecord[]>([STORE_RECORDS], "readonly", (t) =>
+        t.objectStore(STORE_RECORDS).getAll(),
+      ),
+    () => [...memoryRecords.values()],
   );
   return (all ?? []).sort((a, b) => b.createdAt - a.createdAt);
 }
 
 export async function getImage(id: string): Promise<Blob | undefined> {
-  return await tx<Blob>([STORE_IMAGES], "readonly", (t) =>
-    t.objectStore(STORE_IMAGES).get(id),
+  return await withDb(
+    async () =>
+      await tx<Blob>([STORE_IMAGES], "readonly", (t) =>
+        t.objectStore(STORE_IMAGES).get(id),
+      ),
+    () => memoryImages.get(id),
   );
 }
 
 export async function deleteRecord(id: string): Promise<void> {
-  await tx([STORE_RECORDS, STORE_IMAGES], "readwrite", (t) => {
-    t.objectStore(STORE_RECORDS).delete(id);
-    t.objectStore(STORE_IMAGES).delete(id);
-  });
+  await withDb(
+    async () => {
+      await tx([STORE_RECORDS, STORE_IMAGES], "readwrite", (t) => {
+        t.objectStore(STORE_RECORDS).delete(id);
+        t.objectStore(STORE_IMAGES).delete(id);
+      });
+    },
+    () => {
+      memoryRecords.delete(id);
+      memoryImages.delete(id);
+    },
+  );
 }
 
 export async function clearAll(): Promise<void> {
-  await tx([STORE_RECORDS, STORE_IMAGES], "readwrite", (t) => {
-    t.objectStore(STORE_RECORDS).clear();
-    t.objectStore(STORE_IMAGES).clear();
-  });
+  memoryRecords.clear();
+  memoryImages.clear();
+  await withDb(
+    async () => {
+      await tx([STORE_RECORDS, STORE_IMAGES], "readwrite", (t) => {
+        t.objectStore(STORE_RECORDS).clear();
+        t.objectStore(STORE_IMAGES).clear();
+      });
+    },
+    () => undefined,
+  );
 }
 
 /** 사진만 지우고 분석 기록은 남긴다. */
 export async function clearImagesOnly(): Promise<void> {
   const records = await listRecords();
-  await tx([STORE_RECORDS, STORE_IMAGES], "readwrite", (t) => {
-    t.objectStore(STORE_IMAGES).clear();
-    const store = t.objectStore(STORE_RECORDS);
-    for (const record of records) {
-      if (record.hasImage) store.put({ ...record, hasImage: false });
-    }
-  });
+  await withDb(
+    async () => {
+      await tx([STORE_RECORDS, STORE_IMAGES], "readwrite", (t) => {
+        t.objectStore(STORE_IMAGES).clear();
+        const store = t.objectStore(STORE_RECORDS);
+        for (const record of records) {
+          if (record.hasImage) store.put({ ...record, hasImage: false });
+        }
+      });
+    },
+    () => {
+      memoryImages.clear();
+      for (const record of records) {
+        if (record.hasImage) {
+          memoryRecords.set(record.id, { ...record, hasImage: false });
+        }
+      }
+    },
+  );
 }
 
 /* ----------------------------- 설정 ----------------------------- */

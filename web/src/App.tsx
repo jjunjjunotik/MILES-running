@@ -18,7 +18,8 @@ import {
   saveSettings,
   type Settings,
 } from "./lib/storage";
-import { health } from "./lib/api";
+import { health, STANDALONE_DEMO } from "./lib/api";
+import { seedExampleRecords } from "./lib/seed";
 
 export type Tab = "home" | "scan" | "result" | "history" | "profile";
 
@@ -54,10 +55,20 @@ export function App() {
 
   useEffect(() => {
     setSettings(loadSettings());
-    void refreshRecords();
     void health().then((info) => {
       if (info) setDemoMode(!info.configured && info.demoAvailable);
     });
+    // 데모 빌드는 예시 기록을 먼저 심고 목록을 읽는다.
+    void (async () => {
+      if (STANDALONE_DEMO) {
+        try {
+          await seedExampleRecords();
+        } catch {
+          // 저장소를 못 써도 앱은 그대로 동작한다.
+        }
+      }
+      await refreshRecords();
+    })();
   }, [refreshRecords]);
 
   useEffect(() => {

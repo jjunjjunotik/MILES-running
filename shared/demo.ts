@@ -1,4 +1,4 @@
-import { METRIC_KEYS, type NailAnalysis } from "../shared/analysis.js";
+import { METRIC_KEYS, type NailAnalysis } from "./analysis.js";
 
 /**
  * API 키 없이 UI를 확인하기 위한 샘플 응답.
@@ -57,6 +57,20 @@ const OBSERVATIONS: Record<
   ],
 };
 
+const HEADLINES = [
+  "전반적으로 고른 모습이에요",
+  "지난번과 비슷해 보여요",
+  "결이 조금 덜 보여요",
+  "주변 피부가 한결 차분해요",
+];
+
+const SUMMARIES = [
+  "색과 표면은 비교적 고르게 보이고, 중앙부에 얕은 세로 결과 주변 피부의 건조함이 함께 관찰됩니다. 사진만으로는 그 이상을 알기 어렵기 때문에 평소 모습과 비교해 보시는 것을 권합니다.",
+  "전체적인 색조는 균일한 편이고, 끝부분도 매끄럽게 이어집니다. 중앙의 세로 결은 지난 사진에서도 보이던 정도로, 조명에 따라 더 두드러져 보이기도 합니다.",
+  "표면 광택이 고르게 잡혀 있고 큐티클 주변 각질이 덜 눈에 띕니다. 손톱 모양과 두께는 이전과 비슷한 범위로 보입니다.",
+  "색과 두께는 눈에 띄는 변화 없이 유지되고 있습니다. 손톱 옆선 피부가 전보다 매끈해 보이지만, 사진 각도의 영향도 있을 수 있습니다.",
+];
+
 export function buildDemoAnalysis(seed: number): NailAnalysis {
   const pick = <T>(arr: T[], offset: number): T =>
     arr[(seed + offset) % arr.length]!;
@@ -64,9 +78,8 @@ export function buildDemoAnalysis(seed: number): NailAnalysis {
   return {
     isNailPhoto: true,
     imageQuality: { usable: true, issues: [] },
-    headline: "전반적으로 고른 모습이에요",
-    summary:
-      "색과 표면은 비교적 고르게 보이고, 중앙부에 얕은 세로 결과 주변 피부의 건조함이 함께 관찰됩니다. 사진만으로는 그 이상을 알기 어렵기 때문에 평소 모습과 비교해 보시는 것을 권합니다.",
+    headline: pick(HEADLINES, 0),
+    summary: pick(SUMMARIES, 0),
     observationScore: 78 + (seed % 7),
     metrics: METRIC_KEYS.map((key, index) => {
       const sample = pick(OBSERVATIONS[key], index);

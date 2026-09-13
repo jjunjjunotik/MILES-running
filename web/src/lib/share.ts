@@ -297,11 +297,34 @@ function wrapText(
   return cursorY;
 }
 
-/** 공유 시트를 지원하면 시트로, 아니면 다운로드로 떨어뜨린다. */
+export type ShareOutcome = "shared" | "downloaded" | "declined";
+
+/**
+ * 이 페이지가 임베드된 뷰어가 파일 저장을 중개해 주는 경우에만 존재한다.
+ * 일반 브라우저에서는 undefined 이며, 아래 앵커 방식으로 내려간다.
+ */
+interface HostDownloads {
+  save(request: { filename: string; data: Blob }): Promise<unknown>;
+}
+
+interface HostRuntime {
+  use(name: "downloads"): Promise<HostDownloads | null>;
+}
+
+declare global {
+  interface Window {
+    claude?: HostRuntime;
+  }
+}
+
+/**
+ * 공유 시트 → 뷰어가 중개하는 저장 → 일반 다운로드 순으로 시도한다.
+ * 사용자가 취소한 경우는 실패가 아니라 "declined" 로 구분해 돌려준다.
+ */
 export async function shareOrDownload(
   blob: Blob,
   filename: string,
-): Promise<"shared" | "downloaded"> {
+): Promise<ShareOutcome> {
   const file = new File([blob], filename, { type: "image/png" });
   const nav = navigator as Navigator & {
     canShare?: (data: ShareData) => boolean;
@@ -314,9 +337,23 @@ export async function shareOrDownload(
     } catch (err) {
       // 사용자가 시트를 닫은 경우는 실패가 아니다.
       if (err instanceof DOMException && err.name === "AbortError") {
-        return "shared";
+        return "declined";
       }
     }
+  }
+
+  // 샌드박스된 뷰어 안에서는 앵커 다운로드가 조용히 무시된다.
+  // 뷰어가 저장을 중개해 주면 그 경로를 쓴다.
+  try {
+    const downloads = await window.claude?.use("downloads");
+    if (downloads) {
+      await downloads.save({ filename, data: blob });
+      return "downloaded";
+    }
+  } catch (err) {
+    const code = (err as { code?: string } | null)?.code;
+    if (code === "declined" || code === "rate_limited") return "declined";
+    // 그 밖의 경우에는 아래 기본 경로로 한 번 더 시도한다.
   }
 
   const url = URL.createObjectURL(blob);

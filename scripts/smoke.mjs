@@ -79,15 +79,24 @@ await page.click("text=색상");
 await page.waitForTimeout(400);
 await shot(page, "05-result-expanded.png");
 
+await page.click("text=카드 공유하기");
+await page.waitForSelector('img[alt="공유용 요약 카드 미리보기"]', {
+  timeout: 20000,
+});
+await page.waitForTimeout(400);
+await shot(page, "09-share-sheet.png");
+
 const download = await Promise.all([
   page.waitForEvent("download", { timeout: 20000 }).catch(() => null),
-  page.click("text=카드 공유하기"),
+  page.click("text=저장 · 공유"),
 ]).then(([event]) => event);
 if (download) {
   await download.saveAs(path.join(OUT, "share-card.png"));
 } else {
-  problems.push("공유 카드 다운로드가 발생하지 않았습니다.");
+  problems.push("공유 카드 저장이 발생하지 않았습니다.");
 }
+await page.click("text=닫기");
+await page.waitForTimeout(300);
 
 // 두 번째 기록을 만들어 추이와 기록 화면을 확인한다.
 await page.click("text=다른 손톱도 스캔하기");
