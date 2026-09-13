@@ -30,27 +30,27 @@
 
   const MISSIONS = {
     distance: {
-      key: 'distance', name: 'Cover the ground', icon: '🛣️', unit: 'dist',
+      key: 'distance', name: 'Cover the ground', unit: 'dist',
       note: 'Everyone\'s kilometres this week, added up',
       perMember: 12000, xp: 220,
     },
     runs: {
-      key: 'runs', name: 'Turn out', icon: '👟', unit: 'count',
+      key: 'runs', name: 'Turn out', unit: 'count',
       note: 'Runs logged by the crew this week',
       perMember: 3, xp: 180,
     },
     territory: {
-      key: 'territory', name: 'Take ground', icon: '🏴', unit: 'area',
+      key: 'territory', name: 'Take ground', unit: 'area',
       note: 'Land claimed by the crew this week',
       perMember: 120000, xp: 320,
     },
     races: {
-      key: 'races', name: 'Line up', icon: '🏁', unit: 'count',
+      key: 'races', name: 'Line up', unit: 'count',
       note: 'Races finished by the crew this week',
       perMember: 1, xp: 260,
     },
     turnout: {
-      key: 'turnout', name: 'Nobody sits out', icon: '🤝', unit: 'count',
+      key: 'turnout', name: 'Nobody sits out', unit: 'count',
       note: 'Every single member runs at least once',
       perMember: 1, xp: 300,
     },
@@ -65,17 +65,19 @@
   const CREW_COLORS = ['#ff3d8b', '#2fe0ff', '#ffb020', '#2ee6a8', '#a855f7', '#ff8a4c'];
 
   const NEARBY_SEED = [
-    { name: 'Dawn Patrol', tagline: 'Out the door before the city wakes', emoji: '🌅', day: 'Tue & Thu', time: '05:40', spot: 'Riverside gate',
+    { name: 'Dawn Patrol', tagline: 'Out the door before the city wakes', days: ['Tue', 'Thu'], time: '05:40', spot: 'Riverside gate',
       notice: 'Clocks go back this weekend — 05:40 is still 05:40. Bring a light.' },
-    { name: 'Hill Tax', tagline: 'We pay it every Wednesday', emoji: '⛰️', day: 'Wed', time: '19:00', spot: 'North ridge car park',
+    { name: 'Hill Tax', tagline: 'We pay it every Wednesday', days: ['Wed'], time: '19:00', spot: 'North ridge car park',
       notice: 'North ridge is closed for resurfacing. We meet at the south gate until further notice.' },
-    { name: 'Long Way Home', tagline: 'Easy miles, loud conversation', emoji: '🌙', day: 'Sun', time: '08:00', spot: 'Central fountain',
+    { name: 'Long Way Home', tagline: 'Easy miles, loud conversation', days: ['Sun'], time: '08:00', spot: 'Central fountain',
       notice: 'Reminder: Sunday is easy pace. If you can\'t talk, you\'re running it wrong.' },
-    { name: 'Track Rats', tagline: 'Intervals until the lights go out', emoji: '⚡', day: 'Mon & Fri', time: '20:00', spot: 'Municipal track',
+    { name: 'Track Rats', tagline: 'Intervals until the lights go out', days: ['Mon', 'Wed', 'Fri'], time: '20:00', spot: 'Municipal track',
       notice: 'Track is booked by the school until 20:15 on Mondays. Warm up on the outer loop.' },
-    { name: 'Land Grab', tagline: 'Loops only. The map is the point.', emoji: '🏴', day: 'Sat', time: '07:30', spot: 'Old market square',
+    { name: 'Land Grab', tagline: 'Loops only. The map is the point.', days: ['Sat'], time: '07:30', spot: 'Old market square',
       notice: 'We are two plots off overtaking Dawn Patrol. Close your loops this week.' },
   ];
+
+  const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
   const FIRST = ['Jae', 'Mina', 'Theo', 'Sena', 'Rae', 'Noa', 'Kai', 'Ari', 'Yuna', 'Dev', 'Iris', 'Ollie', 'Nam', 'Sol', 'Beck'];
   const LAST = ['Ito', 'Park', 'Kim', 'Cho', 'Ryu', 'Han', 'Lim', 'Oh', 'Seo', 'Bae', 'Jung', 'Yoon'];
@@ -100,6 +102,79 @@
   const Crew = {
     ROLES,
     CREW_TIERS,
+    DAYS,
+
+    /* --- Schedule ---------------------------------------------------------- */
+
+    /** A crew can meet on several days; older crews stored a single one. */
+    days(crew) {
+      const sched = (crew && crew.schedule) || {};
+      if (Array.isArray(sched.days)) return sched.days.filter((d) => DAYS.indexOf(d) >= 0);
+      if (!sched.day) return [];
+      // "Tue & Thu" and "Mon, Wed" both came out of the old single-day field.
+      return String(sched.day).split(/[&,]/).map((d) => d.trim()).filter((d) => DAYS.indexOf(d) >= 0);
+    },
+
+    formatDays(crew) {
+      const days = this.days(crew).slice().sort((a, b) => DAYS.indexOf(a) - DAYS.indexOf(b));
+      if (!days.length) return 'No regular day';
+      if (days.length === 7) return 'Every day';
+      if (days.length === 2) return days.join(' & ');
+      return days.join(', ');
+    },
+
+    /** "05:40" → "5:40 AM". Stored as 24-hour; shown the way people say it. */
+    formatTime(time) {
+      const parts = String(time || '').split(':');
+      let hour = Number(parts[0]);
+      const minute = parts[1] || '00';
+      if (!isFinite(hour)) return '—';
+      const meridiem = hour >= 12 ? 'PM' : 'AM';
+      hour = hour % 12;
+      if (hour === 0) hour = 12;
+      return `${hour}:${minute} ${meridiem}`;
+    },
+
+    /** Splits a stored time for the pickers. */
+    timeParts(time) {
+      const parts = String(time || '08:00').split(':');
+      let hour = Number(parts[0]);
+      if (!isFinite(hour)) hour = 8;
+      const meridiem = hour >= 12 ? 'PM' : 'AM';
+      let h12 = hour % 12;
+      if (h12 === 0) h12 = 12;
+      return { hour: h12, minute: parts[1] || '00', meridiem };
+    },
+
+    /** Back to 24-hour for storage. */
+    toTime(hour, minute, meridiem) {
+      let h = Number(hour) % 12;
+      if (meridiem === 'PM') h += 12;
+      return `${String(h).padStart(2, '0')}:${minute}`;
+    },
+
+    /** Two letters for the crew, used when there is no photo yet. */
+    monogram(crew) {
+      const words = String((crew && crew.name) || '?').split(/\s+/).filter(Boolean);
+      if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+      return String((crew && crew.name) || '?').slice(0, 2).toUpperCase();
+    },
+
+    /** Whoever in the crew runs the quickest — the pace on the card is theirs. */
+    paceLeader(crew) {
+      const paced = (crew.members || []).filter((m) => m.pace);
+      if (!paced.length) return null;
+      return paced.reduce((best, m) => (m.pace < best.pace ? m : best));
+    },
+
+    /** Members running quicker than the crew's average — the ones pushing it. */
+    pacesetters(crew) {
+      const paced = (crew.members || []).filter((m) => m.pace);
+      if (paced.length < 2) return [];
+      const average = paced.reduce((sum, m) => sum + m.pace, 0) / paced.length;
+      return paced.filter((m) => m.pace < average).sort((a, b) => a.pace - b.pace);
+    },
+
     MISSIONS,
     SIZES,
 
@@ -301,7 +376,7 @@
           id: 'crew-' + i,
           name: s.name,
           tagline: s.tagline,
-          emoji: s.emoji,
+          photo: null,
           color: CREW_COLORS[i % CREW_COLORS.length],
           foundedAt: Date.now() - Math.floor(rand() * 900 + 90) * 864e5,
           home: base,
@@ -310,7 +385,7 @@
           members,
           memberIds: members.map((m) => m.id),
           requests: [],
-          schedule: { day: s.day, time: s.time, spot: s.spot },
+          schedule: { days: s.days, time: s.time, spot: s.spot },
             openJoin: rand() > 0.4,        // some crews let you in, some review you
           xp: Math.floor(rand() * 3800),
           missionsDone: Math.floor(rand() * 14),
@@ -327,26 +402,36 @@
 
     /* --- Membership ------------------------------------------------------- */
 
+    /** Your own member record, with a pace taken from what you actually run. */
+    meAsMember(state, role) {
+      const paced = state.activities.filter((a) => a.distance > 800);
+      const perMetre = paced.length
+        ? paced.reduce((sum, a) => sum + a.duration / a.distance, 0) / paced.length
+        : 0;
+      return {
+        id: 'me',
+        name: state.profile.name,
+        initials: state.profile.initials,
+        color: '#c8ff2e',
+        role: role || 'member',
+        joinedAt: Date.now(),
+        weekly: M.Stats.weekly(state).distance,
+        pace: perMetre ? Math.round(perMetre * 1000) : null,
+      };
+    },
+
     create(state, form) {
       const name = (form.name || '').trim().slice(0, 28);
       if (!name) return { error: 'A crew needs a name.' };
       if (this.mine(state)) return { error: 'Leave your current crew first.' };
 
-      const me = {
-        id: 'me',
-        name: state.profile.name,
-        initials: state.profile.initials,
-        color: '#c8ff2e',
-        role: 'leader',
-        joinedAt: Date.now(),
-        weekly: M.Stats.weekly(state).distance,
-      };
+      const me = this.meAsMember(state, 'leader');
 
       const crew = {
         id: uid(),
         name,
         tagline: (form.tagline || '').trim().slice(0, 60) || 'Newly founded.',
-        emoji: form.emoji || '🏃',
+        photo: null,
         color: CREW_COLORS[Math.floor(Math.random() * CREW_COLORS.length)],
         foundedAt: Date.now(),
         home: state.profile.home,
@@ -358,7 +443,7 @@
         // management screens worth having on day one.
         requests: [],
         schedule: {
-          day: form.day || 'Sat',
+          days: (form.days && form.days.length ? form.days : ['Sat']),
           time: form.time || '08:00',
           spot: (form.spot || '').trim() || 'To be decided',
         },
@@ -382,15 +467,7 @@
       const crew = this.all(state).find((c) => c.id === crewId);
       if (!crew) return { error: 'That crew is gone.' };
 
-      const me = {
-        id: 'me',
-        name: state.profile.name,
-        initials: state.profile.initials,
-        color: '#c8ff2e',
-        role: 'member',
-        joinedAt: Date.now(),
-        weekly: M.Stats.weekly(state).distance,
-      };
+      const me = this.meAsMember(state, 'member');
 
       if (!crew.openJoin) {
         crew.pendingMe = true;
@@ -471,6 +548,14 @@
       return { crew, member };
     },
 
+    /** The captain's photo for the crew. Stored as a small data URL. */
+    setPhoto(state, crewId, dataUrl) {
+      const crew = this._led(state, crewId);
+      if (!crew) return { error: 'Only the captain can change the photo.' };
+      crew.photo = dataUrl || null;
+      return { crew };
+    },
+
     edit(state, crewId, patch) {
       const crew = this._led(state, crewId);
       if (!crew) return { error: 'Only the captain can do that.' };
@@ -480,7 +565,11 @@
         crew.name = name;
       }
       if (patch.tagline !== undefined) crew.tagline = patch.tagline.trim().slice(0, 60);
-      if (patch.schedule) crew.schedule = Object.assign({}, crew.schedule, patch.schedule);
+      if (patch.schedule) {
+        const next = Object.assign({}, crew.schedule, patch.schedule);
+        if (patch.schedule.days) { next.days = patch.schedule.days; delete next.day; }
+        crew.schedule = next;
+      }
       if (patch.openJoin !== undefined) crew.openJoin = !!patch.openJoin;
       return { crew };
     },

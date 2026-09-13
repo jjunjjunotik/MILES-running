@@ -443,8 +443,15 @@
 
       // Migrations for state saved by an earlier version.
       if (!this.data.crews) this.data.crews = [];
-      // Crews saved before notices, missions and levels existed.
+      // Crews saved before notices, missions, levels, photos or multi-day
+      // schedules existed.
       (this.data.crews || []).forEach((crew) => {
+        if (crew.photo === undefined) crew.photo = null;
+        if (crew.schedule && !crew.schedule.days) {
+          crew.schedule.days = M.Crew.days(crew);
+          delete crew.schedule.day;
+        }
+        delete crew.emoji;
         if (!crew.notices) crew.notices = [];
         if (crew.xp === undefined) crew.xp = 0;
         if (crew.missionsDone === undefined) crew.missionsDone = 0;

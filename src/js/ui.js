@@ -773,7 +773,7 @@
       list.innerHTML = '';
       nearby.forEach((crew) => {
         const card = el('button', { class: 'crew-card', type: 'button' }, [
-          el('span', { class: 'crew-badge', style: `border-color:${crew.color}55`, text: crew.emoji }),
+          this.crewBadge(crew, 'small'),
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
             el('span', { style: 'font-weight:700;font-size:14px', text: crew.name }),
             el('span', { class: 'tiny truncate', text: crew.tagline }),
@@ -789,15 +789,33 @@
       });
     },
 
+    /** The crew's face: the captain's photo, or the crew's initials. */
+    crewBadge(crew, size) {
+      const badge = el('span', {
+        class: 'crew-badge' + (size === 'small' ? ' crew-badge--small' : ''),
+        style: `border-color:${crew.color}66`,
+      });
+      if (crew.photo) {
+        badge.classList.add('crew-badge--photo');
+        badge.style.backgroundImage = `url(${crew.photo})`;
+      } else {
+        badge.style.color = crew.color;
+        badge.textContent = M.Crew.monogram(crew);
+      }
+      return badge;
+    },
+
     crewHero(crew) {
       const isLeader = M.Crew.isLeader(crew);
       const band = M.Crew.paceBand(crew);
       const level = M.Crew.level(crew);
       const notice = M.Crew.notices(crew)[0];
+      const leader = M.Crew.paceLeader(crew);
+      const pacesetters = M.Crew.pacesetters(crew);
 
       return el('div', { class: 'crew-hero' }, [
         el('div', { class: 'row' }, [
-          el('span', { class: 'crew-badge', style: `border-color:${crew.color}66`, text: crew.emoji }),
+          this.crewBadge(crew),
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
             el('span', { class: 'crew-name', text: crew.name }),
             el('span', { class: 'tiny', text: crew.tagline }),
@@ -825,10 +843,22 @@
         el('div', { class: 'crew-stats' }, [
           statCell(String(M.Crew.memberCount(crew)), 'Runners'),
           statCell(Units.distText(M.Crew.weeklyVolume(crew)), Units.distLabel() + ' / week'),
-          statCell(band ? Units.paceText(band[0] / 1000) : '—', 'Best pace'),
+          // The quickest pace in the crew belongs to somebody — say who.
+          statCell(band ? Units.paceText(band[0] / 1000) : '—',
+                   leader ? leader.name.split(' ')[0] : 'Best pace'),
         ]),
+
+        // And who else is running quicker than the crew average.
+        pacesetters.length ? el('div', { class: 'stack', style: 'gap:5px' }, [
+          el('span', { class: 'stat-label', text: 'Setting the pace' }),
+          el('div', { class: 'pacesetters' }, pacesetters.slice(0, 5).map((m) => el('span', { class: 'pacesetter' }, [
+            el('span', { class: 'pacesetter-dot', style: `background:${m.color}` }),
+            el('span', { text: m.id === 'me' ? 'You' : m.name.split(' ')[0] }),
+            el('b', { text: Units.paceText(m.pace / 1000) }),
+          ]))),
+        ]) : null,
         el('div', { class: 'row row--between' }, [
-          el('span', { class: 'tiny', text: `Meets ${crew.schedule.day} · ${crew.schedule.time} · ${crew.schedule.spot}` }),
+          el('span', { class: 'tiny', text: `Meets ${M.Crew.formatDays(crew)} · ${M.Crew.formatTime(crew.schedule.time)} · ${crew.schedule.spot}` }),
         ]),
         el('button', {
           class: 'btn btn--block' + (isLeader ? ' btn--primary' : ''), type: 'button',
@@ -854,7 +884,6 @@
       if (!status.mission || status.stale) {
         return el('div', { class: 'mission', 'data-empty': 'true' }, [
           el('div', { class: 'row' }, [
-            el('span', { class: 'mission-icon', text: '🎯' }),
             el('div', { class: 'stack grow', style: 'gap:2px' }, [
               el('span', { class: 'mission-name', text: 'No mission this week' }),
               el('span', { class: 'tiny', text: isLeader ? 'Pick one and the whole crew runs it together.' : 'Your captain has not set one yet.' }),
@@ -874,7 +903,6 @@
 
       return el('div', { class: 'mission', 'data-done': String(!!status.mission.completedAt || status.complete) }, [
         el('div', { class: 'row' }, [
-          el('span', { class: 'mission-icon', text: def.icon }),
           el('div', { class: 'stack grow', style: 'gap:2px' }, [
             el('span', { class: 'mission-name', text: def.name }),
             el('span', { class: 'tiny', text: `${def.note} · ${status.mission.sizeName}` }),
@@ -908,7 +936,6 @@
           : option.def.unit === 'area' ? `${Units.areaText(option.target)} ${Units.areaLabel()}`
             : String(option.target);
         return el('button', { class: 'mission-option', type: 'button' }, [
-          el('span', { class: 'mission-icon', text: option.def.icon }),
           el('div', { class: 'stack grow', style: 'gap:2px' }, [
             el('span', { style: 'font-weight:700;font-size:14px', text: `${option.def.name} · ${option.size.name}` }),
             el('span', { class: 'tiny', text: `${fmt} — ${option.def.note}` }),
@@ -978,6 +1005,131 @@
       return parts;
     },
 
+    /* --- Crew form controls ---------------------------------------------- */
+
+    /** Day chips — a crew can meet on as many days as it likes. */
+    dayPicker(selected) {
+      const chosen = new Set(selected || []);
+      const wrap = el('div', { class: 'day-picker' });
+      M.Crew.DAYS.forEach((day) => {
+        const btn = el('button', {
+          class: 'day-chip', type: 'button',
+          'aria-pressed': String(chosen.has(day)),
+          text: day,
+        });
+        btn.addEventListener('click', () => {
+          if (chosen.has(day)) chosen.delete(day); else chosen.add(day);
+          btn.setAttribute('aria-pressed', String(chosen.has(day)));
+        });
+        wrap.appendChild(btn);
+      });
+      wrap.value = () => M.Crew.DAYS.filter((d) => chosen.has(d));
+      return wrap;
+    },
+
+    /** Hour · minute · AM/PM, the way people say a meeting time. */
+    timePicker(time) {
+      const parts = M.Crew.timeParts(time);
+      const hour = el('select', { class: 'input' });
+      for (let h = 1; h <= 12; h++) hour.appendChild(el('option', { value: String(h), text: String(h) }));
+      hour.value = String(parts.hour);
+
+      const minute = el('select', { class: 'input' });
+      ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55']
+        .forEach((m) => minute.appendChild(el('option', { value: m, text: m })));
+      minute.value = ['00', '05', '10', '15', '20', '25', '30', '35', '40', '45', '50', '55']
+        .indexOf(parts.minute) >= 0 ? parts.minute : '00';
+
+      const meridiem = el('select', { class: 'input' }, [
+        el('option', { value: 'AM', text: 'AM' }),
+        el('option', { value: 'PM', text: 'PM' }),
+      ]);
+      meridiem.value = parts.meridiem;
+
+      const wrap = el('div', { class: 'time-picker' }, [hour, minute, meridiem]);
+      wrap.value = () => M.Crew.toTime(hour.value, minute.value, meridiem.value);
+      return wrap;
+    },
+
+    /**
+     * Reads an image the captain picked, shrinks it to a square thumbnail and
+     * hands back a data URL. Full-size photos would not survive localStorage.
+     */
+    readCrewPhoto(file) {
+      return new Promise((resolve, reject) => {
+        if (!file || !/^image\//.test(file.type)) { reject(new Error('That is not an image.')); return; }
+        const reader = new FileReader();
+        reader.onerror = () => reject(new Error('That image could not be read.'));
+        reader.onload = () => {
+          const img = new Image();
+          img.onerror = () => reject(new Error('That image could not be read.'));
+          img.onload = () => {
+            const SIDE = 256;
+            const canvas = document.createElement('canvas');
+            canvas.width = canvas.height = SIDE;
+            const ctx = canvas.getContext('2d');
+            // Cover-crop to a square so the badge is never letterboxed.
+            const scale = Math.max(SIDE / img.width, SIDE / img.height);
+            const w = img.width * scale;
+            const h = img.height * scale;
+            ctx.drawImage(img, (SIDE - w) / 2, (SIDE - h) / 2, w, h);
+            resolve(canvas.toDataURL('image/jpeg', 0.82));
+          };
+          img.src = reader.result;
+        };
+        reader.readAsDataURL(file);
+      });
+    },
+
+    /** The photo control: a preview, a file input, and a way to clear it. */
+    photoField(crew, onPick) {
+      const preview = el('span', { class: 'crew-badge crew-badge--edit', style: `border-color:${crew.color}66` });
+      const paint = (photo) => {
+        if (photo) {
+          preview.classList.add('crew-badge--photo');
+          preview.style.backgroundImage = `url(${photo})`;
+          preview.textContent = '';
+        } else {
+          preview.classList.remove('crew-badge--photo');
+          preview.style.backgroundImage = '';
+          preview.style.color = crew.color;
+          preview.textContent = M.Crew.monogram(crew);
+        }
+      };
+      paint(crew.photo);
+
+      const input = el('input', { type: 'file', accept: 'image/*', style: 'display:none' });
+      input.addEventListener('change', () => {
+        const file = input.files && input.files[0];
+        if (!file) return;
+        this.readCrewPhoto(file).then((dataUrl) => {
+          paint(dataUrl);
+          onPick(dataUrl);
+          this.toast('Crew photo updated');
+        }).catch((err) => this.toast(err.message));
+        input.value = '';
+      });
+
+      return el('div', { class: 'row', style: 'gap:var(--s-3)' }, [
+        preview,
+        el('div', { class: 'stack grow', style: 'gap:6px' }, [
+          el('span', { class: 'tiny', text: crew.photo ? 'Your crew photo. Tap to replace it.' : 'No photo yet — your crew shows its initials.' }),
+          el('div', { class: 'row', style: 'gap:var(--s-2)' }, [
+            el('button', {
+              class: 'btn btn--ghost', type: 'button', text: 'Choose photo',
+              style: 'padding:8px 14px;font-size:12px',
+              onclick: () => input.click(),
+            }),
+            crew.photo ? el('button', {
+              class: 'chip', type: 'button', text: 'Remove',
+              onclick: () => { paint(null); onPick(null); },
+            }) : null,
+          ]),
+        ]),
+        input,
+      ]);
+    },
+
     openCreateCrew() {
       if (M.Crew.mine(State.data)) {
         this.toast('Leave your current crew first');
@@ -989,12 +1141,8 @@
       const name = el('input', { class: 'input', id: 'newCrewName', placeholder: 'Crew name', maxlength: '28' });
       const tagline = el('input', { class: 'input', id: 'newCrewTagline', placeholder: 'One line about the crew', maxlength: '60' });
       const spot = el('input', { class: 'input', id: 'newCrewSpot', placeholder: 'Where you meet' });
-      const day = el('select', { class: 'input' });
-      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].forEach((d) => day.appendChild(el('option', { value: d, text: d })));
-      day.value = 'Sat';
-      const time = el('input', { class: 'input', type: 'time', value: '08:00' });
-      const emoji = el('select', { class: 'input' });
-      ['🏃', '🔥', '⚡', '🌅', '⛰️', '🏴', '🌙', '🐺'].forEach((e) => emoji.appendChild(el('option', { value: e, text: e })));
+      const days = this.dayPicker(['Sat']);
+      const time = this.timePicker('08:00');
       const open = el('select', { class: 'input' }, [
         el('option', { value: 'open', text: 'Anyone can join' }),
         el('option', { value: 'review', text: 'I approve each request' }),
@@ -1002,24 +1150,22 @@
 
       body.appendChild(el('div', { class: 'stack' }, [
         el('h3', { style: 'font-size:20px', text: 'Start a crew' }),
-        el('p', { class: 'muted', text: 'You will be its captain, which means the member list is yours to run.' }),
+        el('p', { class: 'muted', text: 'You will be its captain, which means the member list, the notice board and the weekly mission are yours to run.' }),
         el('label', { class: 'field-label', text: 'Name' }), name,
         el('label', { class: 'field-label', text: 'Tagline' }), tagline,
-        el('div', { class: 'row', style: 'gap:var(--s-3)' }, [
-          el('div', { class: 'stack grow', style: 'gap:6px' }, [el('label', { class: 'field-label', text: 'Icon' }), emoji]),
-          el('div', { class: 'stack grow', style: 'gap:6px' }, [el('label', { class: 'field-label', text: 'Joining' }), open]),
-        ]),
-        el('label', { class: 'field-label', text: 'Regular run' }),
-        el('div', { class: 'row', style: 'gap:var(--s-3)' }, [day, time]),
-        spot,
+        el('label', { class: 'field-label', text: 'Joining' }), open,
+        el('label', { class: 'field-label', text: 'Which days you run' }), days,
+        el('label', { class: 'field-label', text: 'Time' }), time,
+        el('label', { class: 'field-label', text: 'Where you meet' }), spot,
+        el('p', { class: 'tiny', text: 'You can add a crew photo once it exists.' }),
         el('div', { class: 'row', style: 'gap:var(--s-3);margin-top:var(--s-3)' }, [
           el('button', { class: 'btn grow', type: 'button', text: 'Cancel', onclick: () => { this.closeSheet('#crewSheet'); } }),
           el('button', {
             class: 'btn btn--primary grow', type: 'button', text: 'Found it',
             onclick: () => {
               const result = State.crewAction((state) => M.Crew.create(state, {
-                name: name.value, tagline: tagline.value, emoji: emoji.value,
-                day: day.value, time: time.value, spot: spot.value,
+                name: name.value, tagline: tagline.value,
+                days: days.value(), time: time.value(), spot: spot.value,
                 openJoin: open.value === 'open',
               }));
               if (result.error) { this.toast(result.error); return; }
@@ -1048,7 +1194,7 @@
 
       const parts = [
         el('div', { class: 'row' }, [
-          el('span', { class: 'crew-badge', style: `border-color:${crew.color}66`, text: crew.emoji }),
+          this.crewBadge(crew),
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
             el('span', { class: 'crew-name', text: crew.name }),
             el('span', { class: 'tiny', text: crew.tagline }),
@@ -1061,7 +1207,7 @@
             ? cell(new Date(crew.foundedAt).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }), 'Founded')
             : cell(Units.distText(crew.distance), Units.distLabel() + ' away'),
         ]),
-        el('p', { class: 'tiny', text: `Meets ${crew.schedule.day} at ${crew.schedule.time} · ${crew.schedule.spot}` }),
+        el('p', { class: 'tiny', text: `Meets ${M.Crew.formatDays(crew)} at ${M.Crew.formatTime(crew.schedule.time)} · ${crew.schedule.spot}` }),
       ];
 
       // Level, then the week's mission, then the board — what the crew is
@@ -1244,34 +1390,40 @@
       const name = el('input', { class: 'input', value: crew.name, maxlength: '28' });
       const tagline = el('input', { class: 'input', value: crew.tagline, maxlength: '60' });
       const spot = el('input', { class: 'input', value: crew.schedule.spot });
-      const time = el('input', { class: 'input', type: 'time', value: crew.schedule.time });
-      const day = el('select', { class: 'input' });
-      ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun', 'Tue & Thu', 'Mon & Fri'].forEach((d) => day.appendChild(el('option', { value: d, text: d })));
-      day.value = crew.schedule.day;
+      const days = this.dayPicker(M.Crew.days(crew));
+      const time = this.timePicker(crew.schedule.time);
       const open = el('select', { class: 'input' }, [
         el('option', { value: 'open', text: 'Anyone can join' }),
         el('option', { value: 'review', text: 'I approve each request' }),
       ]);
       open.value = crew.openJoin ? 'open' : 'review';
 
+      // The photo saves the moment it is picked — it is not part of the form.
+      const photo = this.photoField(crew, (dataUrl) => {
+        const result = State.crewAction((st) => M.Crew.setPhoto(st, crewId, dataUrl));
+        if (result.error) this.toast(result.error);
+        else this.renderCrew();
+      });
+
       body.appendChild(el('div', { class: 'stack' }, [
         el('h3', { style: 'font-size:20px', text: 'Edit crew' }),
+        el('label', { class: 'field-label', text: 'Crew photo' }), photo,
         el('label', { class: 'field-label', text: 'Name' }), name,
         el('label', { class: 'field-label', text: 'Tagline' }), tagline,
         el('label', { class: 'field-label', text: 'Joining' }), open,
-        el('label', { class: 'field-label', text: 'Regular run' }),
-        el('div', { class: 'row', style: 'gap:var(--s-3)' }, [day, time]),
-        spot,
+        el('label', { class: 'field-label', text: 'Which days you run' }), days,
+        el('label', { class: 'field-label', text: 'Time' }), time,
+        el('label', { class: 'field-label', text: 'Where you meet' }), spot,
         el('div', { class: 'row', style: 'gap:var(--s-3);margin-top:var(--s-3)' }, [
           el('button', { class: 'btn grow', type: 'button', text: 'Back', onclick: () => this.openCrewSheet(crewId) }),
           el('button', {
             class: 'btn btn--primary grow', type: 'button', text: 'Save',
             onclick: () => {
-              const r = State.crewAction((st) => M.Crew.edit(st, crewId, {
+              const result = State.crewAction((st) => M.Crew.edit(st, crewId, {
                 name: name.value, tagline: tagline.value, openJoin: open.value === 'open',
-                schedule: { day: day.value, time: time.value, spot: spot.value },
+                schedule: { days: days.value(), time: time.value(), spot: spot.value },
               }));
-              if (r.error) { this.toast(r.error); return; }
+              if (result.error) { this.toast(result.error); return; }
               this.toast('Crew updated');
               this.openCrewSheet(crewId);
               this.renderCrew();

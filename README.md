@@ -76,8 +76,16 @@ implies: approve or decline join requests, promote members to pacer, remove
 people, edit the crew's name, tagline and regular run, hand the crew to someone
 else, or disband it.
 
+A crew meets on **as many days a week as it likes**, at a time set in plain
+am/pm. The front page names whoever holds the crew's quickest pace, and lists
+everyone running faster than the crew's average under **Setting the pace**.
+
 Captains also run the crew's week:
 
+- **Crew photo** — the captain picks an image and it becomes the crew's face.
+  It is cropped square and shrunk to 256 px before it is stored, because a
+  full-size photo will not fit in `localStorage`. Without one, a crew shows its
+  initials.
 - **Notice board** — post announcements the whole crew reads. Newest sits on the
   crew's front page; the rest are on the board.
 - **Weekly mission** — pick one goal for the week and everybody's running counts

@@ -259,6 +259,16 @@ The crew's front page answers "what is this crew doing right now" before "who
 is in it": tier and pips, then this week's mission with its progress, then the
 newest notice. A crew that is not doing anything says so.
 
+A crew's face is **a photograph the captain uploads**, falling back to the
+crew's initials — never an icon. A crew is a group of people, and a stock glyph
+says nothing about which one. The same reasoning removes the icons that sat on
+missions: the mission's name is the content, and a glyph beside it was
+decoration standing in a content slot.
+
+Numbers name people wherever they can. The quickest pace in a crew belongs to
+somebody, so the stat says whose it is instead of labelling itself "Best pace",
+and everyone running faster than the crew's average is listed beside it.
+
 The crew sheet is one screen with registers in the order a captain needs them:
 **join requests** (the thing waiting on a decision), **tier**, **the mission**,
 **the notice board**, **the roster** with role tags, then **the actions**. What you see depends on who you are:
