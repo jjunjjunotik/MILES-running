@@ -443,6 +443,14 @@
 
       // Migrations for state saved by an earlier version.
       if (!this.data.crews) this.data.crews = [];
+      // Crews saved before notices, missions and levels existed.
+      (this.data.crews || []).forEach((crew) => {
+        if (!crew.notices) crew.notices = [];
+        if (crew.xp === undefined) crew.xp = 0;
+        if (crew.missionsDone === undefined) crew.missionsDone = 0;
+        if (crew.mission === undefined) crew.mission = null;
+      });
+
       if (!this.data.rivalLand) this.data.rivalLand = [];
 
       // Owners painted before the palette was validated keep colours that are

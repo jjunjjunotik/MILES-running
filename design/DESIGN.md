@@ -255,13 +255,24 @@ Your crew first (or the invitation to start one), then the local crews sorted by
 how far their turf is from yours. A crew card carries the icon, tagline, size,
 weekly volume and distance — enough to choose without opening it.
 
-The crew sheet is one screen with three registers, in the order a captain
-needs them: **join requests** (the thing waiting on a decision), **the roster**
-with role tags, then **the actions**. What you see depends on who you are:
+The crew's front page answers "what is this crew doing right now" before "who
+is in it": tier and pips, then this week's mission with its progress, then the
+newest notice. A crew that is not doing anything says so.
+
+The crew sheet is one screen with registers in the order a captain needs them:
+**join requests** (the thing waiting on a decision), **tier**, **the mission**,
+**the notice board**, **the roster** with role tags, then **the actions**. What you see depends on who you are:
 a visitor gets Join, a member gets Leave, a captain gets the roster's `⋯`
 menu — pacer, hand over, remove — plus Edit and Disband. The model refuses
 every captain action for anyone who is not the captain, rather than only
 hiding the buttons.
+
+**Four tiers, one ladder.** Startline → Pack → Legion → Dynasty, climbed only
+by clearing the weekly mission. Crew size and crew mileage deliberately do not
+count: a tier says the crew finishes what it starts, which is the one thing
+worth advertising on a crew card. Mission targets scale with headcount so the
+ask is constant, and a cleared week pays once — setting a second mission in an
+already-cleared week is refused rather than paying again.
 
 ### 6.8 Feed
 

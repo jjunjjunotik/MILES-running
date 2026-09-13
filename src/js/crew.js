@@ -11,14 +11,70 @@
 
   const ROLES = { leader: 'Captain', pacer: 'Pacer', member: 'Member' };
 
+  /* --- Crew levels ---------------------------------------------------------
+     Four tiers, earned only by finishing the weekly mission together. A crew
+     cannot climb by being large or by one member running a lot — the whole
+     crew has to clear the week. ------------------------------------------- */
+
+  const CREW_TIERS = [
+    { index: 1, name: 'Startline', xp: 0,    note: 'Newly founded. Clear a week together to start climbing.' },
+    { index: 2, name: 'Pack',      xp: 600,  note: 'Running as a unit. The weekly mission is habit now.' },
+    { index: 3, name: 'Legion',    xp: 1800, note: 'A crew with a reputation on this map.' },
+    { index: 4, name: 'Dynasty',   xp: 4200, note: 'Top tier. Nothing above this one.' },
+  ];
+
+  /* --- Weekly missions -----------------------------------------------------
+     The captain sets one each week; every member's running counts toward it.
+     Targets scale with crew size, so a mission is the same ask whether there
+     are three of you or twelve. ------------------------------------------- */
+
+  const MISSIONS = {
+    distance: {
+      key: 'distance', name: 'Cover the ground', icon: '🛣️', unit: 'dist',
+      note: 'Everyone\'s kilometres this week, added up',
+      perMember: 12000, xp: 220,
+    },
+    runs: {
+      key: 'runs', name: 'Turn out', icon: '👟', unit: 'count',
+      note: 'Runs logged by the crew this week',
+      perMember: 3, xp: 180,
+    },
+    territory: {
+      key: 'territory', name: 'Take ground', icon: '🏴', unit: 'area',
+      note: 'Land claimed by the crew this week',
+      perMember: 120000, xp: 320,
+    },
+    races: {
+      key: 'races', name: 'Line up', icon: '🏁', unit: 'count',
+      note: 'Races finished by the crew this week',
+      perMember: 1, xp: 260,
+    },
+    turnout: {
+      key: 'turnout', name: 'Nobody sits out', icon: '🤝', unit: 'count',
+      note: 'Every single member runs at least once',
+      perMember: 1, xp: 300,
+    },
+  };
+
+  const SIZES = [
+    { key: 'steady', name: 'Steady', factor: 0.7, xpFactor: 0.7 },
+    { key: 'solid',  name: 'Solid',  factor: 1,   xpFactor: 1 },
+    { key: 'brutal', name: 'Brutal', factor: 1.6, xpFactor: 1.7 },
+  ];
+
   const CREW_COLORS = ['#ff3d8b', '#2fe0ff', '#ffb020', '#2ee6a8', '#a855f7', '#ff8a4c'];
 
   const NEARBY_SEED = [
-    { name: 'Dawn Patrol', tagline: 'Out the door before the city wakes', emoji: '🌅', day: 'Tue & Thu', time: '05:40', spot: 'Riverside gate' },
-    { name: 'Hill Tax', tagline: 'We pay it every Wednesday', emoji: '⛰️', day: 'Wed', time: '19:00', spot: 'North ridge car park' },
-    { name: 'Long Way Home', tagline: 'Easy miles, loud conversation', emoji: '🌙', day: 'Sun', time: '08:00', spot: 'Central fountain' },
-    { name: 'Track Rats', tagline: 'Intervals until the lights go out', emoji: '⚡', day: 'Mon & Fri', time: '20:00', spot: 'Municipal track' },
-    { name: 'Land Grab', tagline: 'Loops only. The map is the point.', emoji: '🏴', day: 'Sat', time: '07:30', spot: 'Old market square' },
+    { name: 'Dawn Patrol', tagline: 'Out the door before the city wakes', emoji: '🌅', day: 'Tue & Thu', time: '05:40', spot: 'Riverside gate',
+      notice: 'Clocks go back this weekend — 05:40 is still 05:40. Bring a light.' },
+    { name: 'Hill Tax', tagline: 'We pay it every Wednesday', emoji: '⛰️', day: 'Wed', time: '19:00', spot: 'North ridge car park',
+      notice: 'North ridge is closed for resurfacing. We meet at the south gate until further notice.' },
+    { name: 'Long Way Home', tagline: 'Easy miles, loud conversation', emoji: '🌙', day: 'Sun', time: '08:00', spot: 'Central fountain',
+      notice: 'Reminder: Sunday is easy pace. If you can\'t talk, you\'re running it wrong.' },
+    { name: 'Track Rats', tagline: 'Intervals until the lights go out', emoji: '⚡', day: 'Mon & Fri', time: '20:00', spot: 'Municipal track',
+      notice: 'Track is booked by the school until 20:15 on Mondays. Warm up on the outer loop.' },
+    { name: 'Land Grab', tagline: 'Loops only. The map is the point.', emoji: '🏴', day: 'Sat', time: '07:30', spot: 'Old market square',
+      notice: 'We are two plots off overtaking Dawn Patrol. Close your loops this week.' },
   ];
 
   const FIRST = ['Jae', 'Mina', 'Theo', 'Sena', 'Rae', 'Noa', 'Kai', 'Ari', 'Yuna', 'Dev', 'Iris', 'Ollie', 'Nam', 'Sol', 'Beck'];
@@ -43,6 +99,158 @@
 
   const Crew = {
     ROLES,
+    CREW_TIERS,
+    MISSIONS,
+    SIZES,
+
+    /* --- Level ------------------------------------------------------------- */
+
+    level(crew) {
+      const xp = (crew && crew.xp) || 0;
+      let tier = CREW_TIERS[0];
+      let next = null;
+      CREW_TIERS.forEach((t, i) => {
+        if (xp >= t.xp) { tier = t; next = CREW_TIERS[i + 1] || null; }
+      });
+      const span = next ? next.xp - tier.xp : 1;
+      return { xp, tier, next, progress: next ? M.clamp((xp - tier.xp) / span, 0, 1) : 1 };
+    },
+
+    /* --- Notices -----------------------------------------------------------
+       The captain's board. Members read it; only the captain writes. ------ */
+
+    notices(crew) {
+      return ((crew && crew.notices) || []).slice().sort((a, b) => b.at - a.at);
+    },
+
+    postNotice(state, crewId, text) {
+      const crew = this._led(state, crewId);
+      if (!crew) return { error: 'Only the captain can post a notice.' };
+      const body = (text || '').trim().slice(0, 280);
+      if (!body) return { error: 'A notice needs something in it.' };
+      if (!crew.notices) crew.notices = [];
+      crew.notices.unshift({ id: uid(), text: body, at: Date.now(), by: state.profile.name });
+      crew.notices = crew.notices.slice(0, 20);
+      return { crew, notice: crew.notices[0] };
+    },
+
+    removeNotice(state, crewId, noticeId) {
+      const crew = this._led(state, crewId);
+      if (!crew) return { error: 'Only the captain can remove a notice.' };
+      crew.notices = (crew.notices || []).filter((n) => n.id !== noticeId);
+      return { crew };
+    },
+
+    /* --- Weekly mission -----------------------------------------------------
+       One per week, chosen by the captain, cleared by everyone. ----------- */
+
+    weekKey(when) {
+      return M.startOfWeek(when || Date.now());
+    },
+
+    /** The choices on offer this week, with targets scaled to crew size. */
+    missionOptions(crew) {
+      const heads = Math.max(1, this.memberCount(crew));
+      const out = [];
+      Object.values(MISSIONS).forEach((def) => {
+        SIZES.forEach((size) => {
+          // "Nobody sits out" is the same ask at any size: all of them.
+          if (def.key === 'turnout' && size.key !== 'solid') return;
+          const target = def.key === 'turnout'
+            ? heads
+            : Math.max(def.key === 'runs' || def.key === 'races' ? 1 : 1000,
+                       Math.round(def.perMember * heads * size.factor));
+          out.push({
+            key: `${def.key}:${size.key}`,
+            def,
+            size,
+            target,
+            xp: Math.round(def.xp * size.xpFactor),
+          });
+        });
+      });
+      return out;
+    },
+
+    setMission(state, crewId, optionKey) {
+      const crew = this._led(state, crewId);
+      if (!crew) return { error: 'Only the captain sets the mission.' };
+      const option = this.missionOptions(crew).find((o) => o.key === optionKey);
+      if (!option) return { error: 'Unknown mission.' };
+
+      const week = this.weekKey();
+      if (crew.mission && crew.mission.week === week && crew.mission.completedAt) {
+        return { error: 'This week is already cleared. The next one starts Monday.' };
+      }
+      crew.mission = {
+        week,
+        key: option.key,
+        type: option.def.key,
+        sizeName: option.size.name,
+        target: option.target,
+        xp: option.xp,
+        setAt: Date.now(),
+        completedAt: null,
+      };
+      return { crew, mission: crew.mission };
+    },
+
+    /**
+     * How far the crew has got this week. Your own contribution comes from your
+     * real activities; the others' from the volume they are known to run.
+     */
+    missionStatus(state, crew) {
+      const mission = crew && crew.mission;
+      const week = this.weekKey();
+      if (!mission) return { mission: null, stale: false, week };
+      if (mission.week !== week) return { mission, stale: true, week };
+
+      const def = MISSIONS[mission.type];
+      const others = crew.members.filter((m) => m.id !== 'me');
+      const mineThisWeek = M.Stats.weekly(state);
+      const inCrew = crew.memberIds.indexOf('me') >= 0;
+
+      let have = 0;
+      if (mission.type === 'distance') {
+        have = others.reduce((sum, m) => sum + (m.weekly || 0), 0) + (inCrew ? mineThisWeek.distance : 0);
+      } else if (mission.type === 'runs') {
+        have = others.reduce((sum, m) => sum + Math.round((m.weekly || 0) / 7000), 0) + (inCrew ? mineThisWeek.runs : 0);
+      } else if (mission.type === 'territory') {
+        const since = week;
+        const mineArea = state.territories
+          .filter((t) => t.claimedAt >= since)
+          .reduce((sum, t) => sum + (t.area || 0), 0);
+        have = others.reduce((sum, m) => sum + Math.round((m.weekly || 0) * 2.2), 0) + (inCrew ? mineArea : 0);
+      } else if (mission.type === 'races') {
+        const mineRaces = state.activities
+          .filter((a) => a.kind === 'race' && a.finished && a.startedAt >= week).length;
+        have = others.reduce((sum, m) => sum + ((m.weekly || 0) > 25000 ? 1 : 0), 0) + (inCrew ? mineRaces : 0);
+      } else if (mission.type === 'turnout') {
+        have = others.filter((m) => (m.weekly || 0) > 0).length + (inCrew && mineThisWeek.runs > 0 ? 1 : 0);
+      }
+
+      const complete = have >= mission.target;
+      return {
+        mission, def, have, stale: false, week,
+        need: mission.target,
+        progress: M.clamp(have / Math.max(1, mission.target), 0, 1),
+        complete,
+      };
+    },
+
+    /**
+     * Banks the reward once the crew clears the week. Safe to call repeatedly —
+     * a mission pays out once.
+     */
+    settleMission(state, crew) {
+      const status = this.missionStatus(state, crew);
+      if (!status.mission || status.stale || !status.complete || status.mission.completedAt) return null;
+      crew.mission.completedAt = Date.now();
+      crew.xp = (crew.xp || 0) + crew.mission.xp;
+      crew.missionsDone = (crew.missionsDone || 0) + 1;
+      return { crew, xp: crew.mission.xp, level: this.level(crew) };
+    },
+
 
     /** Everything the app knows about: the crew you are in, plus the locals. */
     all(state) { return state.crews || []; },
@@ -103,7 +311,16 @@
           memberIds: members.map((m) => m.id),
           requests: [],
           schedule: { day: s.day, time: s.time, spot: s.spot },
-          openJoin: rand() > 0.4,        // some crews let you in, some review you
+            openJoin: rand() > 0.4,        // some crews let you in, some review you
+          xp: Math.floor(rand() * 3800),
+          missionsDone: Math.floor(rand() * 14),
+          notices: [{
+            id: 'n-' + i,
+            text: s.notice,
+            at: Date.now() - Math.floor(rand() * 5 + 1) * 864e5,
+            by: members[0].name,
+          }],
+          mission: null,
         };
       });
     },
@@ -147,6 +364,10 @@
         },
         openJoin: form.openJoin !== false,
         founded: true,
+        xp: 0,
+        missionsDone: 0,
+        notices: [],
+        mission: null,
       };
 
       const rand = M.rng(Date.now() % 100000);

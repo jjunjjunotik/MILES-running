@@ -24,7 +24,7 @@ window.MILES = window.MILES || {};
       else if (k.startsWith('on')) node.addEventListener(k.slice(2).toLowerCase(), v);
       else node.setAttribute(k, v === true ? '' : v);
     });
-    (children || []).forEach((c) => node.appendChild(c));
+    (children || []).forEach((c) => { if (c) node.appendChild(c); });
     return node;
   };
 

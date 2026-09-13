@@ -701,6 +701,25 @@
     renderCrew() {
       const state = State.data;
       const mine = M.Crew.mine(state);
+
+      // Clearing the week pays out once, whenever it is next looked at.
+      // Save only when something actually changed: saving emits state:changed,
+      // which re-renders and lands back here, so an unconditional save would
+      // never stop.
+      if (mine) {
+        const settled = M.Crew.settleMission(state, mine);
+        if (settled) {
+          const level = settled.level;
+          this.toast(`Mission cleared — <b>${mine.name}</b> +${settled.xp} crew XP`, 'reward');
+          if (level.tier.index > (this._crewTier || 0) && this._crewTier) {
+            this.toast(`<b>${mine.name}</b> reached Tier ${level.tier.index} · ${level.tier.name}`, 'reward');
+          }
+          this._crewTier = level.tier.index;
+          State.save();
+          return;                       // the save re-renders this screen
+        }
+        this._crewTier = M.Crew.level(mine).tier.index;
+      }
       const host = $('#myCrew');
       host.innerHTML = '';
 
@@ -733,7 +752,7 @@
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
             el('span', { style: 'font-weight:700;font-size:14px', text: crew.name }),
             el('span', { class: 'tiny truncate', text: crew.tagline }),
-            el('span', { class: 'tiny', style: `color:${crew.color}`, text: `${M.Crew.memberCount(crew)} runners · ${Units.distText(M.Crew.weeklyVolume(crew))} ${Units.distLabel()} this week` }),
+            el('span', { class: 'tiny', style: `color:${crew.color}`, text: `Tier ${M.Crew.level(crew).tier.index} ${M.Crew.level(crew).tier.name} · ${M.Crew.memberCount(crew)} runners · ${Units.distText(M.Crew.weeklyVolume(crew))} ${Units.distLabel()}` }),
           ]),
           el('div', { class: 'stack', style: 'gap:4px;align-items:flex-end;flex:none' }, [
             el('span', { class: 'stat-value', style: 'font-size:14px', text: Units.distText(crew.distance) }),
@@ -748,6 +767,9 @@
     crewHero(crew) {
       const isLeader = M.Crew.isLeader(crew);
       const band = M.Crew.paceBand(crew);
+      const level = M.Crew.level(crew);
+      const notice = M.Crew.notices(crew)[0];
+
       return el('div', { class: 'crew-hero' }, [
         el('div', { class: 'row' }, [
           el('span', { class: 'crew-badge', style: `border-color:${crew.color}66`, text: crew.emoji }),
@@ -757,6 +779,24 @@
           ]),
           el('span', { class: 'role-tag', 'data-role': isLeader ? 'leader' : 'member', text: isLeader ? 'Captain' : 'Member' }),
         ]),
+
+        // Level: four tiers, climbed only by clearing the weekly mission.
+        el('div', { class: 'stack', style: 'gap:6px' }, [
+          el('div', { class: 'row row--between' }, [
+            el('span', { class: 'crew-tier', text: `Tier ${level.tier.index} · ${level.tier.name}` }),
+            el('span', { class: 'tiny', text: level.next ? `${level.next.xp - level.xp} XP to ${level.next.name}` : 'Top tier' }),
+          ]),
+          el('div', { class: 'tier-pips' }, M.Crew.CREW_TIERS.map((t) => el('i', { 'data-on': String(t.index <= level.tier.index) }))),
+        ]),
+
+        this.missionBlock(crew),
+
+        notice ? el('div', { class: 'notice notice--hero' }, [
+          el('div', { class: 'stack grow', style: 'gap:0' }, [
+            el('p', { text: notice.text }),
+            el('span', { class: 'notice-meta', text: `${notice.by} · ${relTime(notice.at)}` }),
+          ]),
+        ]) : null,
         el('div', { class: 'crew-stats' }, [
           statCell(String(M.Crew.memberCount(crew)), 'Runners'),
           statCell(Units.distText(M.Crew.weeklyVolume(crew)), Units.distLabel() + ' / week'),
@@ -778,6 +818,139 @@
           el('div', { class: 'stat-label', text: label }),
         ]);
       }
+    },
+
+    /** This week's mission, as the whole crew sees it. */
+    missionBlock(crew) {
+      const isLeader = M.Crew.isLeader(crew);
+      const status = M.Crew.missionStatus(State.data, crew);
+
+      // No mission, or last week's: the captain picks, everyone else waits.
+      if (!status.mission || status.stale) {
+        return el('div', { class: 'mission', 'data-empty': 'true' }, [
+          el('div', { class: 'row' }, [
+            el('span', { class: 'mission-icon', text: '🎯' }),
+            el('div', { class: 'stack grow', style: 'gap:2px' }, [
+              el('span', { class: 'mission-name', text: 'No mission this week' }),
+              el('span', { class: 'tiny', text: isLeader ? 'Pick one and the whole crew runs it together.' : 'Your captain has not set one yet.' }),
+            ]),
+          ]),
+          isLeader ? el('button', {
+            class: 'btn btn--primary btn--block', type: 'button', text: "Set this week's mission",
+            onclick: () => this.openMissionPicker(crew.id),
+          }) : null,
+        ]);
+      }
+
+      const def = status.def;
+      const fmt = (v) => def.unit === 'dist' ? `${Units.distText(v)} ${Units.distLabel()}`
+        : def.unit === 'area' ? `${Units.areaText(v)} ${Units.areaLabel()}`
+          : String(Math.round(v));
+
+      return el('div', { class: 'mission', 'data-done': String(!!status.mission.completedAt || status.complete) }, [
+        el('div', { class: 'row' }, [
+          el('span', { class: 'mission-icon', text: def.icon }),
+          el('div', { class: 'stack grow', style: 'gap:2px' }, [
+            el('span', { class: 'mission-name', text: def.name }),
+            el('span', { class: 'tiny', text: `${def.note} · ${status.mission.sizeName}` }),
+          ]),
+          el('span', { class: 'mission-xp', text: `+${status.mission.xp}` }),
+        ]),
+        el('div', { class: 'bar' }, [
+          el('i', { style: `width:${clamp(status.progress * 100, 2, 100)}%` + (status.complete ? ';background:var(--ok)' : '') }),
+        ]),
+        el('div', { class: 'row row--between' }, [
+          el('span', { class: 'mission-count', style: status.complete ? 'color:var(--ok)' : '', text: `${fmt(status.have)} / ${fmt(status.need)}` }),
+          el('span', { class: 'tiny', text: status.complete ? 'Cleared together' : 'Resets Monday' }),
+        ]),
+        isLeader && !status.complete ? el('button', {
+          class: 'btn btn--ghost btn--block', type: 'button', text: 'Change mission',
+          style: 'padding:9px;font-size:12px',
+          onclick: () => this.openMissionPicker(crew.id),
+        }) : null,
+      ]);
+    },
+
+    openMissionPicker(crewId) {
+      const crew = M.Crew.all(State.data).find((c) => c.id === crewId);
+      if (!crew) return;
+      const body = $('#crewSheetBody');
+      body.innerHTML = '';
+
+      const options = M.Crew.missionOptions(crew);
+      const rows = options.map((option) => {
+        const fmt = option.def.unit === 'dist' ? `${Units.distText(option.target)} ${Units.distLabel()}`
+          : option.def.unit === 'area' ? `${Units.areaText(option.target)} ${Units.areaLabel()}`
+            : String(option.target);
+        return el('button', { class: 'mission-option', type: 'button' }, [
+          el('span', { class: 'mission-icon', text: option.def.icon }),
+          el('div', { class: 'stack grow', style: 'gap:2px' }, [
+            el('span', { style: 'font-weight:700;font-size:14px', text: `${option.def.name} · ${option.size.name}` }),
+            el('span', { class: 'tiny', text: `${fmt} — ${option.def.note}` }),
+          ]),
+          el('span', { class: 'mission-xp', text: `+${option.xp}` }),
+        ]);
+      });
+
+      rows.forEach((row, i) => row.addEventListener('click', () => {
+        const result = State.crewAction((st) => M.Crew.setMission(st, crewId, options[i].key));
+        if (result.error) { this.toast(result.error); return; }
+        this.toast(`This week: <b>${options[i].def.name}</b>`);
+        this.openCrewSheet(crewId);
+        this.renderCrew();
+      }));
+
+      body.appendChild(el('div', { class: 'stack' }, [
+        el('h3', { style: 'font-size:20px', text: "This week's mission" }),
+        el('p', { class: 'muted', text: `Targets scale with your ${M.Crew.memberCount(crew)} members, so the ask is the same whatever the crew size. Clearing it earns the crew XP — the only way to climb a tier.` }),
+      ].concat(rows).concat([
+        el('button', { class: 'btn btn--ghost btn--block', type: 'button', text: 'Back', onclick: () => this.openCrewSheet(crewId) }),
+      ])));
+    },
+
+    /** The captain's board. Members read it; only the captain writes. */
+    noticeBoard(crew) {
+      const isLeader = M.Crew.isLeader(crew);
+      const notices = M.Crew.notices(crew);
+      const parts = [
+        el('div', { class: 'row row--between' }, [
+          el('span', { class: 'card-title', text: `Notice board${notices.length ? ` · ${notices.length}` : ''}` }),
+          isLeader ? el('button', {
+            class: 'chip', type: 'button', text: '+ Post',
+            onclick: () => {
+              const text = window.prompt('Post a notice to the crew');
+              if (text === null) return;
+              const result = State.crewAction((st) => M.Crew.postNotice(st, crew.id, text));
+              if (result.error) { this.toast(result.error); return; }
+              this.toast('Notice posted to the crew');
+              this.openCrewSheet(crew.id);
+              this.renderCrew();
+            },
+          }) : null,
+        ]),
+      ];
+
+      if (!notices.length) {
+        parts.push(el('div', { class: 'empty', text: isLeader ? 'Nothing posted yet. Your crew sees whatever you put here.' : 'Your captain has not posted anything yet.' }));
+      } else {
+        notices.forEach((notice) => {
+          parts.push(el('div', { class: 'notice' }, [
+            el('div', { class: 'stack grow', style: 'gap:0' }, [
+              el('p', { text: notice.text }),
+              el('span', { class: 'notice-meta', text: `${notice.by} · ${relTime(notice.at)}` }),
+            ]),
+            isLeader ? el('button', {
+              class: 'icon-btn icon-btn--no', type: 'button', text: '✕', 'aria-label': 'Remove notice',
+              onclick: () => {
+                State.crewAction((st) => M.Crew.removeNotice(st, crew.id, notice.id));
+                this.openCrewSheet(crew.id);
+                this.renderCrew();
+              },
+            }) : null,
+          ]));
+        });
+      }
+      return parts;
     },
 
     openCreateCrew() {
@@ -864,6 +1037,23 @@
         ]),
         el('p', { class: 'tiny', text: `Meets ${crew.schedule.day} at ${crew.schedule.time} · ${crew.schedule.spot}` }),
       ];
+
+      // Level, then the week's mission, then the board — what the crew is
+      // doing right now, before who is in it.
+      const level = M.Crew.level(crew);
+      parts.push(el('div', { class: 'stack', style: 'gap:6px' }, [
+        el('div', { class: 'row row--between' }, [
+          el('span', { class: 'crew-tier', text: `Tier ${level.tier.index} · ${level.tier.name}` }),
+          el('span', { class: 'tiny', text: `${crew.missionsDone || 0} missions cleared` }),
+        ]),
+        el('div', { class: 'tier-pips' }, M.Crew.CREW_TIERS.map((t) => el('i', { 'data-on': String(t.index <= level.tier.index) }))),
+        el('span', { class: 'tiny', text: level.tier.note }),
+      ]));
+
+      if (isMember || isLeader) {
+        parts.push(this.missionBlock(crew));
+        this.noticeBoard(crew).forEach((node) => parts.push(node));
+      }
 
       // Captain's desk: requests first, because they are the thing waiting.
       if (isLeader && crew.requests.length) {

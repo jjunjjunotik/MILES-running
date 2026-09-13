@@ -74,8 +74,22 @@ distance, join an open one or ask to join a reviewed one, or start your own —
 which makes you its captain. Captains get the tools that being a captain
 implies: approve or decline join requests, promote members to pacer, remove
 people, edit the crew's name, tagline and regular run, hand the crew to someone
-else, or disband it. Everything else is refused for anyone who is not the
-captain.
+else, or disband it.
+
+Captains also run the crew's week:
+
+- **Notice board** — post announcements the whole crew reads. Newest sits on the
+  crew's front page; the rest are on the board.
+- **Weekly mission** — pick one goal for the week and everybody's running counts
+  toward it: cover the ground, turn out, take ground, line up, or nobody sits
+  out. Targets scale with crew size, so the ask is the same whether there are
+  three of you or twelve. Clearing it earns the crew XP, once per week.
+- **Four tiers** — Startline, Pack, Legion, Dynasty. A crew climbs **only** by
+  clearing weekly missions, so a big crew that never finishes a week stays at
+  Startline.
+
+Every captain action is refused in the model, not merely hidden in the UI: a
+member who reaches for one is turned away.
 
 ---
 
