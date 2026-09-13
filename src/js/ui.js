@@ -71,11 +71,36 @@
 
       const screen = $('#screen-' + tab);
       if (screen) screen.scrollTop = 0;
+      this.pinShell();
 
       if (tab === 'territory') this.renderTerritory();
       if (tab === 'feed') this.renderFeed();
       if (tab === 'crew') this.renderCrew();
       if (tab === 'home') this.maps.home.invalidate();
+    },
+
+    /* --- Sheets --------------------------------------------------------------
+       The phone shell is `overflow: hidden`, but a hidden-overflow box is still
+       scrollable programmatically: focusing or tapping a field inside a sheet
+       makes the browser scroll ancestors to reveal it, and the whole app ends
+       up shifted with no way to scroll it back. Opening and closing a sheet
+       goes through here so the shell is always pinned back to the top. ---- */
+
+    openSheet(id) {
+      $(id).hidden = false;
+      this.pinShell();
+    },
+
+    closeSheet(id) {
+      $(id).hidden = true;
+      this.pinShell();
+    },
+
+    /** Undoes any scroll the browser applied to the phone shell itself. */
+    pinShell() {
+      const shell = $('#app');
+      if (shell && shell.scrollTop) shell.scrollTop = 0;
+      if (shell && shell.scrollLeft) shell.scrollLeft = 0;
     },
 
     toast(html, kind) {
@@ -125,18 +150,18 @@
       });
 
       $('#homeAvatar').addEventListener('click', () => this.go('profile'));
-      $('#startSolo').addEventListener('click', () => { $('#soloSheet').hidden = false; });
+      $('#startSolo').addEventListener('click', () => { this.openSheet('#soloSheet'); });
       $('#startDuo').addEventListener('click', () => this.openRaceLobby());
       $('#locateBtn').addEventListener('click', () => this.locate());
 
       $$('#soloSheet [data-kind]').forEach((btn) => {
         btn.addEventListener('click', () => {
-          $('#soloSheet').hidden = true;
+          this.closeSheet('#soloSheet');
           this.beginRun({ kind: btn.dataset.kind });
         });
       });
       $('#soloSheet').addEventListener('click', (event) => {
-        if (event.target === $('#soloSheet')) $('#soloSheet').hidden = true;
+        if (event.target === $('#soloSheet')) this.closeSheet('#soloSheet');
       });
 
       $$('#racePicker button').forEach((btn) => {
@@ -147,13 +172,13 @@
       });
 
       $('#lobbyAddFriend').addEventListener('click', () => { if (this.promptFriend()) this.renderFriendPicker(); });
-      $('#duoCancel').addEventListener('click', () => { $('#duoSheet').hidden = true; });
+      $('#duoCancel').addEventListener('click', () => { this.closeSheet('#duoSheet'); });
       $('#duoStart').addEventListener('click', () => {
         if (!this.pendingRivals.length) {
           this.toast('Pick at least one runner to race');
           return;
         }
-        $('#duoSheet').hidden = true;
+        this.closeSheet('#duoSheet');
         this.beginRun({ kind: 'race', rivals: this.pendingRivals.slice(), target: this.raceTarget });
       });
     },
@@ -282,7 +307,7 @@
       this.pendingRivals = State.data.friends.slice(0, 1);
       $$('#racePicker button').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.distance) === this.raceTarget)));
       this.renderFriendPicker();
-      $('#duoSheet').hidden = false;
+      this.openSheet('#duoSheet');
     },
 
     renderFriendPicker() {
@@ -694,7 +719,7 @@
     bindCrew() {
       $('#createCrewBtn').addEventListener('click', () => this.openCreateCrew());
       $('#crewSheet').addEventListener('click', (event) => {
-        if (event.target === $('#crewSheet')) $('#crewSheet').hidden = true;
+        if (event.target === $('#crewSheet')) this.closeSheet('#crewSheet');
       });
     },
 
@@ -988,7 +1013,7 @@
         el('div', { class: 'row', style: 'gap:var(--s-3)' }, [day, time]),
         spot,
         el('div', { class: 'row', style: 'gap:var(--s-3);margin-top:var(--s-3)' }, [
-          el('button', { class: 'btn grow', type: 'button', text: 'Cancel', onclick: () => { $('#crewSheet').hidden = true; } }),
+          el('button', { class: 'btn grow', type: 'button', text: 'Cancel', onclick: () => { this.closeSheet('#crewSheet'); } }),
           el('button', {
             class: 'btn btn--primary grow', type: 'button', text: 'Found it',
             onclick: () => {
@@ -998,7 +1023,7 @@
                 openJoin: open.value === 'open',
               }));
               if (result.error) { this.toast(result.error); return; }
-              $('#crewSheet').hidden = true;
+              this.closeSheet('#crewSheet');
               this.renderCrew();
               this.toast(`<b>${result.crew.name}</b> is yours — ${result.crew.requests.length} runners already asked to join`);
             },
@@ -1006,8 +1031,9 @@
         ]),
       ]));
 
-      $('#crewSheet').hidden = false;
-      setTimeout(() => name.focus(), 60);
+      this.openSheet('#crewSheet');
+      // preventScroll stops the browser scrolling ancestors to reveal it.
+      setTimeout(() => name.focus({ preventScroll: true }), 60);
     },
 
     openCrewSheet(crewId) {
@@ -1122,7 +1148,7 @@
           onclick: () => {
             if (!window.confirm(`Disband ${crew.name}? This cannot be undone.`)) return;
             State.crewAction((st) => M.Crew.disband(st, crew.id));
-            $('#crewSheet').hidden = true;
+            this.closeSheet('#crewSheet');
             this.renderCrew();
             this.toast('Crew disbanded');
           },
@@ -1133,7 +1159,7 @@
           onclick: () => {
             const r = State.crewAction((st) => M.Crew.leave(st, crew.id));
             if (r.error) { this.toast(r.error); return; }
-            $('#crewSheet').hidden = true;
+            this.closeSheet('#crewSheet');
             this.renderCrew();
             this.toast('You left the crew');
           },
@@ -1146,7 +1172,7 @@
             if (crew.pendingMe) return;
             const r = State.crewAction((st) => M.Crew.join(st, crew.id));
             if (r.error) { this.toast(r.error); return; }
-            $('#crewSheet').hidden = true;
+            this.closeSheet('#crewSheet');
             this.renderCrew();
             this.toast(r.pending ? `Request sent to <b>${crew.name}</b>` : `You are in <b>${crew.name}</b>`);
           },
@@ -1155,7 +1181,7 @@
       parts.push(el('div', { class: 'row', style: 'gap:var(--s-3);margin-top:var(--s-4)' }, actions));
 
       parts.forEach((node) => body.appendChild(node));
-      $('#crewSheet').hidden = false;
+      this.openSheet('#crewSheet');
 
       function cell(value, label) {
         return el('div', { class: 'cell' }, [
