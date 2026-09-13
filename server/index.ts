@@ -14,6 +14,17 @@ import {
 import { buildDemoAnalysis } from "../shared/demo.js";
 import type { AnalyzeResponse } from "../shared/analysis.js";
 import {
+  SetupError,
+  isSetupEnabled,
+  loopbackOnly,
+  readStatus,
+  validateKey,
+  verifyGeminiKey,
+  writeKeyToEnvFile,
+  SETUP_KEYS,
+  type SetupProviderId,
+} from "./setup.js";
+import {
   auditCredentials,
   createRateLimiter,
   redact,
@@ -61,7 +72,71 @@ app.get("/api/health", (_req, res) => {
     // 모델 이름은 공개해도 무해하다. 키는 어떤 형태로도 내보내지 않는다.
     provider: provider.label,
     model: provider.model,
+    setupAvailable: isSetupEnabled(),
   });
+});
+
+/**
+ * 설정 화면용. 같은 기기(루프백)에서만 열리고, 키 값은 절대 돌려주지 않는다.
+ */
+app.get("/api/setup", loopbackOnly, (_req, res) => {
+  res.json({ ok: true, ...readStatus() });
+});
+
+app.post("/api/setup/key", loopbackOnly, async (req, res) => {
+  const { provider, key, verify } = req.body ?? {};
+
+  if (typeof provider !== "string" || !(provider in SETUP_KEYS)) {
+    res.status(400).json({ ok: false, error: "알 수 없는 프로바이더입니다." });
+    return;
+  }
+  if (typeof key !== "string") {
+    res.status(400).json({ ok: false, error: "키가 전달되지 않았습니다." });
+    return;
+  }
+
+  const id = provider as SetupProviderId;
+  const envName = SETUP_KEYS[id];
+
+  try {
+    const clean = validateKey(id, key);
+
+    // 저장 전에 확인해, 잘못된 키로 파일을 덮어쓰지 않게 한다.
+    let verifyNote: string | null = null;
+    if (verify !== false && id === "gemini") {
+      try {
+        await verifyGeminiKey(clean);
+      } catch (err) {
+        if (err instanceof SetupError) {
+          // 인증 실패는 저장하지 않고 되돌려 준다.
+          if (err.message.includes("인증되지 않았습니다")) {
+            res.status(400).json({ ok: false, error: err.message });
+            return;
+          }
+          verifyNote = err.message;
+        }
+      }
+    }
+
+    writeKeyToEnvFile(envName, clean);
+    // 지금 프로세스에도 즉시 반영해 재시작 없이 쓸 수 있게 한다.
+    process.env[envName] = clean;
+
+    console.log(`${envName} 가 설정 화면을 통해 저장되었습니다.`);
+    res.json({
+      ok: true,
+      verified: verifyNote === null,
+      note: verifyNote,
+      ...readStatus(),
+    });
+  } catch (err) {
+    if (err instanceof SetupError) {
+      res.status(400).json({ ok: false, error: err.message });
+      return;
+    }
+    console.error(redact(`setup failed: ${String(err)}`));
+    res.status(500).json({ ok: false, error: "키를 저장하지 못했습니다." });
+  }
 });
 
 app.post("/api/analyze", sameOriginOnly, analyzeLimiter, async (req, res) => {

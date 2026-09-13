@@ -53,6 +53,18 @@ Claude 비전 모델이 6개 항목을 관찰해 설명하고, 일반적인 생�
 
 ### 키 넣기
 
+**앱 화면에서 (권장)** — `npm run dev` 로 띄운 뒤 **프로필 탭 → API 키** 에서
+키를 붙여넣고 저장하면 됩니다. `.env` 에 기록되고 권한이 `600` 으로 맞춰지며,
+서버 재시작 없이 즉시 반영됩니다. 저장 전에 실제로 통하는 키인지 확인하므로
+잘못된 값으로 파일을 덮어쓰지 않습니다.
+
+이 설정 화면은 **앱을 실행 중인 기기(루프백)에서만** 열립니다. 다른 기기에서
+접근하면 403 으로 거절되고, `NODE_ENV=production` 이면 기본으로 꺼집니다
+(`ALLOW_SETUP=true` 로 명시하면 열 수 있지만, 공개 서버에서는 권장하지 않습니다).
+저장된 키는 화면으로 다시 내려오지 않고 끝 4자리만 표시됩니다.
+
+**파일을 직접 편집해도 됩니다**
+
 ```bash
 cp .env.example .env
 chmod 600 .env                       # 본인만 읽도록
@@ -174,6 +186,7 @@ server/claude.ts       Claude 호출과 오류 매핑
 server/gemini.ts       Gemini 호출과 오류 매핑
 server/analyze.ts      프로바이더 선택
 server/env.ts          .env 로드 (다른 모듈보다 먼저)
+server/setup.ts        로컬 전용 키 입력 API (루프백에서만)
 server/security.ts     키 마스킹, 속도 제한, 오리진 검사, 보안 헤더
 server/index.ts        API 프록시 + 정적 파일 서빙
 web/src/lib/           이미지 전처리, 로컬 저장소, API 클라이언트, 공유 카드 렌더링
