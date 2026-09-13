@@ -8,12 +8,13 @@
     "dev": "concurrently -n server,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
     "dev:server": "tsx watch server/index.ts",
     "dev:web": "vite",
-    "build": "tsc -p tsconfig.json --noEmit && vite build",
-    "build:demo": "node scripts/build-demo.mjs",
+    "build": "tsc -p tsconfig.json --noEmit && vite build && npm run check:secrets",
+    "build:demo": "node scripts/build-demo.mjs && npm run check:secrets",
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.server.json --noEmit",
     "start": "tsx server/index.ts",
     "preview": "vite preview",
-    "smoke": "node scripts/smoke.mjs"
+    "smoke": "node scripts/smoke.mjs",
+    "check:secrets": "node scripts/check-secrets.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

@@ -1,0 +1,8 @@
+#!/bin/sh
+# 커밋 전에 자격증명이 섞였는지 검사한다.
+#
+# 켜기:  git config core.hooksPath .githooks
+# 끄기:  git config --unset core.hooksPath
+#
+# 한 번 푸시된 키는 되돌릴 수 없다. 커밋 전에 막는 것이 유일하게 확실한 방어다.
+exec node scripts/check-secrets.mjs

@@ -11,13 +11,25 @@ import {
 } from "./analyze.js";
 import { buildDemoAnalysis } from "../shared/demo.js";
 import type { AnalyzeResponse } from "../shared/analysis.js";
+import {
+  auditCredentials,
+  createRateLimiter,
+  redact,
+  sameOriginOnly,
+  securityHeaders,
+} from "./security.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = Number(process.env.PORT ?? 8787);
 const ALLOW_DEMO = process.env.ALLOW_DEMO_FALLBACK !== "false";
 
-// 업로드 이미지는 3MB 이내로 제한한다. 클라이언트에서 미리 1600px 이하로 줄여 보낸다.
+// 리버스 프록시 뒤에서도 실제 클라이언트 IP 로 속도 제한이 걸리게 한다.
+app.set("trust proxy", process.env.TRUST_PROXY === "true" ? 1 : false);
+app.disable("x-powered-by");
+app.use(securityHeaders);
+
+// 업로드 이미지는 클라이언트에서 미리 1280px 이하로 줄여 보낸다.
 app.use(express.json({ limit: "6mb" }));
 
 // 이미지가 들어오는 경로이므로 본문은 어떤 형태로도 로깅하지 않는다.
@@ -26,6 +38,16 @@ app.use((req, _res, next) => {
     console.log(`${req.method} ${req.path}`);
   }
   next();
+});
+
+/**
+ * 분석 한 번이 곧 API 비용이다. 엔드포인트가 노출되어도 남이 내 키로
+ * 마음껏 호출하지 못하도록 같은 출처만 받고 횟수를 제한한다.
+ */
+const analyzeLimiter = createRateLimiter({
+  perIp: Number(process.env.RATE_LIMIT_PER_IP ?? 12),
+  global: Number(process.env.RATE_LIMIT_GLOBAL ?? 240),
+  windowMs: Number(process.env.RATE_LIMIT_WINDOW_MS ?? 5 * 60 * 1000),
 });
 
 app.get("/api/health", (_req, res) => {
@@ -37,7 +59,7 @@ app.get("/api/health", (_req, res) => {
   });
 });
 
-app.post("/api/analyze", async (req, res) => {
+app.post("/api/analyze", sameOriginOnly, analyzeLimiter, async (req, res) => {
   const send = (status: number, body: AnalyzeResponse) =>
     res.status(status).json(body);
 
@@ -117,7 +139,7 @@ app.post("/api/analyze", async (req, res) => {
   } catch (err) {
     if (err instanceof AnalyzeError) {
       // 오류 메시지만 남기고 이미지나 요청 본문은 남기지 않는다.
-      console.error(`analyze failed: ${err.code}`);
+      console.error(redact(`analyze failed: ${err.code}`));
       const status =
         err.code === "rate_limited" ? 429 : err.code === "declined" ? 422 : 502;
       return send(status, { ok: false, code: err.code, error: err.message });
@@ -142,11 +164,24 @@ app.get(/^\/(?!api\/).*/, (_req, res) => {
 
 app.listen(PORT, () => {
   console.log(`NailSense API listening on http://localhost:${PORT}`);
+
   if (!hasCredentials()) {
     console.log(
       ALLOW_DEMO
         ? "ANTHROPIC_API_KEY 가 없어 데모 응답으로 동작합니다."
         : "ANTHROPIC_API_KEY 가 없고 데모도 꺼져 있어 분석 요청이 거절됩니다.",
     );
+  } else {
+    // 키가 설정되었다는 사실만 알리고, 값이나 일부는 절대 찍지 않는다.
+    console.log("ANTHROPIC_API_KEY 가 설정되었습니다. 실제 분석으로 동작합니다.");
   }
+
+  for (const warning of auditCredentials()) {
+    console.warn(`[보안] ${warning}`);
+  }
+});
+
+// 처리되지 않은 오류가 스택과 함께 응답으로 나가지 않게 막는다.
+process.on("unhandledRejection", (reason) => {
+  console.error(redact(`unhandled rejection: ${String(reason)}`));
 });
