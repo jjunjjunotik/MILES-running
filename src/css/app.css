@@ -329,6 +329,12 @@ p { margin: 0; }
 }
 .sheet::-webkit-scrollbar { display: none; }
 
+/* Stacks above another sheet, and above the toasts. */
+.sheet-scrim--top { z-index: 45; }
+
+.ask-title { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; }
+.ask-body { font-size: 13.5px; line-height: 1.55; color: var(--text-mid); }
+
 .sheet-grip {
   width: 40px; height: 4px;
   border-radius: var(--r-pill);

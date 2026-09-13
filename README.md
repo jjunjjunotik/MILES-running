@@ -86,12 +86,16 @@ Captains also run the crew's week:
   It is cropped square and shrunk to 256 px before it is stored, because a
   full-size photo will not fit in `localStorage`. Without one, a crew shows its
   initials.
-- **Notice board** — post announcements the whole crew reads. Newest sits on the
-  crew's front page; the rest are on the board.
+- **Notice board** — tap the board to post an announcement the whole crew reads.
+  Newest sits on the crew's front page; the rest are on the board.
 - **Weekly mission** — pick one goal for the week and everybody's running counts
   toward it: cover the ground, turn out, take ground, line up, or nobody sits
   out. Targets scale with crew size, so the ask is the same whether there are
   three of you or twelve. Clearing it earns the crew XP, once per week.
+A crew with other runners in it cannot be deleted. Pressing **Disband** asks the
+captain to choose who takes it over; the crew carries on under them and the old
+captain stays on as a member. Only a crew of one disbands outright.
+
 - **Four tiers** — Startline, Pack, Legion, Dynasty. A crew climbs **only** by
   clearing weekly missions, so a big crew that never finishes a week stays at
   Startline.

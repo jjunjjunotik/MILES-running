@@ -58,6 +58,10 @@
       $$('#tabbar button').forEach((btn) => {
         btn.addEventListener('click', () => this.go(btn.dataset.tab));
       });
+      $('#askSheet').addEventListener('click', (event) => {
+        if (event.target === $('#askSheet') && this._askDismiss) this._askDismiss();
+      });
+
       $$('[data-goto]').forEach((btn) => {
         btn.addEventListener('click', () => this.go(btn.dataset.goto));
       });
@@ -101,6 +105,77 @@
       const shell = $('#app');
       if (shell && shell.scrollTop) shell.scrollTop = 0;
       if (shell && shell.scrollLeft) shell.scrollLeft = 0;
+    },
+
+    /* --- Dialogs --------------------------------------------------------------
+       window.confirm and window.prompt do not work inside a sandboxed iframe:
+       confirm returns false and prompt returns null, with nothing shown and no
+       error. Every destructive confirmation and every text entry in the app used
+       them, which made those actions silently do nothing wherever the app is
+       embedded. These replace them. ------------------------------------------ */
+
+    /** @returns {Promise<boolean>} */
+    confirm(options) {
+      const opts = options || {};
+      return new Promise((resolve) => {
+        const body = $('#askBody');
+        body.innerHTML = '';
+
+        const finish = (answer) => { this.closeSheet('#askSheet'); resolve(answer); };
+        this._askDismiss = () => finish(false);
+
+        body.appendChild(el('div', { class: 'stack' }, [
+          el('h3', { class: 'ask-title', text: opts.title || 'Are you sure?' }),
+          opts.body ? el('p', { class: 'ask-body', text: opts.body }) : null,
+          el('div', { class: 'row', style: 'gap:var(--s-3);margin-top:var(--s-4)' }, [
+            el('button', { class: 'btn grow', type: 'button', text: opts.cancelLabel || 'Cancel', onclick: () => finish(false) }),
+            el('button', {
+              class: 'btn grow ' + (opts.danger ? 'btn--danger' : 'btn--primary'),
+              type: 'button', text: opts.confirmLabel || 'Confirm',
+              onclick: () => finish(true),
+            }),
+          ]),
+        ]));
+        this.openSheet('#askSheet');
+      });
+    },
+
+    /** @returns {Promise<string|null>} null when dismissed. */
+    promptText(options) {
+      const opts = options || {};
+      return new Promise((resolve) => {
+        const body = $('#askBody');
+        body.innerHTML = '';
+
+        const field = opts.multiline
+          ? el('textarea', { class: 'input', rows: '4', placeholder: opts.placeholder || '', maxlength: String(opts.maxLength || 280) })
+          : el('input', { class: 'input', placeholder: opts.placeholder || '', maxlength: String(opts.maxLength || 120) });
+        field.value = opts.value || '';
+
+        const finish = (answer) => { this.closeSheet('#askSheet'); resolve(answer); };
+        this._askDismiss = () => finish(null);
+        const submit = () => {
+          const value = field.value.trim();
+          if (!value) { this.toast(opts.emptyMessage || 'That needs something in it'); return; }
+          finish(value);
+        };
+
+        if (!opts.multiline) {
+          field.addEventListener('keydown', (event) => { if (event.key === 'Enter') submit(); });
+        }
+
+        body.appendChild(el('div', { class: 'stack' }, [
+          el('h3', { class: 'ask-title', text: opts.title || '' }),
+          opts.body ? el('p', { class: 'ask-body', text: opts.body }) : null,
+          field,
+          el('div', { class: 'row', style: 'gap:var(--s-3);margin-top:var(--s-3)' }, [
+            el('button', { class: 'btn grow', type: 'button', text: 'Cancel', onclick: () => finish(null) }),
+            el('button', { class: 'btn btn--primary grow', type: 'button', text: opts.confirmLabel || 'Save', onclick: submit }),
+          ]),
+        ]));
+        this.openSheet('#askSheet');
+        setTimeout(() => field.focus({ preventScroll: true }), 60);
+      });
     },
 
     toast(html, kind) {
@@ -171,7 +246,7 @@
         });
       });
 
-      $('#lobbyAddFriend').addEventListener('click', () => { if (this.promptFriend()) this.renderFriendPicker(); });
+      $('#lobbyAddFriend').addEventListener('click', () => this.promptFriend(() => this.renderFriendPicker()));
       $('#duoCancel').addEventListener('click', () => { this.closeSheet('#duoSheet'); });
       $('#duoStart').addEventListener('click', () => {
         if (!this.pendingRivals.length) {
@@ -344,16 +419,20 @@
     },
 
     /** Shared by the lobby and the profile: one prompt, one new friend. */
-    promptFriend() {
-      const name = window.prompt('Who are you adding?');
-      if (name === null) return null;
-      const friend = State.addFriend(name);
-      if (!friend) {
-        this.toast(name.trim() ? 'You already have a friend by that name' : 'That needs a name');
-        return null;
-      }
-      this.toast(`<b>${friend.name}</b> can now line up with you`);
-      return friend;
+    promptFriend(after) {
+      this.promptText({
+        title: 'Add a friend',
+        body: 'They can line up in your races straight away.',
+        placeholder: 'Their name',
+        confirmLabel: 'Add',
+        emptyMessage: 'That needs a name',
+      }).then((name) => {
+        if (name === null) return;
+        const friend = State.addFriend(name);
+        if (!friend) { this.toast('You already have a friend by that name'); return; }
+        this.toast(`<b>${friend.name}</b> can now line up with you`);
+        if (after) after(friend);
+      });
     },
 
     /* --- Run --------------------------------------------------------------- */
@@ -965,43 +1044,55 @@
       const isLeader = M.Crew.isLeader(crew);
       const notices = M.Crew.notices(crew);
       const parts = [
-        el('div', { class: 'row row--between' }, [
-          el('span', { class: 'card-title', text: `Notice board${notices.length ? ` · ${notices.length}` : ''}` }),
+        el('span', { class: 'card-title', text: `Notice board${notices.length ? ` · ${notices.length}` : ''}` }),
+      ];
+
+      const compose = () => {
+        this.promptText({
+          title: 'Post a notice',
+          body: 'Everyone in the crew sees this.',
+          placeholder: 'What does the crew need to know?',
+          multiline: true,
+          maxLength: 280,
+          confirmLabel: 'Post',
+          emptyMessage: 'A notice needs something in it',
+        }).then((text) => {
+          if (text === null) return;
+          const result = State.crewAction((st) => M.Crew.postNotice(st, crew.id, text));
+          if (result.error) { this.toast(result.error); return; }
+          this.toast('Notice posted to the crew');
+          this.openCrewSheet(crew.id);
+          this.renderCrew();
+        });
+      };
+
+      if (isLeader) {
+        // The board is the button: tapping it writes a notice.
+        parts.push(el('button', { class: 'notice-compose', type: 'button', onclick: compose }, [
+          el('span', { class: 'notice-compose-mark', text: '+' }),
+          el('span', { text: notices.length ? 'Write a notice…' : 'Write the first notice — your crew sees whatever you put here.' }),
+        ]));
+      } else if (!notices.length) {
+        parts.push(el('div', { class: 'empty', text: 'Your captain has not posted anything yet.' }));
+      }
+
+      notices.forEach((notice) => {
+        parts.push(el('div', { class: 'notice' }, [
+          el('div', { class: 'stack grow', style: 'gap:0' }, [
+            el('p', { text: notice.text }),
+            el('span', { class: 'notice-meta', text: `${notice.by} · ${relTime(notice.at)}` }),
+          ]),
           isLeader ? el('button', {
-            class: 'chip', type: 'button', text: '+ Post',
+            class: 'icon-btn icon-btn--no', type: 'button', text: '✕', 'aria-label': 'Remove notice',
             onclick: () => {
-              const text = window.prompt('Post a notice to the crew');
-              if (text === null) return;
-              const result = State.crewAction((st) => M.Crew.postNotice(st, crew.id, text));
-              if (result.error) { this.toast(result.error); return; }
-              this.toast('Notice posted to the crew');
+              State.crewAction((st) => M.Crew.removeNotice(st, crew.id, notice.id));
               this.openCrewSheet(crew.id);
               this.renderCrew();
             },
           }) : null,
-        ]),
-      ];
+        ]));
+      });
 
-      if (!notices.length) {
-        parts.push(el('div', { class: 'empty', text: isLeader ? 'Nothing posted yet. Your crew sees whatever you put here.' : 'Your captain has not posted anything yet.' }));
-      } else {
-        notices.forEach((notice) => {
-          parts.push(el('div', { class: 'notice' }, [
-            el('div', { class: 'stack grow', style: 'gap:0' }, [
-              el('p', { text: notice.text }),
-              el('span', { class: 'notice-meta', text: `${notice.by} · ${relTime(notice.at)}` }),
-            ]),
-            isLeader ? el('button', {
-              class: 'icon-btn icon-btn--no', type: 'button', text: '✕', 'aria-label': 'Remove notice',
-              onclick: () => {
-                State.crewAction((st) => M.Crew.removeNotice(st, crew.id, notice.id));
-                this.openCrewSheet(crew.id);
-                this.renderCrew();
-              },
-            }) : null,
-          ]));
-        });
-      }
       return parts;
     },
 
@@ -1291,13 +1382,7 @@
         actions.push(el('button', { class: 'btn grow', type: 'button', text: 'Edit crew', onclick: () => this.editCrew(crew.id) }));
         actions.push(el('button', {
           class: 'btn btn--danger grow', type: 'button', text: 'Disband',
-          onclick: () => {
-            if (!window.confirm(`Disband ${crew.name}? This cannot be undone.`)) return;
-            State.crewAction((st) => M.Crew.disband(st, crew.id));
-            this.closeSheet('#crewSheet');
-            this.renderCrew();
-            this.toast('Crew disbanded');
-          },
+          onclick: () => this.disbandCrew(crew.id),
         }));
       } else if (isMember) {
         actions.push(el('button', {
@@ -1337,6 +1422,81 @@
       }
     },
 
+    /**
+     * A crew with other runners in it is not yours to delete — somebody has to
+     * take it. Disbanding is only for a crew of one; otherwise the captain
+     * picks a successor and the crew carries on without them.
+     */
+    disbandCrew(crewId) {
+      const crew = M.Crew.all(State.data).find((c) => c.id === crewId);
+      if (!crew) return;
+      const others = crew.members.filter((m) => m.id !== 'me');
+
+      if (!others.length) {
+        this.confirm({
+          title: `Disband ${crew.name}?`,
+          body: 'You are its only runner, so the crew goes with you. This cannot be undone.',
+          confirmLabel: 'Disband',
+          danger: true,
+        }).then((ok) => {
+          if (!ok) return;
+          const result = State.crewAction((st) => M.Crew.disband(st, crewId));
+          if (result.error) { this.toast(result.error); return; }
+          this.closeSheet('#crewSheet');
+          this.renderCrew();
+          this.toast('Crew disbanded');
+        });
+        return;
+      }
+
+      this.chooseSuccessor(crewId);
+    },
+
+    /** Pick who takes the crew. Handing over is what lets a captain step away. */
+    chooseSuccessor(crewId) {
+      const crew = M.Crew.all(State.data).find((c) => c.id === crewId);
+      if (!crew) return;
+      const others = crew.members
+        .filter((m) => m.id !== 'me')
+        .sort((a, b) => (a.role === 'pacer' ? -1 : b.role === 'pacer' ? 1 : b.weekly - a.weekly));
+
+      const body = $('#crewSheetBody');
+      body.innerHTML = '';
+
+      const rows = others.map((member) => {
+        const row = el('button', { class: 'friend', type: 'button' }, [
+          el('span', { class: 'friend-avatar', style: `background:${member.color}`, text: member.initials }),
+          el('div', { class: 'stack grow', style: 'gap:3px' }, [
+            el('span', { style: 'font-weight:700;font-size:14px', text: member.name }),
+            el('span', { class: 'tiny', text: `${M.Crew.ROLES[member.role]} · ${Units.distText(member.weekly)} ${Units.distLabel()} this week` }),
+          ]),
+          el('span', { class: 'role-tag', 'data-role': member.role, text: M.Crew.ROLES[member.role] }),
+        ]);
+        row.addEventListener('click', () => {
+          this.confirm({
+            title: `Hand ${crew.name} to ${member.name}?`,
+            body: 'They take the member list, the notice board and the weekly mission. You stay on as a member and can leave whenever you like.',
+            confirmLabel: 'Hand over',
+          }).then((ok) => {
+            if (!ok) return;
+            const result = State.crewAction((st) => M.Crew.handOver(st, crewId, member.id));
+            if (result.error) { this.toast(result.error); return; }
+            this.toast(`<b>${member.name}</b> is now captain`);
+            this.openCrewSheet(crewId);
+            this.renderCrew();
+          });
+        });
+        return row;
+      });
+
+      body.appendChild(el('div', { class: 'stack' }, [
+        el('h3', { style: 'font-size:20px', text: 'Choose the next captain' }),
+        el('p', { class: 'muted', text: `${crew.name} has ${others.length} other runner${others.length === 1 ? '' : 's'} in it, so it cannot simply be deleted. Pick who takes it over — the crew carries on, and you become a member.` }),
+      ].concat(rows).concat([
+        el('button', { class: 'btn btn--ghost btn--block', type: 'button', text: 'Back', onclick: () => this.openCrewSheet(crewId) }),
+      ])));
+    },
+
     manageMember(crewId, memberId) {
       const crew = M.Crew.all(State.data).find((c) => c.id === crewId);
       const member = crew && crew.members.find((m) => m.id === memberId);
@@ -1366,15 +1526,26 @@
         el('button', {
           class: 'btn btn--block', type: 'button', text: 'Hand over the crew',
           onclick: () => {
-            if (!window.confirm(`Make ${member.name} captain? You become a member.`)) return;
-            act((st) => M.Crew.handOver(st, crewId, memberId), `${member.name} is now captain`);
+            this.confirm({
+              title: `Make ${member.name} captain?`,
+              body: 'They take the member list, the notice board and the weekly mission. You become a member.',
+              confirmLabel: 'Hand over',
+            }).then((ok) => {
+              if (ok) act((st) => M.Crew.handOver(st, crewId, memberId), `${member.name} is now captain`);
+            });
           },
         }),
         el('button', {
           class: 'btn btn--danger btn--block', type: 'button', text: 'Remove from crew',
           onclick: () => {
-            if (!window.confirm(`Remove ${member.name}?`)) return;
-            act((st) => M.Crew.remove(st, crewId, memberId), `${member.name} removed`);
+            this.confirm({
+              title: `Remove ${member.name}?`,
+              body: 'They lose their place in the crew and stop counting toward the weekly mission.',
+              confirmLabel: 'Remove',
+              danger: true,
+            }).then((ok) => {
+              if (ok) act((st) => M.Crew.remove(st, crewId, memberId), `${member.name} removed`);
+            });
           },
         }),
         el('button', { class: 'btn btn--ghost btn--block', type: 'button', text: 'Back', onclick: () => this.openCrewSheet(crewId) }),
@@ -1834,18 +2005,31 @@
       });
 
       $('#nameBtn').addEventListener('click', () => {
-        const next = window.prompt('What should other runners call you?', State.data.profile.name);
-        if (!next || !next.trim()) return;
-        State.setProfileName(next.trim());
-        this.toast(`You are now <b>${State.data.profile.name}</b>`);
+        this.promptText({
+          title: 'Runner name',
+          body: 'This is what your rivals see during a race.',
+          value: State.data.profile.name,
+          confirmLabel: 'Save',
+        }).then((next) => {
+          if (next === null) return;
+          State.setProfileName(next);
+          this.toast(`You are now <b>${State.data.profile.name}</b>`);
+        });
       });
 
       $('#resetBtn').addEventListener('click', () => {
-        if (!window.confirm('Delete every run, territory and quest on this device?')) return;
-        this._friendFeed = null;
-        State.reset();
-        this.go('home');
-        this.toast('MILES has been reset');
+        this.confirm({
+          title: 'Reset MILES?',
+          body: 'Every run, territory, crew and quest on this device is deleted. This cannot be undone.',
+          confirmLabel: 'Delete everything',
+          danger: true,
+        }).then((ok) => {
+          if (!ok) return;
+          this._friendFeed = null;
+          State.reset();
+          this.go('home');
+          this.toast('MILES has been reset');
+        });
       });
     },
 
@@ -1888,9 +2072,16 @@
           el('button', {
             class: 'chip', type: 'button', text: 'Remove',
             onclick: () => {
-              if (!window.confirm(`Remove ${f.name}?`)) return;
-              State.removeFriend(f.id);
-              this.toast(`<b>${f.name}</b> removed`);
+              this.confirm({
+                title: `Remove ${f.name}?`,
+                body: 'They will no longer appear in your race lobby.',
+                confirmLabel: 'Remove',
+                danger: true,
+              }).then((ok) => {
+                if (!ok) return;
+                State.removeFriend(f.id);
+                this.toast(`<b>${f.name}</b> removed`);
+              });
             },
           }),
         ]));

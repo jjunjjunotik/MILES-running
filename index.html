@@ -437,6 +437,17 @@
       </div>
     </div>
 
+    <!-- ================= ASK (confirm / compose) =================
+         The app's own dialogs. window.confirm and window.prompt are dead in a
+         sandboxed iframe — they return false and null with nothing shown — so
+         every decision and every piece of text input happens in here. -->
+    <div class="sheet-scrim sheet-scrim--top" id="askSheet" hidden>
+      <div class="sheet">
+        <div class="sheet-grip"></div>
+        <div id="askBody"></div>
+      </div>
+    </div>
+
     <!-- ================= TAB BAR ================= -->
     <nav class="tabbar" id="tabbar" role="tablist">
       <button type="button" role="tab" data-tab="home" aria-selected="true"><svg viewBox="0 0 24 24"><use href="#i-home"/></svg>Home</button>

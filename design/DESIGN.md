@@ -291,6 +291,21 @@ stats, and Kudos / Card actions.
 
 ---
 
+## 6.10 Dialogs
+
+The app never calls `window.confirm` or `window.prompt`. In a sandboxed iframe —
+which is where an embedded build runs — they do not open anything: `confirm`
+returns false and `prompt` returns null, silently. Every guarded action built on
+them therefore did nothing at all, with no error to notice. Confirmations and
+text entry are the app's own sheet, stacked above whatever opened it.
+
+The corollary is a rule about affordances: **a board that can be written to is
+its own button.** The notice board does not carry a separate control above it;
+tapping the board writes a notice, which is one fewer thing on screen and a
+target the size of the thing it acts on.
+
+---
+
 ## 7. Motion
 
 | Element | Duration | Curve |

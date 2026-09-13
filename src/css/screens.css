@@ -655,6 +655,35 @@
 .pacesetter b { font-family: var(--font-num); font-weight: 700; color: var(--accent); }
 .pacesetter-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 
+/* The board is its own compose button — no separate control above it. */
+.notice-compose {
+  display: flex;
+  align-items: center;
+  gap: var(--s-3);
+  width: 100%;
+  padding: var(--s-3);
+  border-radius: var(--r-md);
+  border: 1px dashed var(--line-strong);
+  background: rgba(255,255,255,0.02);
+  color: var(--text-lo);
+  font-size: 13px;
+  font-weight: 600;
+  text-align: left;
+  transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
+}
+.notice-compose:active { transform: scale(0.995); }
+.notice-compose:hover { border-color: var(--accent); color: var(--text-mid); }
+.notice-compose-mark {
+  width: 26px; height: 26px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  flex: none;
+  font-size: 15px;
+  font-weight: 800;
+  background: rgba(255,255,255,0.06);
+  color: var(--accent);
+}
+
 .notice {
   display: flex;
   gap: var(--s-3);
