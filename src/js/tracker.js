@@ -16,6 +16,8 @@
   const MAX_STEP = 60;             // metres; above this it is a GPS jump
 
   const Tracker = {
+    MIN_LOOP_DISTANCE,
+    CLOSE_RADIUS,
     active: false,
     kind: 'free',
     rivals: [],
@@ -55,6 +57,8 @@
         currentPace: 0,
         loopReady: false,
         loopClosed: false,
+        loopArmed: false,
+        backDistance: 0,
         closure: null,
         finishedAt: null,
         source: 'sim',
@@ -202,25 +206,33 @@
        have come back within reach of where you started. --------------------- */
 
     _checkLoop() {
-      const route = this.state.route;
-      if (route.length < 8 || this.state.distance < MIN_LOOP_DISTANCE) return;
-      const back = Geo.distance(route[0], route[route.length - 1]) <= CLOSE_RADIUS;
-      if (back === this.state.loopReady) return;
-      this.state.loopReady = back;
+      const s = this.state;
+      const route = s.route;
+      if (s.closure) return;
 
-      // Passing the start captures the loop and the capture is latched, so a
-      // runner never has to hit Finish while standing inside a 30 m circle.
-      // Running a second, wider loop replaces the first with the bigger one.
-      if (back && (!this.state.closure || this.state.distance > this.state.closure.distance)) {
-        this.state.closure = {
-          polygon: route.slice(),
-          distance: this.state.distance,
-          area: Geo.polygonArea(route),
-        };
-        this.state.loopClosed = true;
-        Bus.emit('run:captured', this.state);
-      }
-      Bus.emit('run:loop', this.state);
+      // How far there is left to run before a loop is allowed to close, and
+      // how far the runner is from their own start. The run screen shows both.
+      s.loopArmed = s.distance >= MIN_LOOP_DISTANCE && route.length >= 8;
+      s.backDistance = route.length > 1 ? Geo.distance(route[0], route[route.length - 1]) : 0;
+      if (!s.loopArmed) return;
+
+      const back = s.backDistance <= CLOSE_RADIUS;
+      if (back === s.loopReady) return;
+      s.loopReady = back;
+      if (!back) { Bus.emit('run:loop', s); return; }
+
+      // Meeting your own start closes the loop, and closing the loop is the
+      // finish: a territory run has no other ending. Nothing to latch and no
+      // wider second loop to wait for — the run stops here.
+      s.closure = {
+        polygon: route.slice(),
+        distance: s.distance,
+        area: Geo.polygonArea(route),
+      };
+      s.loopClosed = true;
+      s.finishedAt = s.duration;
+      Bus.emit('run:captured', s);
+      Bus.emit('run:finished', s);
     },
 
     _publish() {
@@ -238,8 +250,12 @@
       Live.publish(telemetry);
     },
 
-    /** Ends the run and returns a stored activity (null if too short to keep). */
-    stop() {
+    /**
+     * Ends the run and returns a stored activity (null if too short to keep).
+     * `options.abandon` gives up on an unclosed territory loop: the distance
+     * still counts, but it is filed as an ordinary run and claims no land.
+     */
+    stop(options) {
       if (!this.active) return null;
       this.active = false;
       if (this._timer) clearInterval(this._timer);
@@ -250,6 +266,7 @@
       this._watchId = null;
 
       const s = this.state;
+      if (options && options.abandon && s.kind === 'territory' && !s.closure) s.kind = 'free';
       const field = Live.list();
       const route = Geo.simplify(s.route, 2.5);
       const closure = s.closure;

@@ -249,6 +249,15 @@ loop landing inside an earlier one leaves a void rather than a smaller ring —
 plots are drawn even-odd so a void reads as a hole in your land, and a plot cut
 in two says how many parts it is now in.
 
+**The loop is the finish.** A territory run ends the instant you meet your own
+start — nothing to press, and no way to bank a half-loop. That makes the mode
+one commitment rather than a run with a bonus attached, which is why the map
+banner spends the whole run answering a single question: how much further to a
+loop that can close, and then how far back to the start. The only other exit is
+**Abandon loop**, styled as a danger action and confirmed, which keeps the
+kilometres as an ordinary run and claims nothing. A free run still finishes on
+its own button, because it is not promising anything.
+
 ### 6.5 Quests
 
 The rank **ladder** sits on top: one disc per rank, swiped sideways. The letter

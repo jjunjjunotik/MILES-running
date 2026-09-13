@@ -5,8 +5,8 @@ A running app for people who would rather race a friend than a leaderboard.
 Three ways to run, and they are deliberately separate:
 
 - **Free Run** — distance, pace, splits. Nothing is claimed.
-- **Territory Run** — finish where you started and everything your loop
-  encloses becomes yours.
+- **Territory Run** — get back to where you started and everything your loop
+  encloses becomes yours. Closing the loop is what ends the run.
 - **Race** — you and up to four friends agree a distance; whoever crosses it
   first wins. Everyone publishes distance, pace and position live, so the
   standings reorder as you run.
@@ -146,11 +146,18 @@ one cutting across can leave it in two parts, and the plot list says so.
 
 On a **Territory run** — and only there — run at least 400 m and come back
 within 30 m of where you started. A free run or a race never takes ground,
-however neatly it happens to loop. The loop is **latched** the moment you pass
-your start point — you never have to hit Finish
-while standing inside a circle — and the enclosed area (shoelace formula on a
-local metre projection) is added to your land. Run a second, wider loop and the
-bigger one replaces it.
+however neatly it happens to loop.
+
+**Closing the loop is the finish.** Meeting your own start point ends the run
+by itself: there is no Finish button to press and no way to stop a territory
+run early with land in hand. The enclosed area (shoelace formula on a local
+metre projection) is added to your land and the record card opens. Until then
+the banner over the map counts you down — first the distance still to cover
+before a loop may close, then the distance back to your start.
+
+If you need to stop anyway, **Abandon loop** asks first and then files the
+effort as an ordinary run: the distance, pace and splits all count towards your
+week, but an open loop encloses nothing, so no land is claimed.
 
 ---
 

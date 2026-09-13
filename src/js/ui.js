@@ -443,7 +443,12 @@
         $('#pauseBtn').textContent = Tracker.state && Tracker.state.paused ? 'Resume' : 'Pause';
       });
 
-      $('#finishBtn').addEventListener('click', () => this.finishRun());
+      // A territory run has exactly one ending: closing the loop. The button
+      // is the way out of an open loop, not a way to finish one early.
+      $('#finishBtn').addEventListener('click', () => {
+        if (Tracker.kind === 'territory') this.abandonRun();
+        else this.finishRun();
+      });
 
       Bus.on('run:tick', (run) => this.renderRun(run));
       Bus.on('run:position', () => this.renderRunMap());
@@ -455,12 +460,12 @@
       Bus.on('run:captured', (run) => {
         const area = `${Units.areaText(run.closure.area)} ${Units.areaLabel()}`;
         $('#loopHint').hidden = false;
-        $('#loopHintText').textContent = `Loop captured · ${area} — finish whenever you like`;
-        this.toast(`Loop captured — <b>${area}</b> of land is yours on finish`);
+        $('#loopHintText').textContent = `Loop closed · ${area} claimed`;
+        this.toast(`Loop closed — <b>${area}</b> of land is yours`);
       });
-      // The hint stays put once a loop is captured; leaving the start again
-      // only means the next, larger loop is still open.
-      Bus.on('run:loop', (run) => { if (!run.closure) $('#loopHint').hidden = !run.loopReady; });
+      // Until the loop closes the hint counts the run down: first the distance
+      // that has to be covered, then the distance back to the start.
+      Bus.on('run:loop', () => this.renderLoopHint());
       Bus.on('run:split', (run) => {
         const last = run.splits[run.splits.length - 1];
         this.toast(`Split ${last.km} — <b>${clock(last.seconds)}</b>`);
@@ -477,8 +482,14 @@
       $('#runLiveChip').hidden = options.kind !== 'race';
       $('#raceBoard').hidden = options.kind !== 'race';
       $('#pauseBtn').textContent = 'Pause';
-      $('#loopHint').hidden = true;
-      $('#finishBtn').textContent = options.kind === 'race' ? 'Give up' : 'Finish';
+      $('#loopHint').hidden = options.kind !== 'territory';
+
+      const territory = options.kind === 'territory';
+      const finish = $('#finishBtn');
+      finish.textContent = territory ? 'Abandon loop' : options.kind === 'race' ? 'Give up' : 'Finish';
+      finish.classList.toggle('btn--primary', !territory);
+      finish.classList.toggle('btn--danger', territory);
+      if (territory) this.renderLoopHint(run);
 
       if (options.kind === 'race') {
         $('#raceTarget').textContent = `${Units.distText(run.target)} ${Units.distLabel()}`;
@@ -507,15 +518,53 @@
         $('#runLoop').style.color = left === 0 ? 'var(--ok)' : '';
         this.renderRaceBoard(run);
       } else if (run.kind === 'territory') {
-        const back = run.route.length > 1 ? Geo.distance(run.route[0], run.route[run.route.length - 1]) : 0;
-        $('#runLoop').textContent = run.closure ? Units.areaText(run.closure.area) : `${Math.round(back)} m`;
+        const back = Math.round(run.backDistance || 0);
+        $('#runLoop').textContent = run.closure ? Units.areaText(run.closure.area) : `${back} m`;
         $('#runLoopLabel').textContent = run.closure ? `${Units.areaLabel()} captured` : 'To start';
-        $('#runLoop').style.color = run.closure ? 'var(--violet)' : '';
+        // Grey until the loop is long enough to close, so the number reads as
+        // "not yet" rather than "nearly there" over the first few hundred metres.
+        $('#runLoop').style.color = run.closure ? 'var(--violet-ink)'
+          : run.loopArmed ? '' : 'var(--text-lo)';
+        this.renderLoopHint(run);
       } else {
         $('#runLoop').textContent = String(Math.round(run.elevation));
         $('#runLoopLabel').textContent = 'Elev m';
         $('#runLoop').style.color = '';
       }
+    },
+
+    /**
+     * The banner over the map is the only instruction a territory run needs:
+     * how much further before a loop may close, then how far back to the start.
+     */
+    renderLoopHint(run) {
+      const state = run || Tracker.state;
+      if (!state || state.kind !== 'territory' || state.closure) return;
+
+      const short = Tracker.MIN_LOOP_DISTANCE - state.distance;
+      $('#loopHint').hidden = false;
+      $('#loopHintText').textContent = short > 0
+        ? `Run ${Math.round(short)} m more before the loop can close`
+        : state.loopReady
+          ? 'Closing the loop…'
+          : `${Math.round(state.backDistance || 0)} m back to your start`;
+    },
+
+    /** Gives up on an open loop: the run is kept, the land is not. */
+    abandonRun() {
+      const state = Tracker.state;
+      if (!state) return;
+      this.confirm({
+        title: 'Abandon this loop?',
+        body: 'The loop is still open, so no land is claimed. Your '
+          + `${Units.distText(state.distance)} ${Units.distLabel()} is kept as an ordinary run.`,
+        confirmLabel: 'Abandon',
+        cancelLabel: 'Keep running',
+        danger: true,
+      }).then((yes) => {
+        if (!yes || !Tracker.active) return;
+        this.finishRun({ abandon: true });
+      });
     },
 
     /** The live standings: everyone, ordered, against the same distance. */
@@ -590,8 +639,8 @@
       map.invalidate();
     },
 
-    finishRun() {
-      const activity = Tracker.stop();
+    finishRun(options) {
+      const activity = Tracker.stop(options);
       if (!activity) return;
 
       if (activity.distance < 60) {
@@ -599,6 +648,8 @@
         this.go('home');
         return;
       }
+
+      if (options && options.abandon) this.toast('Loop abandoned — saved as a run, no land claimed');
 
       const result = State.addActivity(activity);
       this.lastActivity = activity;
