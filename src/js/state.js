@@ -39,10 +39,12 @@
      different modes. Only a Territory run can claim ground; a Race is scored
      by who reaches the agreed distance first. ---------------------------- */
 
+  // `accent` draws shapes; `ink` writes words. A stroke colour that reads at
+  // 2 px does not necessarily read at 11 px on a chip's lifted background.
   const KINDS = {
-    free:      { key: 'free',      name: 'Free Run',      badge: 'RUN',       accent: '#c8ff2e' },
-    territory: { key: 'territory', name: 'Territory Run', badge: 'TERRITORY', accent: '#a855f7' },
-    race:      { key: 'race',      name: 'Race',          badge: 'RACE',      accent: '#ff3d8b' },
+    free:      { key: 'free',      name: 'Free Run',      badge: 'RUN',       accent: '#c8ff2e', ink: '#c8ff2e' },
+    territory: { key: 'territory', name: 'Territory Run', badge: 'TERRITORY', accent: '#a855f7', ink: '#c4a2fb' },
+    race:      { key: 'race',      name: 'Race',          badge: 'RACE',      accent: '#ff3d8b', ink: '#ff7aae' },
   };
 
   /** A race holds you plus up to four others. */

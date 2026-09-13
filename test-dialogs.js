@@ -1,6 +1,8 @@
 // Every confirmation and text entry must work where window.confirm and
 // window.prompt do not — a sandboxed iframe. Serve on :8765, then:
 //   node test-dialogs.js
+// Needs Playwright, which the app itself does not: `npm i playwright`, or run
+// with NODE_PATH pointing at an install that has it.
 const { chromium } = require('playwright');
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.CHROME || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });

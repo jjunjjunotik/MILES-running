@@ -1,5 +1,7 @@
 // Guards the sheet/shell scroll bug. Serve the app on :8765, then:
 //   node test-sheets.js
+// Needs Playwright, which the app itself does not: `npm i playwright`, or run
+// with NODE_PATH pointing at an install that has it.
 const { chromium } = require('playwright');
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.CHROME || '/opt/pw-browsers/chromium-1194/chrome-linux/chrome' });

@@ -79,7 +79,31 @@ to `rgba(255,255,255,.02)` over a 14 px backdrop blur, with a `--line` border.
 
 ### Text
 
-`--text-hi #f2f6fa` · `--text-mid #9dabbd` · `--text-lo #64748b`
+`--text-hi #f2f6fa` · `--text-mid #bcc8d5` · `--text-lo #97a4b4`
+
+Three levels, each **measured** against the surfaces it actually sits on rather
+than chosen by eye, and every one clears WCAG AA at the size the app uses it —
+including 11 px labels on the lightest card. `test-contrast.js` walks every text
+style on every screen, composites the real background underneath it, and fails
+the build if any drops below 4.5:1 (3:1 for large text).
+
+### Accents used as text
+
+A colour that reads as a 2 px stroke does not necessarily read as 11 px type,
+and a chip's own background lifts the surface beneath it. So each accent has an
+**ink** variant for words, separate from the token that draws shapes:
+
+| Shape | Ink |
+|---|---|
+| `--violet #a855f7` | `--violet-ink #c4a2fb` |
+| `--magenta #ff3d8b` | `--magenta-ink #ff7aae` |
+| `--cyan #2fe0ff` | `--cyan-ink #7ceaff` |
+| `--amber #ffb020` | `--amber-ink #ffc457` |
+
+Violet as text is what caught this: legible on a card at 4.8:1, it fell to
+4.2:1 the moment it sat inside a chip.
+
+
 
 ### Meaning
 

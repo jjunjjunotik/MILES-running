@@ -1893,7 +1893,7 @@
         const won = a.kind === 'race' && a.placing === 1;
         return el('span', {
           class: 'chip',
-          style: `border-color:${k.accent}55;color:${k.accent}`,
+          style: `border-color:${k.accent}55;color:${k.ink}`,
           text: a.kind === 'race' && a.placing ? (won ? 'WON' : M.ordinal(a.placing)) : k.badge,
         });
       }

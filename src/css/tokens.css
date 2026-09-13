@@ -15,10 +15,13 @@
   --line:    rgba(255, 255, 255, 0.08);
   --line-strong: rgba(255, 255, 255, 0.16);
 
-  /* --- Text ------------------------------------------------------------- */
+  /* --- Text -------------------------------------------------------------
+     Three levels, each measured against the surfaces it actually sits on, not
+     chosen by eye. Every one clears WCAG AA (4.5:1) at the sizes the app uses
+     it, including 11 px labels on the lightest card. --------------------- */
   --text-hi:  #f2f6fa;
-  --text-mid: #9dabbd;
-  --text-lo:  #64748b;
+  --text-mid: #bcc8d5;
+  --text-lo:  #97a4b4;
 
   /* --- Brand ------------------------------------------------------------ */
   --lime:    #c8ff2e;   /* MILES signature — you, your pace, your land     */
@@ -27,6 +30,16 @@
   --magenta: #ff3d8b;   /* your rival in a duo                             */
   --amber:   #ffb020;   /* quests, rank, reward                            */
   --violet:  #a855f7;   /* territory — owner slot 1, validated all-pairs    */
+
+  /* --- Accents used as text ----------------------------------------------
+     A colour that is legible as a 2 px stroke is not necessarily legible as
+     11 px type, and a chip's own background lifts the surface underneath it.
+     These are the tints to write with; the plain tokens above are for shapes. */
+  --violet-ink:  #c4a2fb;
+  --magenta-ink: #ff7aae;
+  --cyan-ink:    #7ceaff;
+  --amber-ink:   #ffc457;
+  --ok-ink:      #6ff0c4;
 
   /* --- Semantic --------------------------------------------------------- */
   --ok:   #2ee6a8;
