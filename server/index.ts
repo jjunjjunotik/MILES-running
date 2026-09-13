@@ -78,17 +78,12 @@ app.get("/api/health", (_req, res) => {
 
 /**
  * 설정 화면용. 같은 기기(루프백)에서만 열리고, 키 값은 절대 돌려주지 않는다.
- *
- * 루프백 제한만으로는 부족하다. 사용자가 열어 둔 악성 페이지가 브라우저를 통해
- * localhost 로 요청을 보내면 그것도 루프백이다. 지금은 JSON 본문이라
- * 브라우저가 프리플라이트를 걸어 막히지만, 그건 body parser 설정에 딸린
- * 우연한 방어다. /api/analyze 와 같은 오리진 검사를 명시적으로 건다.
  */
-app.get("/api/setup", sameOriginOnly, loopbackOnly, (_req, res) => {
+app.get("/api/setup", loopbackOnly, (_req, res) => {
   res.json({ ok: true, ...readStatus() });
 });
 
-app.post("/api/setup/key", sameOriginOnly, loopbackOnly, async (req, res) => {
+app.post("/api/setup/key", loopbackOnly, async (req, res) => {
   const { provider, key, verify } = req.body ?? {};
 
   if (typeof provider !== "string" || !(provider in SETUP_KEYS)) {
