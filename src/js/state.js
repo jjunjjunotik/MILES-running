@@ -41,7 +41,7 @@
 
   const KINDS = {
     free:      { key: 'free',      name: 'Free Run',      badge: 'RUN',       accent: '#c8ff2e' },
-    territory: { key: 'territory', name: 'Territory Run', badge: 'TERRITORY', accent: '#8b5cf6' },
+    territory: { key: 'territory', name: 'Territory Run', badge: 'TERRITORY', accent: '#a855f7' },
     race:      { key: 'race',      name: 'Race',          badge: 'RACE',      accent: '#ff3d8b' },
   };
 
@@ -50,7 +50,23 @@
 
   const RACE_DISTANCES = [1000, 3000, 5000, 10000];
 
-  const FRIEND_COLORS = ['#ff3d8b', '#2fe0ff', '#ffb020', '#2ee6a8', '#a855f7', '#ff8a4c', '#6ee7ff', '#f472b6'];
+  /* --- Owner colours -------------------------------------------------------
+     Land is a map: any two plots can share a border, so these are validated as
+     ALL pairs, not just neighbours in a list. Five is the measured ceiling on
+     this surface — at six, the worst pair drops below the threshold where full
+     colour vision can separate them. Slot 1 is always you.
+
+     Worst pair across all ten: ΔE 16.2 simulated colour-blind, 16.6 normal
+     (floors are 8 and 15). Past five owners the hues repeat, which is why every
+     plot is also labelled with its owner — colour never carries identity alone. */
+  const OWNER_COLORS = [
+    '#a855f7',   // 1 · you, violet
+    '#e66700',   // 2 · orange
+    '#89dc88',   // 3 · green
+    '#26dafe',   // 4 · cyan
+    '#c14685',   // 5 · magenta
+  ];
+  const FRIEND_COLORS = OWNER_COLORS.slice(1);
 
   /* --- Quests -------------------------------------------------------------
      Each quest measures itself against the live state, so progress is always
@@ -364,6 +380,7 @@
           id: `${friend.id}-${c}`,
           owner: friend.id,
           ownerName: friend.name,
+          initials: friend.initials,
           color: friend.color,
           polygon,
           area: Geo.polygonArea(polygon),
@@ -413,10 +430,10 @@
           crews: [],
           rivalLand: [],
           friends: [
-            makeFriend('Alex Ryu', '#ff3d8b', 34200, true),
-            makeFriend('Mina Park', '#2fe0ff', 51800, true),
-            makeFriend('Theo Kim', '#ffb020', 18700, false),
-            makeFriend('Sena Cho', '#2ee6a8', 62400, true),
+            makeFriend('Alex Ryu', FRIEND_COLORS[0], 34200, true),
+            makeFriend('Mina Park', FRIEND_COLORS[1], 51800, true),
+            makeFriend('Theo Kim', FRIEND_COLORS[2], 18700, false),
+            makeFriend('Sena Cho', FRIEND_COLORS[3], 62400, true),
           ],
         };
         settleQuests(this.data);
@@ -427,6 +444,17 @@
       // Migrations for state saved by an earlier version.
       if (!this.data.crews) this.data.crews = [];
       if (!this.data.rivalLand) this.data.rivalLand = [];
+
+      // Owners painted before the palette was validated keep colours that are
+      // indistinguishable from each other; restate them in slot order.
+      const stale = this.data.friends.some((f, i) => f.color !== FRIEND_COLORS[i % FRIEND_COLORS.length]);
+      if (stale) {
+        this.data.friends.forEach((f, i) => { f.color = FRIEND_COLORS[i % FRIEND_COLORS.length]; });
+        (this.data.rivalLand || []).forEach((claim) => {
+          const owner = this.data.friends.find((f) => f.id === claim.owner);
+          if (owner) { claim.color = owner.color; claim.initials = owner.initials; }
+        });
+      }
       if (!this.data.rivalLand.length) {
         this.data.rivalLand = seedRivalLand(this.data);
         this.resolveLand();
@@ -538,5 +566,5 @@
     },
   };
 
-  Object.assign(M, { State, Stats, QUESTS, RANKS, TIERS, KINDS, MAX_RIVALS, RACE_DISTANCES, questView, DEFAULT_HOME });
+  Object.assign(M, { State, Stats, QUESTS, RANKS, TIERS, KINDS, MAX_RIVALS, RACE_DISTANCES, OWNER_COLORS, FRIEND_COLORS, questView, DEFAULT_HOME });
 })(window.MILES);

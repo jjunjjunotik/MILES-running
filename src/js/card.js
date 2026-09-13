@@ -15,7 +15,7 @@
 
   const THEMES = {
     lime:    { accent: '#c8ff2e', accent2: '#2fe0ff' },
-    violet:  { accent: '#8b5cf6', accent2: '#2fe0ff' },
+    violet:  { accent: '#a855f7', accent2: '#26dafe' },
     magenta: { accent: '#ff3d8b', accent2: '#ffb020' },
     amber:   { accent: '#ffb020', accent2: '#c8ff2e' },
   };
@@ -144,7 +144,7 @@
 
     /* --- Outcome badge ---------------------------------------------------- */
     const badge = kind === 'territory'
-      ? (activity.claimedArea > 0 ? { text: 'LOOP CLOSED · LAND TAKEN', fill: 'rgba(139, 92, 246, 0.92)' } : { text: 'LOOP NOT CLOSED', fill: 'rgba(255, 255, 255, 0.14)' })
+      ? (activity.claimedArea > 0 ? { text: 'LOOP CLOSED · LAND TAKEN', fill: 'rgba(168, 85, 247, 0.92)' } : { text: 'LOOP NOT CLOSED', fill: 'rgba(255, 255, 255, 0.14)' })
       : kind === 'race'
         ? { text: activity.finished ? `CROSSED THE LINE ${ordinal(activity.placing).toUpperCase()}` : 'DID NOT FINISH', fill: activity.placing === 1 ? 'rgba(46, 230, 168, 0.92)' : 'rgba(255, 61, 139, 0.92)' }
         : null;
@@ -255,7 +255,7 @@
     // A closed loop is land: fill it before stroking the route.
     if (activity.claimedArea > 0) {
       ctx.closePath();
-      ctx.fillStyle = 'rgba(139, 92, 246, 0.26)';
+      ctx.fillStyle = 'rgba(168, 85, 247, 0.26)';
       ctx.fill();
     }
 

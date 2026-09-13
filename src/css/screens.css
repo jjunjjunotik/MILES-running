@@ -134,7 +134,7 @@
   transition: transform 0.14s ease, border-color 0.14s ease;
 }
 .rail-tile:active { transform: scale(0.97); }
-.rail-tile--territory { border-color: rgba(139, 92, 246, 0.35); }
+.rail-tile--territory { border-color: rgba(168, 85, 247, 0.35); }
 .rail-tile--quest { border-color: rgba(255, 176, 32, 0.35); }
 
 .rail-tile .stat-value { font-size: 20px; }
@@ -199,7 +199,7 @@
   padding: 9px 12px;
   border-radius: var(--r-md);
   background: rgba(8, 11, 16, 0.86);
-  border: 1px solid rgba(139, 92, 246, 0.5);
+  border: 1px solid rgba(168, 85, 247, 0.5);
   font-size: 11px;
   font-weight: 700;
   color: #d3c4ff;
@@ -263,7 +263,7 @@
 }
 .kind-option:active { transform: scale(0.985); }
 .kind-option--free { border-color: rgba(200, 255, 46, 0.4); }
-.kind-option--territory { border-color: rgba(139, 92, 246, 0.45); }
+.kind-option--territory { border-color: rgba(168, 85, 247, 0.45); }
 .kind-name { font-size: 17px; font-weight: 800; letter-spacing: -0.02em; }
 
 /* Run history: the cards you have earned */
@@ -326,6 +326,13 @@
 
 .territory-map { position: relative; flex: none; height: 240px; border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--line); }
 .territory-map canvas { display: block; width: 100%; height: 100%; }
+
+/* Who owns which colour. Present whenever more than one owner is on the map —
+   identity is never left to colour alone. */
+.legend { display: flex; flex-wrap: wrap; gap: var(--s-2); padding: var(--s-3) 0 0; }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--text-mid); }
+.legend-item[data-me="true"] { color: var(--text-hi); font-weight: 700; }
+.legend-swatch { width: 11px; height: 11px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.25); flex: none; }
 
 .owner-row { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) 0; border-bottom: 1px solid var(--line); }
 .owner-row:last-child { border-bottom: none; }

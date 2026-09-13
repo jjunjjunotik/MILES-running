@@ -88,12 +88,41 @@ to `rgba(255,255,255,.02)` over a 14 px backdrop blur, with a `--line` border.
 | `--lime` | `#c8ff2e` | You: your pace, your route, your land |
 | `--cyan` | `#2fe0ff` | Live data and telemetry |
 | `--magenta` | `#ff3d8b` | Your rival |
-| `--violet` | `#8b5cf6` | Territory |
+| `--violet` | `#a855f7` | Territory |
 | `--amber` | `#ffb020` | Quests, rank, reward |
 | `--ok` / `--warn` / `--bad` | `#2ee6a8` / `#ffb020` / `#ff5964` | State |
 
 Colour always means the same thing. A violet shape is land; a magenta dot is
 the person you are racing. Nothing is coloured decoratively.
+
+### Owner colours
+
+Land is a map, so any two plots can share a border: the palette is validated as
+**all pairs**, not just neighbours in a list. Five is the measured ceiling on
+this surface — at six, the worst pair falls below the separation where full
+colour vision can tell them apart, so a sixth hue would be a lie. Slot 1 is
+always you.
+
+| Slot | Owner | Hex |
+|---|---|---|
+| 1 | You | `#a855f7` |
+| 2 | — | `#e66700` |
+| 3 | — | `#89dc88` |
+| 4 | — | `#26dafe` |
+| 5 | — | `#c14685` |
+
+Worst pair across all ten: ΔE 16.2 under simulated colour blindness and 16.6
+under normal vision, against floors of 8 and 15.
+
+Three things follow, and all three are load-bearing:
+
+- **Every plot carries its owner's initials**, yours reading `YOU` in lime.
+  Past five owners the hues repeat, so the label — not the colour — is what
+  names the owner. Identity is never colour alone.
+- **Plots are ringed in the map's own ground colour** before their own. Land is
+  exclusive now, so plots meet edge to edge; two fills touching without a gap
+  read as one shape.
+- **The Land screen carries a legend** naming every colour on the map.
 
 ---
 

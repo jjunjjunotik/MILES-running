@@ -181,7 +181,7 @@
       const ctx = this.ctx;
       this.layers.territories.forEach((t) => {
         const mine = t.owner === 'me' || !t.owner;
-        const stroke = t.color || (mine ? '#8b5cf6' : '#ff3d8b');
+        const stroke = t.color || (mine ? '#a855f7' : '#c14685');
 
         // `pieces` is what is still held after later claims took their share;
         // fall back to the raw loop for anything not yet resolved. A piece may
@@ -203,18 +203,92 @@
           trace(piece.ring);
           (piece.holes || []).forEach(trace);
         });
-        // Rivals' land is tinted in their own colour so the map reads as a
-        // contested neighbourhood at a glance.
-        ctx.fillStyle = mine ? 'rgba(139, 92, 246, 0.19)' : stroke;
-        ctx.globalAlpha = mine ? 1 : 0.15;
+        // Fill strongly enough that the hue actually reads, then separate
+        // neighbours with a ring of the map's own ground: plots share borders
+        // now, and two fills meeting edge to edge blur into one shape.
+        ctx.fillStyle = stroke;
+        ctx.globalAlpha = mine ? 0.34 : 0.26;
         ctx.fill('evenodd');
         ctx.globalAlpha = 1;
-        ctx.lineWidth = 1.6;
-        ctx.strokeStyle = stroke;
-        ctx.globalAlpha = 0.85;
+
+        ctx.lineJoin = ctx.lineCap = 'round';
+        ctx.strokeStyle = 'rgba(8, 12, 18, 0.9)';
+        ctx.lineWidth = mine ? 5 : 4;
         ctx.stroke();
-        ctx.globalAlpha = 1;
+
+        ctx.strokeStyle = stroke;
+        ctx.lineWidth = mine ? 2.4 : 1.8;
+        ctx.stroke();
       });
+
+      this._labelTerritories();
+    }
+
+    /**
+     * Writes each owner's initials on their land. Five hues is the most this
+     * surface can carry before pairs stop being separable, so past that the
+     * colours repeat — the label is what actually names the owner.
+     */
+    _labelTerritories() {
+      const ctx = this.ctx;
+      ctx.save();
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+
+      this.layers.territories.forEach((t) => {
+        const pieces = t.pieces && t.pieces.length
+          ? t.pieces
+          : (t.polygon && t.polygon.length >= 3 ? [{ ring: t.polygon, holes: [] }] : []);
+        if (!pieces.length) return;
+
+        // Label the biggest piece only, and only when there is room for it.
+        let best = null;
+        let bestSpan = 0;
+        pieces.forEach((piece) => {
+          const pts = piece.ring.map((p) => this.toScreen(p));
+          const xs = pts.map((p) => p.x);
+          const ys = pts.map((p) => p.y);
+          const span = Math.min(Math.max.apply(null, xs) - Math.min.apply(null, xs),
+                                Math.max.apply(null, ys) - Math.min.apply(null, ys));
+          if (span > bestSpan) { bestSpan = span; best = pts; }
+        });
+        if (!best || bestSpan < 34) return;
+
+        // Area-weighted centroid, so the label sits in the body of the plot.
+        let area2 = 0;
+        let cx = 0;
+        let cy = 0;
+        for (let i = 0; i < best.length; i++) {
+          const a = best[i];
+          const b = best[(i + 1) % best.length];
+          const cross = a.x * b.y - b.x * a.y;
+          area2 += cross;
+          cx += (a.x + b.x) * cross;
+          cy += (a.y + b.y) * cross;
+        }
+        if (Math.abs(area2) < 1e-6) return;
+        cx /= 3 * area2;
+        cy /= 3 * area2;
+
+        const mine = t.owner === 'me' || !t.owner;
+        const label = mine ? 'YOU' : (t.initials || '??');
+        const size = Math.max(9, Math.min(13, bestSpan * 0.2));
+        ctx.font = `800 ${size}px ${getComputedStyle(document.body).fontFamily}`;
+
+        // A dark plate keeps the initials legible over any fill.
+        const w = ctx.measureText(label).width + 10;
+        const h = size + 7;
+        ctx.fillStyle = 'rgba(6, 9, 14, 0.72)';
+        if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(cx - w / 2, cy - h / 2, w, h, h / 2); ctx.fill(); }
+        else ctx.fillRect(cx - w / 2, cy - h / 2, w, h);
+
+        // Lime means "you" everywhere else in the app, so it means it here too;
+        // everyone else's initials wear their own plot colour.
+        ctx.fillStyle = mine ? '#c8ff2e' : (t.color || '#f2f6fa');
+        ctx.fillText(label, cx, cy + 0.5);
+      });
+
+      ctx.restore();
     }
 
     _drawGhost() {
@@ -354,7 +428,7 @@
 
   /** Thumbnail of land actually held: rings with their voids, filled even-odd. */
   function drawLandThumb(canvas, pieces, options) {
-    const opts = Object.assign({ stroke: '#8b5cf6', fill: 'rgba(139,92,246,0.28)', pad: 6, width: 1.8 }, options || {});
+    const opts = Object.assign({ stroke: '#a855f7', fill: 'rgba(168,85,247,0.30)', pad: 6, width: 1.8 }, options || {});
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     const rect = canvas.getBoundingClientRect();
     const w = rect.width || canvas.width || 52;

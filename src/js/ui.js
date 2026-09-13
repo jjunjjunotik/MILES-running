@@ -618,10 +618,25 @@
       if (all.length) map.fit(all.concat([[s.profile.home]]));
       map.invalidate();
 
+      // Legend: name every colour on the map.
+      const legend = $('#terrLegend');
+      legend.innerHTML = '';
+      const owners = [{ name: 'You', color: M.OWNER_COLORS[0], me: true }].concat(
+        s.friends
+          .filter((f) => rivalLand.some((t) => t.owner === f.id && t.area > 0))
+          .map((f) => ({ name: f.name, color: f.color, me: false }))
+      );
+      owners.forEach((o) => {
+        legend.appendChild(el('span', { class: 'legend-item', 'data-me': String(o.me) }, [
+          el('span', { class: 'legend-swatch', style: `background:${o.color}` }),
+          el('span', { text: o.name }),
+        ]));
+      });
+
       // Standings
       const board = $('#terrBoard');
       board.innerHTML = '';
-      const rows = [{ name: 'You', color: '#8b5cf6', area: total, me: true }].concat(
+      const rows = [{ name: 'You', color: M.OWNER_COLORS[0], area: total, me: true }].concat(
         s.friends.map((f) => ({
           name: f.name,
           color: f.color,
@@ -662,7 +677,7 @@
         // Draw what is still held, so the shape matches the number beside it.
         requestAnimationFrame(() => {
           if (t.pieces && t.pieces.length) M.drawLandThumb(canvas, t.pieces);
-          else M.drawRouteThumb(canvas, t.polygon, { stroke: '#8b5cf6', fill: 'rgba(139,92,246,0.28)', pad: 6, width: 1.8 });
+          else M.drawRouteThumb(canvas, t.polygon, { stroke: '#a855f7', fill: 'rgba(168,85,247,0.30)', pad: 6, width: 1.8 });
         });
       });
     },
@@ -1328,7 +1343,7 @@
         list.appendChild(card);
         requestAnimationFrame(() => M.drawRouteThumb(canvas, a.route, {
           stroke: item.me ? '#c8ff2e' : item.color,
-          fill: a.claimedArea ? 'rgba(139,92,246,0.25)' : null,
+          fill: a.claimedArea ? 'rgba(168,85,247,0.25)' : null,
           pad: 10, width: 2.4,
         }));
       });
@@ -1551,7 +1566,7 @@
         list.appendChild(item);
         requestAnimationFrame(() => M.drawRouteThumb(canvas, a.route, {
           stroke: k.accent,
-          fill: a.claimedArea ? 'rgba(139,92,246,0.28)' : null,
+          fill: a.claimedArea ? 'rgba(168,85,247,0.28)' : null,
           pad: 7, width: 2,
         }));
       });
