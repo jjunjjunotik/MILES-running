@@ -16,7 +16,6 @@ import {
   TrashIcon,
 } from "../components/Icons";
 import { Notice, Sheet, TopBar } from "../components/ui";
-import { ApiKeyCard } from "../components/ApiKeyCard";
 
 type PendingAction = "photos" | "all" | null;
 
@@ -86,8 +85,6 @@ export function ProfileScreen({
             이 이름은 기기에만 저장되고 서버로 보내지 않습니다.
           </div>
         </div>
-
-        <ApiKeyCard />
 
         <div className="section-title">기록 요약</div>
         <div className="card">
