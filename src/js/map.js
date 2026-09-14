@@ -1,9 +1,10 @@
 /* ==========================================================================
    MILES · map
-   A self-contained canvas map. There is no tile server: the city is drawn
-   procedurally from a fixed seed, which keeps the app fast, offline-capable
-   and free of third-party requests. Routes, territories and live runners are
-   real data drawn on top in true metres.
+   A canvas map in two halves. Real imagery is drawn underneath when it can be
+   reached (see tiles.js); when it cannot — offline, blocked, or switched off —
+   the same view falls back to a city drawn procedurally from a fixed seed, so
+   the map is never blank and never depends on a third party being up. Routes,
+   territories and live runners are real data drawn on top in true metres.
    ========================================================================== */
 
 (function (M) {
@@ -39,11 +40,17 @@
         this._ro = new ResizeObserver(() => { this._resize(); this.draw(); });
         this._ro.observe(canvas);
       }
+
+      // Tiles arrive one at a time, and switching basemap invalidates them all.
+      // Bus.on hands back its own unsubscriber, which is what destroy uses.
+      const redraw = () => this.invalidate();
+      this._offTiles = ['tiles:loaded', 'tiles:source', 'tiles:blocked'].map((e) => M.Bus.on(e, redraw));
     }
 
     destroy() {
       if (this._ro) this._ro.disconnect();
       if (this._raf) cancelAnimationFrame(this._raf);
+      (this._offTiles || []).forEach((off) => off());
     }
 
     _resize() {
@@ -100,12 +107,14 @@
       ctx.clearRect(0, 0, this.w, this.h);
 
       this._drawGround();
-      if (this.opts.showGrid) this._drawCity();
+      const imagery = this.opts.tiles === false ? false : this._drawTiles();
+      if (!imagery && this.opts.showGrid) this._drawCity();
       this._drawTerritories();
       this._drawGhost();
       this._drawRoute();
       this._drawRivals();
       this._drawMe();
+      if (imagery) this._drawAttribution();
 
       ctx.restore();
     }
@@ -119,6 +128,85 @@
       g.addColorStop(1, '#080c12');
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, this.w, this.h);
+    }
+
+    /**
+     * Paints whatever imagery has arrived for the current view, and returns
+     * whether any of it landed — the caller draws the city instead if not.
+     *
+     * Each tile is positioned from its own corners rather than from a single
+     * screen-wide transform, which is what lets Mercator imagery sit under an
+     * equirectangular overlay without drifting away from the routes.
+     */
+    _drawTiles() {
+      const T = M.Tiles;
+      if (!T || !T.usable()) return false;
+
+      const ctx = this.ctx;
+      const z = T.zoomFor(this.mpp, this.center.lat);
+      const retina = this._dpr > 1.4;
+
+      // The visible world, from the two canvas corners.
+      const c = Geo.project(this.center, this.anchor);
+      const corner = (sx, sy) => Geo.unproject({
+        x: (sx - this.w / 2) * this.mpp + c.x,
+        y: (sy - this.h / 2) * this.mpp + c.y,
+      }, this.anchor);
+      const nw = corner(0, 0);
+      const se = corner(this.w, this.h);
+
+      const x0 = Math.floor(T.lngToX(nw.lng, z));
+      const x1 = Math.floor(T.lngToX(se.lng, z));
+      const y0 = Math.floor(T.latToY(nw.lat, z));
+      const y1 = Math.floor(T.latToY(se.lat, z));
+      // A sane view is a handful of tiles. Anything wilder means the zoom
+      // choice is wrong, and requesting hundreds of tiles would be rude.
+      if ((x1 - x0 + 1) * (y1 - y0 + 1) > 48) return false;
+
+      let drawn = 0;
+      for (let x = x0; x <= x1; x++) {
+        for (let y = y0; y <= y1; y++) {
+          const img = T.get(z, x, y, retina);
+          if (!img) continue;
+          const a = this.toScreen({ lat: T.yToLat(y, z), lng: T.xToLng(x, z) });
+          const b = this.toScreen({ lat: T.yToLat(y + 1, z), lng: T.xToLng(x + 1, z) });
+          // Round outwards: neighbouring tiles share an edge, and letting it
+          // land on a half pixel leaves hairline seams across the map.
+          const left = Math.floor(a.x);
+          const top = Math.floor(a.y);
+          ctx.drawImage(img, left, top, Math.ceil(b.x) - left, Math.ceil(b.y) - top);
+          drawn++;
+        }
+      }
+
+      if (!drawn) return false;
+      // Imagery is made for reading street names; this map is made for reading
+      // a route on top of it. Knocking it back buys the overlay its contrast.
+      const dim = M.Tiles.dim();
+      if (dim > 0) {
+        ctx.save();
+        ctx.fillStyle = `rgba(8, 11, 16, ${dim})`;
+        ctx.fillRect(0, 0, this.w, this.h);
+        ctx.restore();
+      }
+      return true;
+    }
+
+    /** Tile licences require visible credit wherever the imagery is shown. */
+    _drawAttribution() {
+      const text = M.Tiles.attribution();
+      if (!text) return;
+      const ctx = this.ctx;
+      ctx.save();
+      ctx.font = '500 9px ui-sans-serif, system-ui, sans-serif';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'bottom';
+      const w = ctx.measureText(text).width;
+      ctx.fillStyle = 'rgba(8, 11, 16, 0.55)';
+      ctx.fillRect(this.w - w - 10, this.h - 15, w + 10, 15);
+      ctx.fillStyle = 'rgba(226, 232, 240, 0.75)';
+      ctx.fillText(text, this.w - 5, this.h - 3);
+      ctx.restore();
     }
 
     _drawCity() {

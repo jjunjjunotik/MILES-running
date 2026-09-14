@@ -7,6 +7,8 @@
 
   function boot() {
     M.State.init();
+    // The stored basemap choice has to be live before the first map draws.
+    M.Tiles.setSource(M.State.data.mapStyle);
     M.UI.init();
 
     // Offer real GPS straight away, but never block on it: the simulated

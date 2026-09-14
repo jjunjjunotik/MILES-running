@@ -249,6 +249,17 @@ loop landing inside an earlier one leaves a void rather than a smaller ring —
 plots are drawn even-odd so a void reads as a hole in your land, and a plot cut
 in two says how many parts it is now in.
 
+**The map underneath.** The basemap is real OpenStreetMap imagery in CARTO's
+dark style, chosen because it is the one free, keyless basemap dark enough to
+put a lime route and five saturated territory colours on top of without either
+side losing. It is then knocked back a further 18% so the overlay keeps its
+contrast — the basemap is a backdrop here, not the thing being read, and a
+bright basemap would have to give up far more (the light and street styles take
+50%). Imagery is never required: blocked, offline or switched off, the map
+falls back to the procedurally drawn city, which is the same view with the same
+geometry and no network. That is deliberate — the drawn city is a real design,
+not an error state, so the fallback never looks like a failure.
+
 **The loop is the finish.** A territory run ends the instant you meet your own
 start — nothing to press, and no way to bank a half-loop. That makes the mode
 one commitment rather than a run with a bonus attached, which is why the map

@@ -425,6 +425,7 @@
           version: 1,
           profile: { name: 'You', handle: '@you', initials: 'YU', home },
           units: 'km',
+          mapStyle: 'dark',
           rangeMode: 'week',
           activities: seeded.activities,
           territories: seeded.territories,
@@ -461,6 +462,8 @@
       });
 
       if (!this.data.rivalLand) this.data.rivalLand = [];
+      // Saved before the map could show real imagery.
+      if (!this.data.mapStyle) this.data.mapStyle = 'dark';
 
       // Owners painted before the palette was validated keep colours that are
       // indistinguishable from each other; restate them in slot order.

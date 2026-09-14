@@ -550,6 +550,24 @@
           : `${Math.round(state.backDistance || 0)} m back to your start`;
     },
 
+    /** Chooses the basemap and remembers it across sessions. */
+    setMapStyle(style) {
+      State.data.mapStyle = style === 'drawn' ? 'drawn' : 'dark';
+      State.save();
+      M.Tiles.setSource(State.data.mapStyle);
+      this.renderMapStyle();
+    },
+
+    renderMapStyle() {
+      const style = State.data.mapStyle === 'drawn' ? 'drawn' : 'dark';
+      $$('#mapStyleSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tiles === style)));
+      $('#mapStyleNote').textContent = style === 'drawn'
+        ? 'The drawn city — works with no network'
+        : M.Tiles.blocked()
+          ? 'Imagery unreachable — showing the drawn city'
+          : 'Real imagery, © OpenStreetMap · © CARTO';
+    },
+
     /** Gives up on an open loop: the run is kept, the land is not. */
     abandonRun() {
       const state = Tracker.state;
@@ -2043,6 +2061,17 @@
         });
       });
 
+      $$('#mapStyleSeg button').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          this.setMapStyle(btn.dataset.tiles);
+          this.toast(btn.dataset.tiles === 'drawn'
+            ? 'Map is the <b>drawn city</b> — no network needed'
+            : 'Map is <b>real imagery</b> where it can be reached');
+        });
+      });
+      // Imagery that never arrives must not leave the setting claiming it did.
+      Bus.on('tiles:blocked', () => this.renderMapStyle());
+
       $('#askGeoBtn').addEventListener('click', () => this.locate());
 
       $('#addFriendBtn').addEventListener('click', () => this.promptFriend());
@@ -2098,6 +2127,7 @@
       $('#kpiArea').textContent = Units.areaText(Stats.totalArea(s));
       $('#kpiAreaUnit').textContent = Units.areaLabel() + ' land';
 
+      this.renderMapStyle();
       this.renderFriendList();
       this.renderHistory();
     },

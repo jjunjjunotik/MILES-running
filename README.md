@@ -17,7 +17,8 @@ the only source of XP, and XP is the only thing that moves your **rank**.
 Around that: **crews** — find the running clubs near you, or start one and run
 it yourself.
 
-No build step, no dependencies, no network calls. Open `index.html`.
+No build step and no dependencies. Open `index.html`. The only thing it ever
+fetches is map imagery, and that is optional — see **The map** below.
 
 ---
 
@@ -184,7 +185,8 @@ src/js/state.js       Data model: activities, territory, quests, ranks, crews
 src/js/crew.js        Crews: discovery, membership, captain's tools
 src/js/clip.js        Polygon difference (Greiner-Hormann), so land cannot overlap
 src/js/land.js        Resolves every claim against the ones made after it
-src/js/map.js         Procedural canvas map (no tile server)
+src/js/tiles.js       Slippy-map tiles: sources, cache, fallback
+src/js/map.js         Canvas map: imagery or drawn city, plus overlays
 src/js/realtime.js    Live race telemetry + pace bots
 src/js/tracker.js     Run engine: GPS, splits, loop capture, race scoring
 src/js/card.js        The 1080×1350 record card
@@ -197,12 +199,59 @@ design/tokens.json    Tokens Studio format, importable into Figma
 Distances are metres, durations seconds, areas square metres — everywhere.
 Conversion to km/mi happens only at the display edge, in `Units`.
 
-### Why the map is drawn, not fetched
+### The map
 
-There is no tile provider. The city is generated from a fixed seed, so the app
-starts instantly, works with no network, and makes no third-party requests with
-your location in them. Routes, territories and live runners are real data drawn
-on top in true metres.
+The basemap is real: standard OpenStreetMap tiles, served by CARTO's dark
+style, which needs no API key and is dark enough that a route drawn over it
+still reads. **You → Map** switches between `Real` and `Drawn`, and the choice
+is remembered.
+
+`Drawn` is the original procedurally generated city, seeded so it looks the
+same every time. It is also the automatic fallback: if tiles are blocked,
+offline, or simply never arrive, the map quietly becomes the drawn city rather
+than going blank, and the setting says so. Nothing else in the app depends on
+imagery — a run, a loop and a claim work identically either way.
+
+Two details worth knowing:
+
+- **The projections differ.** Tiles are Web Mercator; everything else here —
+  routes, loops, the territory subtraction — is a local equirectangular metre
+  projection anchored at your home. Rather than convert the app, each tile is
+  placed by projecting its own two corners through that same projection. The
+  two disagree by a smooth scale factor in latitude, which across one tile is
+  well under a pixel, and placing tiles independently stops the error
+  accumulating across the screen.
+- **Tiles are requested with `crossOrigin="anonymous"`.** Without it, a canvas
+  that has drawn a cross-origin tile is tainted and `toDataURL` throws — which
+  would break *Save card*. The record card and the route thumbnails draw no
+  imagery at all, so they are safe regardless.
+
+Imagery is a third-party request, and a tile URL contains the area you are
+looking at. `Drawn` is the setting to use if you would rather it did not.
+
+Routes, territories and live runners are real data drawn on top in true metres,
+whichever basemap is underneath.
+
+---
+
+## Tests
+
+Six checks live in the repo root. The first is plain Node; the rest drive the
+real app in headless Chromium and need Playwright, which the app itself does
+not — `npm i playwright`, or run with `NODE_PATH` pointing at an install that
+has it. The three marked `:8765` want `python3 -m http.server 8765` running.
+
+```
+node test-clip.js         polygon subtraction, against a sampled oracle
+node test-tiles.js        tile alignment, seams, canvas taint, fallback
+node test-territory.js    a loop is the only way a territory run ends
+node test-contrast.js     every text style against WCAG AA          :8765
+node test-sheets.js       sheets never leave the shell scrolled     :8765
+node test-dialogs.js      confirms and prompts where modals are blocked :8765
+```
+
+`test-tiles.js` serves its own tiles from a throwaway HTTP server, so it needs
+no network and passes with the real CDN blocked.
 
 ---
 

@@ -346,6 +346,13 @@
             </div>
           </div>
           <div class="setting">
+            <div><div style="font-weight:700;font-size:14px">Map</div><div class="tiny" id="mapStyleNote">Real imagery, or the drawn city</div></div>
+            <div class="seg" id="mapStyleSeg">
+              <button type="button" data-tiles="dark" aria-pressed="true">Real</button>
+              <button type="button" data-tiles="drawn" aria-pressed="false">Drawn</button>
+            </div>
+          </div>
+          <div class="setting">
             <div><div style="font-weight:700;font-size:14px">Location</div><div class="tiny" id="geoStatus">Not requested</div></div>
             <button class="btn btn--ghost" type="button" id="askGeoBtn" style="padding:8px 14px;font-size:12px">Enable</button>
           </div>
@@ -463,6 +470,7 @@
   <script src="src/js/land.js"></script>
   <script src="src/js/state.js"></script>
   <script src="src/js/crew.js"></script>
+  <script src="src/js/tiles.js"></script>
   <script src="src/js/map.js"></script>
   <script src="src/js/realtime.js"></script>
   <script src="src/js/tracker.js"></script>
