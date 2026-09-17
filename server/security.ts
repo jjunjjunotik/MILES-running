@@ -145,11 +145,30 @@ export function sameOriginOnly(
     return;
   }
 
+  // 개발 중에는 화면(Vite, 5173)과 API(8787)가 다른 포트에 있고,
+  // Vite 프록시가 Host 헤더를 대상 서버 것으로 바꾼다. 그래서 위 비교가
+  // 어긋나 자기 자신의 요청을 막게 된다. 같은 기기의 루프백에서 온 요청은
+  // 개발 모드에서만 통과시킨다. 악성 페이지의 오리진은 루프백이 아니다.
+  if (process.env.NODE_ENV !== "production" && isLoopbackOrigin(origin)) {
+    next();
+    return;
+  }
+
   res.status(403).json({
     ok: false,
     code: "bad_request",
     error: "허용되지 않은 요청입니다.",
   });
+}
+
+const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+
+function isLoopbackOrigin(origin: string): boolean {
+  try {
+    return LOOPBACK_HOSTS.has(new URL(origin).hostname);
+  } catch {
+    return false;
+  }
 }
 
 interface Bucket {
