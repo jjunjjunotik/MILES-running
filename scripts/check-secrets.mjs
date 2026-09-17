@@ -19,15 +19,20 @@ const PATTERNS = [
   { name: "OpenAI 계열 키", re: /\bsk-[A-Za-z0-9]{32,}\b/ },
   { name: "AWS 액세스 키", re: /\bAKIA[0-9A-Z]{16}\b/ },
   { name: "GitHub 토큰", re: /\bgh[pousr]_[A-Za-z0-9]{20,}\b/ },
-  { name: "Google API 키", re: /\bAIza[0-9A-Za-z_-]{35}\b/ },
+  // 길이를 정확히 못박지 않는다. 자릿수가 조금만 달라도 놓치는 쪽이,
+  // 자리표시자를 한 번 잘못 잡는 쪽보다 훨씬 비싸다.
+  { name: "Google API 키", re: /\bAIza[0-9A-Za-z_-]{20,}/ },
   { name: "PEM 개인키", re: /-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----/ },
 ];
 
-/** 이 파일 자신과 예시 파일은 패턴을 일부러 담고 있으므로 건너뛴다. */
-const SKIP = new Set([
-  "scripts/check-secrets.mjs",
-  ".env.example",
-]);
+/**
+ * 이 파일 자신만 건너뛴다. 패턴 문자열을 일부러 담고 있기 때문이다.
+ *
+ * .env.example 은 건너뛰지 않는다. git 에 추적되는 파일이라, 실수로 진짜 키를
+ * 여기에 넣으면 그대로 공개된다. 실제로 흔한 실수다. 안의 자리표시자는
+ * 한글이 섞여 있어 진짜 키 패턴과 겹치지 않으므로 오탐이 나지 않는다.
+ */
+const SKIP = new Set(["scripts/check-secrets.mjs"]);
 
 const findings = [];
 
@@ -98,7 +103,9 @@ if (findings.length > 0) {
   for (const finding of findings) console.error(` - ${finding}`);
   console.error(
     "\n키가 이미 커밋되었거나 배포되었다면, 지우는 것만으로는 부족합니다." +
-      "\nconsole.anthropic.com 에서 해당 키를 폐기하고 새로 발급하세요.",
+      "\n발급처에서 해당 키를 폐기하고 새로 발급하세요." +
+      "\n  Gemini    https://aistudio.google.com/apikey" +
+      "\n  Anthropic https://console.anthropic.com/settings/keys",
   );
   process.exit(1);
 }
