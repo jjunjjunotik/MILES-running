@@ -37,7 +37,21 @@ function getClient(): GoogleGenAI {
     const baseUrl = process.env.GEMINI_BASE_URL?.trim();
     cachedClient = new GoogleGenAI({
       apiKey,
-      ...(baseUrl ? { httpOptions: { baseUrl } } : {}),
+      httpOptions: {
+        ...(baseUrl ? { baseUrl } : {}),
+        /**
+         * 모델이 혼잡하면 503 이 돌아온다. 사용자 잘못이 아니고 대개 몇 초 뒤면
+         * 풀리므로, 오류를 그대로 보여 주기 전에 서버가 먼저 몇 번 다시 시도한다.
+         * 지수 백오프로 최대 4회. 분석 화면은 어차피 10~30초를 기다리므로
+         * 이 정도 지연은 사용자에게 드러나지 않는다.
+         */
+        retryOptions: {
+          attempts: 4,
+          initialDelay: 1,
+          maxDelay: 8,
+          httpStatusCodes: [408, 429, 500, 502, 503, 504],
+        },
+      },
     });
   }
   return cachedClient;
@@ -181,6 +195,13 @@ function toAnalyzeError(err: unknown): AnalyzeError {
     }
     if (err.status === 401 || err.status === 403) {
       return new AnalyzeError("no_api_key", "GEMINI_API_KEY를 확인해 주세요.");
+    }
+    if (err.status === 503 || err.status === 500 || err.status === 502) {
+      // 여기까지 왔다는 것은 재시도를 다 쓰고도 계속 혼잡했다는 뜻이다.
+      return new AnalyzeError(
+        "upstream_error",
+        "지금 Gemini 가 혼잡해 분석하지 못했습니다. 잠시 후 다시 시도해 주세요. 계속 이러면 .env 의 GEMINI_MODEL 을 다른 모델로 바꿔 보세요. (npm run models 로 목록 확인)",
+      );
     }
     if (err.status === 404) {
       // 쓸 수 있는 모델은 키와 지역에 따라 다르다. 추측하지 말고 확인하게 한다.
