@@ -222,6 +222,32 @@
         </div>
         <div class="legend" id="terrLegend"></div>
 
+        <!-- Time machine: the map as it stood, week by week. Pro. -->
+        <div class="timemachine" id="timeMachine">
+          <div class="row row--between">
+            <span class="card-title">Time machine</span>
+            <span class="chip chip--pro" id="tmChip" hidden>PRO</span>
+          </div>
+          <div id="tmLocked" class="lock-row">
+            <div class="stack grow" style="gap:3px">
+              <span class="lock-title">Replay the map week by week</span>
+              <span class="tiny">Watch the borders move, and see when you lost ground</span>
+            </div>
+            <button class="btn btn--pro" type="button" id="tmUnlock">Try free</button>
+          </div>
+          <div id="tmPanel" hidden>
+            <div class="row row--between" style="margin-bottom:6px">
+              <span class="stat-value" id="tmDate" style="font-size:15px">—</span>
+              <span class="tiny" id="tmHeld">—</span>
+            </div>
+            <div class="row" style="gap:var(--s-3)">
+              <button class="map-btn" type="button" id="tmPlay" aria-label="Play">▶</button>
+              <input class="scrub grow" type="range" id="tmScrub" min="0" max="1000" value="1000"
+                     aria-label="Point in time" />
+            </div>
+          </div>
+        </div>
+
         <div class="card stack" style="margin-top:var(--s-3)">
           <div class="row row--between">
             <div>
@@ -233,6 +259,22 @@
               <div class="stat-label">Plots</div>
             </div>
           </div>
+        </div>
+
+        <!-- Who has cut into your claims, and by how much. Pro. -->
+        <div class="card stack" style="margin-top:var(--s-3)">
+          <div class="row row--between">
+            <span class="card-title">Who took your land</span>
+            <span class="chip chip--pro" id="raidChip" hidden>PRO</span>
+          </div>
+          <div id="raidLocked" class="lock-row">
+            <div class="stack grow" style="gap:3px">
+              <span class="lock-title" id="raidTease">Someone has been taking your ground</span>
+              <span class="tiny">Every claim measured back to the runner who made it</span>
+            </div>
+            <button class="btn btn--pro" type="button" id="raidUnlock">Try free</button>
+          </div>
+          <div id="raidList" class="stack" hidden></div>
         </div>
 
         <div class="stack" style="margin-top:var(--s-3)">
@@ -330,6 +372,10 @@
         <div class="card stack" style="margin-top:var(--s-5)">
           <span class="card-title">Settings</span>
           <div class="setting">
+            <div><div style="font-weight:700;font-size:14px">MILES Pro</div><div class="tiny" id="proStatus">Free plan</div></div>
+            <button class="btn btn--ghost" type="button" id="proBtn" style="padding:8px 14px;font-size:12px">See Pro</button>
+          </div>
+          <div class="setting">
             <div><div style="font-weight:700;font-size:14px">Runner name</div><div class="tiny">Shown to your rival during a duo</div></div>
             <button class="btn btn--ghost" type="button" id="nameBtn" style="padding:8px 14px;font-size:12px">You</button>
           </div>
@@ -395,6 +441,29 @@
             <span class="start-arrow" style="position:static">→</span>
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- ================= PRO ================= -->
+    <div class="sheet-scrim" id="proSheet" hidden>
+      <div class="sheet">
+        <div class="sheet-grip"></div>
+        <div class="pro-head">
+          <span class="chip chip--pro">PRO</span>
+          <h3 style="font-size:20px;margin-top:10px">Know your ground</h3>
+          <p class="muted" style="margin-top:6px">
+            Pro never takes an extra metre for you — the map stays a fair fight.
+            It tells you what happened on it.
+          </p>
+        </div>
+        <div class="stack" id="proBenefits" style="margin:var(--s-4) 0"></div>
+        <div class="seg seg--block seg--pro" id="proPlans" role="group" aria-label="Plan"></div>
+        <p class="tiny" id="proPlanNote" style="margin-top:8px;text-align:center"></p>
+        <div class="stack" style="margin-top:var(--s-4)">
+          <button class="btn btn--pro btn--block" type="button" id="proPrimary">Start 14-day trial</button>
+          <button class="btn btn--ghost btn--block" type="button" id="proLater">Not now</button>
+        </div>
+        <p class="tiny" id="proFinePrint" style="margin-top:var(--s-3);text-align:center"></p>
       </div>
     </div>
 
@@ -473,6 +542,7 @@
   <script src="src/js/land.js"></script>
   <script src="src/js/state.js"></script>
   <script src="src/js/crew.js"></script>
+  <script src="src/js/pro.js"></script>
   <script src="src/js/tiles.js"></script>
   <script src="src/js/map.js"></script>
   <script src="src/js/realtime.js"></script>

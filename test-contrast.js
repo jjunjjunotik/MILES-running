@@ -5,10 +5,12 @@
 // with NODE_PATH pointing at an install that has it.
 const { chromium } = require('playwright');
 
-// Text painted over a bright gradient (buttons, avatars, the clipped wordmark)
-// cannot be measured from computed styles — the audit sees the page colour
-// underneath, not the gradient over it. Those are checked separately below.
-const GRADIENT = /wordmark|avatar|start-name|start-sub|start-arrow|crew-badge|rank-badge|day-chip|bubble--me|tier-pips/;
+// Text painted over a bright gradient cannot be measured from the composited
+// background alone — the audit sees the page colour underneath, not the
+// gradient over it. These are measured in a second pass instead, against every
+// colour stop of the gradient they actually sit on, so the list below is an
+// exception to the method, never an exemption from the standard.
+const GRADIENT = /wordmark|avatar|start-name|start-sub|start-arrow|rank-badge|day-chip|bubble--me|tier-pips|btn--pro/;
 
 const AUDIT = `(() => {
   const parse = (c) => {
@@ -57,6 +59,26 @@ const AUDIT = `(() => {
     if (!rect.width || !rect.height) return;
     const fg = parse(cs.color);
     if (!fg || fg.a === 0) return;
+
+    // The colour stops of the nearest gradient this text sits on, if any, and
+    // whether the gradient is the text itself rather than its background.
+    let stops = null;
+    let clipText = false;
+    // Only the nearest thing actually painting behind this text counts. Walking
+    // past a background to reach some distant ancestor's gradient would measure
+    // the text against a colour it never sits on.
+    for (let n = el; n && n !== document.documentElement; n = n.parentElement) {
+      const s2 = getComputedStyle(n);
+      const img = s2.backgroundImage || '';
+      const own = parse(s2.backgroundColor);
+      if (img.indexOf('gradient') >= 0 && img.indexOf('url') < 0) {
+        if ((s2.webkitBackgroundClip || s2.backgroundClip) === 'text') { clipText = true; break; }
+        stops = (img.match(/rgba?\\([^)]+\\)/g) || []).map(parse).filter(Boolean);
+        break;
+      }
+      if (own && own.a > 0) break;              // an opaque-enough backdrop won
+    }
+
     const bg = bgOf(el);
     const size = parseFloat(cs.fontSize);
     const weight = Number(cs.fontWeight) || 400;
@@ -68,6 +90,7 @@ const AUDIT = `(() => {
       cls: (el.className && el.className.toString ? el.className.toString() : '').slice(0, 28),
       size: Math.round(size * 10) / 10, weight,
       ratio: Math.round(r * 100) / 100, need, pass: r >= need,
+      fg, stops, clipText,
     });
   });
   return out;
@@ -94,20 +117,41 @@ const AUDIT = `(() => {
   });
 
   const seen = new Map();
+  const onGradient = new Map();
   for (const tab of ['home', 'crew', 'territory', 'quests', 'profile', 'feed']) {
     await page.evaluate((t) => MILES.UI.go(t), tab);
     await page.waitForTimeout(450);
     (await page.evaluate(AUDIT)).forEach((r) => {
-      if (GRADIENT.test(r.cls || '')) return;
       const k = `${r.cls}|${r.size}|${r.weight}`;
-      if (!seen.has(k) || seen.get(k).ratio > r.ratio) seen.set(k, r);
+      const bucket = GRADIENT.test(r.cls || '') ? onGradient : seen;
+      if (!bucket.has(k) || bucket.get(k).ratio > r.ratio) bucket.set(k, r);
     });
   }
+
+  // Gradient-backed text, measured against every stop of its own gradient.
+  const lum = (c) => {
+    const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+    return 0.2126 * f(c.r) + 0.7152 * f(c.g) + 0.0722 * f(c.b);
+  };
+  const ratio = (a, b) => { const s = [lum(a), lum(b)].sort((x, y) => y - x); return (s[0] + 0.05) / (s[1] + 0.05); };
+  const gradFails = [];
+  let gradChecked = 0;
+  let gradSkipped = 0;
+  [...onGradient.values()].forEach((r) => {
+    if (r.clipText) { gradSkipped++; return; }        // the gradient IS the text
+    if (!r.stops || !r.stops.length) { gradSkipped++; return; }
+    const worst = Math.min.apply(null, r.stops.map((s2) => ratio(r.fg, s2)));
+    gradChecked++;
+    if (worst < r.need) gradFails.push({ r, worst });
+  });
+  gradFails.forEach(({ r, worst }) => console.log(
+    `  FAIL ${Math.round(worst * 100) / 100}:1 (need ${r.need})  on gradient  .${r.cls}  "${r.text}"`));
+  console.log(`${gradChecked - gradFails.length}/${gradChecked} gradient-backed styles pass (${gradSkipped} not measurable)`);
   const rows = [...seen.values()];
   const fails = rows.filter((r) => !r.pass).sort((a, b) => a.ratio - b.ratio);
   fails.forEach((r) => console.log(`  FAIL ${r.ratio}:1 (need ${r.need})  ${r.size}px w${r.weight}  .${r.cls}  "${r.text}"`));
   console.log(`${rows.length - fails.length}/${rows.length} text styles pass WCAG AA`);
 
   await browser.close();
-  process.exit(fails.length ? 1 : 0);
+  process.exit(fails.length || gradFails.length ? 1 : 0);
 })().catch((e) => { console.error('FATAL', e.message); process.exit(1); });

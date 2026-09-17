@@ -255,6 +255,7 @@ has it. The three marked `:8765` want `python3 -m http.server 8765` running.
 
 ```
 node test-clip.js         polygon subtraction, against a sampled oracle
+node test-pro.js          the paid boundary, and the numbers Pro sells
 node test-tiles.js        tile alignment, seams, canvas taint, fallback
 node test-map.js          panning, zooming, and who owns what is in view
 node test-territory.js    a loop is the only way a territory run ends
@@ -265,6 +266,36 @@ node test-dialogs.js      confirms and prompts where modals are blocked :8765
 
 `test-tiles.js` serves its own tiles from a throwaway HTTP server, so it needs
 no network and passes with the real CDN blocked.
+
+---
+
+## MILES Pro
+
+A paid tier exists in the app. **It is a product surface, not enforcement** —
+the app is a static front end whose state is in `localStorage`, so
+`pro.plan` is one devtools edit away for anyone who wants it. Real
+entitlement needs a server, and `Pro.verify()` in `src/js/pro.js` is the single
+function that has to change when there is one: it asks the backend, caches the
+answer, and nothing above it moves.
+
+**Nothing paid affects fairness.** Pro cannot claim more ground, hold it
+longer, or level faster. Territory is a contest, and a contest you can buy is
+not one. What Pro buys is knowing more about a map everybody plays on equally:
+
+- **Time machine** — the map as it stood at any point in its life. The past is
+  not stored: claims carry the time they were made and exclusivity is decided
+  by that order alone, so a past map is recomputed by resolving only what had
+  happened by then. It works on copies, so scrubbing never touches live state.
+- **Who took your land** — every runner who has cut into your claims, with how
+  much each took. Attribution replays the same cuts the live map is built from,
+  one claim at a time in order, so ground two people later ran over is credited
+  once, to whoever reached it first, and the total can never exceed what was
+  actually lost.
+
+The free tier keeps everything it had, including **all** of your history —
+holding a runner's own data hostage is not a business model. What is free is
+also the *fact* that you lost ground; what is paid is the breakdown of who took
+it.
 
 ---
 

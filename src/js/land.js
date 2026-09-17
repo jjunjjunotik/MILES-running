@@ -77,6 +77,47 @@
 
   const Land = {
     /**
+     * How much of one claim each later claim took from it, in square metres,
+     * keyed by owner id. This replays exactly the cuts `resolve` makes, one
+     * claim at a time in the order they happened, and credits each drop in
+     * area to the claim that caused it — so ground that two people later ran
+     * over is credited once, to whoever got there first, and the total never
+     * exceeds what was actually lost.
+     */
+    raiders(claim, laterClaims, origin) {
+      const anchor = origin || claim.polygon[0];
+      const ring = (claim.polygon || []).map((p) => Geo.project(p, anchor));
+      if (ring.length < 3) return [];
+
+      let pieces = [{ ring, holes: [] }];
+      let standing = pieceArea(pieces[0]);
+      const box = bbox(ring);
+      const taken = new Map();
+
+      laterClaims
+        .filter((c) => c !== claim && (c.claimedAt || 0) > (claim.claimedAt || 0))
+        .sort((a, b) => (a.claimedAt || 0) - (b.claimedAt || 0))
+        .forEach((c) => {
+          if (!pieces.length) return;
+          const cut2 = (c.polygon || []).map((p) => Geo.project(p, anchor));
+          if (cut2.length < 3 || apart(box, bbox(cut2))) return;
+
+          pieces = cut(pieces, cut2);
+          const now = pieces.reduce((sum, piece) => sum + pieceArea(piece), 0);
+          const lost = standing - now;
+          standing = now;
+          if (lost <= 1) return;
+
+          const key = c.owner || 'unknown';
+          const prev = taken.get(key);
+          if (prev) { prev.area += lost; prev.at = Math.max(prev.at, c.claimedAt || 0); }
+          else taken.set(key, { owner: key, name: c.ownerName || 'Unknown', color: c.color, area: lost, at: c.claimedAt || 0 });
+        });
+
+      return [...taken.values()].sort((a, b) => b.area - a.area);
+    },
+
+    /**
      * Resolves a set of claims so none of them overlap.
      * Each claim needs `polygon` (a lat/lng ring) and `claimedAt`. Every claim
      * comes back with `pieces` (lat/lng rings with voids) and a corrected

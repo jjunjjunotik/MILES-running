@@ -775,3 +775,64 @@
 }
 .icon-btn--ok { border-color: rgba(46,230,168,0.5); color: var(--ok); }
 .icon-btn--no { border-color: rgba(255,89,100,0.45); color: var(--bad); }
+
+/* --- Pro -------------------------------------------------------------------
+   The paid tier reads as a warmer relative of the app, not a different one:
+   amber against the same surfaces. A locked feature shows what it does rather
+   than hiding behind a wall, so the offer is an answer to a question the
+   screen has already made you ask. ------------------------------------------ */
+
+.chip--pro {
+  background: rgba(255, 196, 87, 0.16);
+  border-color: rgba(255, 196, 87, 0.45);
+  color: var(--amber-ink);
+  font-weight: 800; letter-spacing: 0.08em;
+}
+
+.btn--pro {
+  background: linear-gradient(135deg, #ffc457, #ff9a3c);
+  color: #2a1a00;
+  border-color: transparent;
+  font-weight: 800;
+}
+
+.lock-row { display: flex; align-items: center; gap: var(--s-3); }
+.lock-title { font-weight: 700; font-size: 13.5px; color: var(--text-hi); }
+
+.timemachine {
+  flex: none;
+  margin-top: var(--s-3);
+  padding: var(--s-3);
+  border-radius: var(--r-lg);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* A scrubber wide enough to land a thumb on, in both engines. */
+.scrub { -webkit-appearance: none; appearance: none; height: 28px; background: transparent; cursor: pointer; }
+.scrub::-webkit-slider-runnable-track { height: 4px; border-radius: 2px; background: var(--line); }
+.scrub::-moz-range-track { height: 4px; border-radius: 2px; background: var(--line); }
+.scrub::-webkit-slider-thumb {
+  -webkit-appearance: none; appearance: none;
+  width: 18px; height: 18px; margin-top: -7px;
+  border-radius: 50%; background: var(--amber-ink);
+  border: 2px solid var(--ink-900);
+}
+.scrub::-moz-range-thumb {
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--amber-ink); border: 2px solid var(--ink-900);
+}
+.scrub:focus-visible { outline: 2px solid var(--amber-ink); outline-offset: 4px; }
+
+.raid-row { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) 0; border-bottom: 1px solid var(--line); }
+.raid-row:last-child { border-bottom: none; }
+.raid-swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+
+.pro-head { text-align: center; }
+.pro-benefit { display: flex; align-items: flex-start; gap: var(--s-3); }
+.pro-benefit-icon { font-size: 18px; line-height: 1.2; flex: none; width: 24px; text-align: center; }
+.pro-benefit-name { font-weight: 700; font-size: 14px; color: var(--text-hi); }
+
+/* The plan picker belongs to the Pro sheet, so it wears the Pro colour rather
+   than the app's lime accent — two accents in one sheet reads as two offers. */
+.seg--pro button[aria-pressed="true"] { background: var(--amber-ink); color: #2a1a00; }

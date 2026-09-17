@@ -275,6 +275,16 @@ falls back to the procedurally drawn city, which is the same view with the same
 geometry and no network. That is deliberate — the drawn city is a real design,
 not an error state, so the fallback never looks like a failure.
 
+**What the paid tier may not do.** Pro never takes an extra metre. The moment a
+subscription can claim faster, hold longer, or defend ground for you, the map
+stops being a contest and becomes a price list — and the free players who make
+the map worth having are the first to notice. So the line is drawn at
+information and expression, never at outcome: Pro tells you what happened on a
+map everyone plays on equally. It also means a locked feature can show its own
+value honestly. "0.08 km² of yours has been taken" is free; who took it is
+paid. The offer answers a question the screen has already made you ask, which
+is why there is no interstitial and nothing over a finish card.
+
 **The loop is the finish.** A territory run ends the instant you meet your own
 start — nothing to press, and no way to bank a half-loop. That makes the mode
 one commitment rather than a run with a bonus attached, which is why the map

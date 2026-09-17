@@ -431,6 +431,41 @@
     return land;
   }
 
+  /**
+   * One deliberate border war. Territory only means something once somebody
+   * has taken some of yours, and with everyone else's claims seeded older than
+   * your own nobody ever had — so the map opened with a contest that had never
+   * happened. This puts a neighbour's loop across your newest plot, run the
+   * morning after you claimed it.
+   */
+  function seedContested(state) {
+    const mine = (state.territories || []).slice().sort((a, b) => b.claimedAt - a.claimedAt)[0];
+    const rival = (state.friends || [])[2] || (state.friends || [])[0];
+    if (!mine || !rival || !mine.polygon || mine.polygon.length < 3) return null;
+
+    const ring = mine.polygon;
+    const centre = {
+      lat: ring.reduce((a, p) => a + p.lat, 0) / ring.length,
+      lng: ring.reduce((a, p) => a + p.lng, 0) / ring.length,
+    };
+    // Offset by about a radius so the loops overlap in a lens, not a swallow:
+    // a neighbour taking a bite out of one edge, which is what it looks like.
+    const radius = Math.sqrt(Math.max(1, Geo.polygonArea(ring)) / Math.PI);
+    const hub = Geo.offset(centre, radius * 1.05, radius * 0.35);
+    const polygon = loopAround(hub, radius * 0.95, 4, null);
+
+    return {
+      id: 'contest-0',
+      owner: rival.id,
+      ownerName: rival.name,
+      initials: rival.initials,
+      color: rival.color,
+      polygon,
+      area: Geo.polygonArea(polygon),
+      claimedAt: mine.claimedAt + 11 * 36e5,
+    };
+  }
+
   function seedRivalLand(state) {
     const home = state.profile.home;
     const land = [];
@@ -458,7 +493,8 @@
         });
       }
     });
-    return land.concat(seedDistrictLand(home));
+    const contested = seedContested(state);
+    return land.concat(seedDistrictLand(home), contested ? [contested] : []);
   }
 
   /** Initials, colour and a race pace derived from how much they run. */
@@ -494,6 +530,7 @@
           profile: { name: 'You', handle: '@you', initials: 'YU', home },
           units: 'km',
           mapStyle: 'dark',
+          pro: { plan: null, trialEndsAt: null },
           rangeMode: 'week',
           activities: seeded.activities,
           territories: seeded.territories,
@@ -532,6 +569,8 @@
       if (!this.data.rivalLand) this.data.rivalLand = [];
       // Saved before the map could show real imagery.
       if (!this.data.mapStyle) this.data.mapStyle = 'dark';
+      // Saved before there was anything to buy.
+      if (!this.data.pro) this.data.pro = { plan: null, trialEndsAt: null };
 
       // Owners painted before the palette was validated keep colours that are
       // indistinguishable from each other; restate them in slot order.
@@ -546,7 +585,15 @@
       if (!this.data.rivalLand.length) {
         this.data.rivalLand = seedRivalLand(this.data);
         this.resolveLand();
-      } else if (!this.data.rivalLand.some((t) => String(t.owner).indexOf('local-') === 0)) {
+      } else if (!this.data.rivalLand.some((t) => t.id === 'contest-0')) {
+        // Saved before anyone had ever taken ground from you.
+        const contested = seedContested(this.data);
+        if (contested) {
+          this.data.rivalLand = this.data.rivalLand.concat([contested]);
+          this.resolveLand();
+        }
+      }
+      if (!this.data.rivalLand.some((t) => String(t.owner).indexOf('local-') === 0)) {
         // Saved before the map could be panned, when land stopped at the edge
         // of your own neighbourhood. Give the rest of the city its owners.
         this.data.rivalLand = this.data.rivalLand.concat(seedDistrictLand(this.data.profile.home));

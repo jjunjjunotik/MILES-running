@@ -30,6 +30,7 @@
       this.bindProfile();
       this.bindCrew();
       this.bindTerritoryMap();
+      this.bindPro();
 
       Bus.on('state:changed', () => this.renderAll());
       this.renderAll();
@@ -89,6 +90,7 @@
       this.maps.run.setVisible(tab === 'run');
       this.maps.territory.setVisible(tab === 'territory');
 
+      if (tab !== 'territory' && this.scrubAt) this.stopScrub();
       if (tab === 'territory') this.renderTerritory();
       if (tab === 'feed') this.renderFeed();
       if (tab === 'crew') this.renderCrew();
@@ -794,7 +796,9 @@
       const rivalLand = this.rivalTerritories();
       const map = this.maps.territory;
       map.setAnchor(s.profile.home);
-      map.layers.territories = s.territories.concat(rivalLand);
+      map.layers.territories = this.scrubAt
+        ? M.Pro.mapAt(s, this.scrubAt)
+        : s.territories.concat(rivalLand);
       map.layers.route = [];
       map.layers.me = s.profile.home;
       map.layers.rivals = [];
@@ -809,6 +813,8 @@
       map.invalidate();
 
       this.renderTerrLegend();
+      this.renderTimeMachine();
+      this.renderRaiders();
 
       // Plots
       const list = $('#terrList');
@@ -817,8 +823,13 @@
         list.appendChild(el('div', { class: 'empty', text: 'No land yet. Run a loop back to your starting point and everything inside becomes yours.' }));
         return;
       }
-      // How much of a claim later claims have taken back.
-      const lost = (t) => Math.max(0, Geo.polygonArea(t.polygon) - (t.area || 0));
+      // How much of a claim other runners have taken. Ground your own later
+      // loop covers is not lost — you still hold it, under the newer plot —
+      // so counting it here would contradict the breakdown further up.
+      const claims = s.territories.concat(rivalLand);
+      const lost = (t) => M.Land.raiders(t, claims, s.profile.home)
+        .filter((r) => r.owner !== 'me')
+        .reduce((sum, r) => sum + r.area, 0);
 
       s.territories.forEach((t) => {
         const canvas = el('canvas');
@@ -906,6 +917,191 @@
       const COMPASS = ['east', 'northeast', 'north', 'northwest', 'west', 'southwest', 'south', 'southeast'];
       const way = COMPASS[(Math.round(Math.atan2(-v.y, v.x) / (Math.PI / 4)) + 8) % 8];
       return `Nearest land · ${Units.distText(best.d)} ${Units.distLabel()} ${way}`;
+    },
+
+    /* --- Pro ---------------------------------------------------------------
+       Locked features show what they do rather than hiding, so the offer
+       answers a question the screen has already raised. -------------------- */
+
+    renderTimeMachine() {
+      const on = M.Pro.active();
+      $('#tmChip').hidden = !on;
+      $('#tmLocked').hidden = on;
+      $('#tmPanel').hidden = !on;
+      $('#tmUnlock').textContent = M.Pro.trialAvailable() ? 'Try free' : 'Get Pro';
+      if (!on) { this.stopScrub(); return; }
+
+      const s = State.data;
+      const from = M.Pro.firstClaimAt(s);
+      if (!isFinite(from)) return;
+      const at = this.scrubAt || Date.now();
+      $('#tmDate').textContent = new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      $('#tmHeld').textContent = `${Units.areaText(M.Pro.heldAt(s, at))} ${Units.areaLabel()} held`;
+    },
+
+    /** Maps the scrubber's 0–1000 onto the life of the map. */
+    scrubToTime(value) {
+      const from = M.Pro.firstClaimAt(State.data);
+      const to = Date.now();
+      if (!isFinite(from) || to <= from) return to;
+      return from + ((to - from) * value) / 1000;
+    },
+
+    setScrub(value) {
+      const at = this.scrubToTime(Number(value));
+      // The present is the live map, not a reconstruction of it.
+      this.scrubAt = Number(value) >= 1000 ? null : at;
+      this.renderTerritory();
+    },
+
+    stopScrub() {
+      if (this._tmTimer) { clearInterval(this._tmTimer); this._tmTimer = null; }
+      $('#tmPlay').textContent = '▶';
+      if (this.scrubAt) { this.scrubAt = null; $('#tmScrub').value = 1000; this.renderTerritory(); }
+    },
+
+    toggleScrubPlay() {
+      if (this._tmTimer) { this.stopScrub(); return; }
+      $('#tmPlay').textContent = '❚❚';
+      const scrub = $('#tmScrub');
+      if (Number(scrub.value) >= 1000) scrub.value = 0;
+      this._tmTimer = setInterval(() => {
+        const next = Number(scrub.value) + 14;
+        scrub.value = Math.min(1000, next);
+        this.setScrub(scrub.value);
+        if (next >= 1000) { clearInterval(this._tmTimer); this._tmTimer = null; $('#tmPlay').textContent = '▶'; }
+      }, 90);
+    },
+
+    renderRaiders() {
+      const on = M.Pro.active();
+      const raiders = M.Pro.raiders(State.data);
+      const lost = raiders.reduce((a, r) => a + r.area, 0);
+
+      $('#raidChip').hidden = !on;
+      $('#raidLocked').hidden = on;
+      $('#raidList').hidden = !on;
+      $('#raidUnlock').textContent = M.Pro.trialAvailable() ? 'Try free' : 'Get Pro';
+      // The tease states the fact for free; only the breakdown is paid.
+      $('#raidTease').textContent = lost > 0
+        ? `${Units.areaText(lost)} ${Units.areaLabel()} of yours has been taken`
+        : 'Nobody has taken your ground yet';
+
+      if (!on) return;
+      const list = $('#raidList');
+      list.innerHTML = '';
+      if (!raiders.length) {
+        list.appendChild(el('div', { class: 'empty', text: 'Every metre you have claimed is still yours.' }));
+        return;
+      }
+      raiders.forEach((r) => {
+        list.appendChild(el('div', { class: 'raid-row' }, [
+          el('span', { class: 'raid-swatch', style: `background:${r.color || 'var(--text-lo)'}` }),
+          el('div', { class: 'stack grow', style: 'gap:2px' }, [
+            el('span', { style: 'font-weight:700;font-size:13.5px', text: r.name }),
+            el('span', { class: 'tiny', text: `${r.plots} of your plots · last ${relTime(r.at)}` }),
+          ]),
+          el('span', { class: 'stat-value', style: 'font-size:13px', text: `${Units.areaText(r.area)} ${Units.areaLabel()}` }),
+        ]));
+      });
+    },
+
+    openPro(reason) {
+      this.proPlan = this.proPlan || 'pro_yearly';
+      const benefits = $('#proBenefits');
+      benefits.innerHTML = '';
+      M.Pro.BENEFITS.forEach((b) => {
+        benefits.appendChild(el('div', { class: 'pro-benefit' }, [
+          el('span', { class: 'pro-benefit-icon', text: b.icon }),
+          el('div', { class: 'stack', style: 'gap:2px' }, [
+            el('span', { class: 'pro-benefit-name', text: b.name }),
+            el('span', { class: 'tiny', text: b.note }),
+          ]),
+        ]));
+      });
+
+      const plans = $('#proPlans');
+      plans.innerHTML = '';
+      Object.keys(M.Pro.PLANS).forEach((id) => {
+        plans.appendChild(el('button', {
+          type: 'button', text: M.Pro.PLANS[id].label,
+          onclick: () => { this.proPlan = id; this.renderProOffer(); },
+        }));
+      });
+
+      this.renderProOffer();
+      this.openSheet('#proSheet');
+    },
+
+    /** The part of the offer that changes with the chosen plan. */
+    renderProOffer() {
+      const plan = M.Pro.PLANS[this.proPlan];
+      $$('#proPlans button').forEach((b) => b.setAttribute('aria-pressed', String(b.textContent === plan.label)));
+      $('#proPlanNote').textContent = plan.note || '';
+
+      const trial = M.Pro.trialAvailable();
+      $('#proPrimary').textContent = trial
+        ? `Start ${M.Pro.TRIAL_DAYS}-day trial`
+        : `Subscribe · ${plan.label}`;
+      $('#proFinePrint').textContent = trial
+        ? `No card needed. After ${M.Pro.TRIAL_DAYS} days, Pro features lock again — nothing is charged and nothing you ran is lost.`
+        : 'Cancel any time. Your runs, land and history stay yours either way.';
+    },
+
+    bindPro() {
+      const offer = () => this.openPro();
+      $('#tmUnlock').addEventListener('click', offer);
+      $('#raidUnlock').addEventListener('click', offer);
+      $('#proBtn').addEventListener('click', () => {
+        if (!M.Pro.active()) return this.openPro();
+        this.confirm({
+          title: 'Cancel Pro?',
+          body: 'The time machine and the breakdown of who took your land lock again. Your runs, your land and your history are untouched.',
+          confirmLabel: 'Cancel Pro', cancelLabel: 'Keep Pro', danger: true,
+        }).then((yes) => {
+          if (!yes) return;
+          M.Pro.cancel(State.data);
+          State.save();
+          this.toast('Pro cancelled — everything you ran is still yours');
+        });
+      });
+      $('#proLater').addEventListener('click', () => this.closeSheet('#proSheet'));
+      $('#proPrimary').addEventListener('click', () => {
+        const trial = M.Pro.trialAvailable();
+        if (trial) M.Pro.startTrial(State.data);
+        else M.Pro.subscribe(State.data, this.proPlan);
+        State.save();
+        this.closeSheet('#proSheet');
+        this.toast(trial
+          ? `<b>Pro</b> for ${M.Pro.TRIAL_DAYS} days — open the time machine`
+          : '<b>Pro</b> is on');
+      });
+
+      $('#tmScrub').addEventListener('input', (e) => {
+        if (this._tmTimer) this.stopScrub();
+        this.setScrub(e.target.value);
+      });
+      $('#tmPlay').addEventListener('click', () => this.toggleScrubPlay());
+    },
+
+    renderProStatus() {
+      const v = M.Pro.verify(State.data);
+      const note = $('#proStatus');
+      const btn = $('#proBtn');
+      if (v.tier !== 'pro') {
+        note.textContent = M.Pro.trialAvailable()
+          ? `Free plan · ${M.Pro.TRIAL_DAYS}-day trial available`
+          : 'Free plan';
+        btn.textContent = 'See Pro';
+        btn.classList.add('btn--ghost');
+        return;
+      }
+      const days = Math.max(0, Math.ceil((v.until - Date.now()) / 864e5));
+      note.textContent = v.trial
+        ? `Trial · ${days} ${days === 1 ? 'day' : 'days'} left`
+        : `${v.plan.name} · renews in ${days} ${days === 1 ? 'day' : 'days'}`;
+      btn.textContent = 'Manage';
+      btn.classList.add('btn--ghost');
     },
 
     bindTerritoryMap() {
@@ -2201,6 +2397,7 @@
       $('#kpiAreaUnit').textContent = Units.areaLabel() + ' land';
 
       this.renderMapStyle();
+      this.renderProStatus();
       this.renderFriendList();
       this.renderHistory();
     },
