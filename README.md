@@ -132,6 +132,16 @@ npm run build:demo          # demo/nailsense-demo.html 생성
 예시 기록 3건이 함께 들어갑니다. 같이 만들어지는 `demo/artifact.html` 은
 바깥 `<html>` 래퍼 없이 본문만 담은 게시용 파일입니다.
 
+### 모델 404 가 날 때
+
+```bash
+npm run models
+```
+
+키로 쓸 수 있는 Gemini 모델을 나열합니다. 쓸 수 있는 모델은 키와 지역에
+따라 다르므로, 기본값이 맞지 않으면 목록에서 골라 `.env` 의 `GEMINI_MODEL`
+에 적으면 됩니다.
+
 ### 스모크 테스트
 
 ```bash

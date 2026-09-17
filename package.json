@@ -15,7 +15,8 @@
     "preview": "vite preview",
     "smoke": "node scripts/smoke.mjs",
     "smoke:dev": "node scripts/smoke-dev.mjs",
-    "check:secrets": "node scripts/check-secrets.mjs"
+    "check:secrets": "node scripts/check-secrets.mjs",
+    "models": "node scripts/models.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

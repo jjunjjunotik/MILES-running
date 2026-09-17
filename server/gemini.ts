@@ -182,6 +182,13 @@ function toAnalyzeError(err: unknown): AnalyzeError {
     if (err.status === 401 || err.status === 403) {
       return new AnalyzeError("no_api_key", "GEMINI_API_KEY를 확인해 주세요.");
     }
+    if (err.status === 404) {
+      // 쓸 수 있는 모델은 키와 지역에 따라 다르다. 추측하지 말고 확인하게 한다.
+      return new AnalyzeError(
+        "upstream_error",
+        `모델 "${MODEL}" 을 찾지 못했습니다. 터미널에서 npm run models 를 실행해 쓸 수 있는 모델을 확인한 뒤, .env 의 GEMINI_MODEL 에 적어 주세요.`,
+      );
+    }
     // 상태 코드만 전한다. 응답 본문에는 키가 섞여 나올 수 있다.
     return new AnalyzeError(
       "upstream_error",
