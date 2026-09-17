@@ -18,6 +18,10 @@ const { chromium } = require('playwright');
   // A. Tap every field in the create sheet, then cancel.
   await page.click('#tabbar [data-tab="crew"]');
   await page.waitForTimeout(500);
+  // Founding a crew is a Pro capability now, so the form this test drives is
+  // only reachable with it. Joining a crew stays free and is covered elsewhere.
+  await page.evaluate(() => { MILES.Pro.subscribe(MILES.State.data, 'pro_yearly'); MILES.State.save(); });
+  await page.waitForTimeout(200);
   await page.click('#createCrewBtn');
   await page.waitForTimeout(400);
   const fields = await page.evaluate(() => document.querySelectorAll('#crewSheetBody input, #crewSheetBody select').length);

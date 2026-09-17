@@ -13,12 +13,16 @@
   const H = 1350;
   const PAD = 76;
 
+  /* Colourways for the card. The default per run kind is free; choosing a
+     different one is what Supporter buys. */
   const THEMES = {
     lime:    { accent: '#c8ff2e', accent2: '#2fe0ff' },
     violet:  { accent: '#a855f7', accent2: '#26dafe' },
     magenta: { accent: '#ff3d8b', accent2: '#ffb020' },
     amber:   { accent: '#ffb020', accent2: '#c8ff2e' },
   };
+
+  const THEME_NAMES = { lime: 'Lime', violet: 'Violet', magenta: 'Magenta', amber: 'Amber' };
 
   const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
   const MONO = '"SF Mono", "JetBrains Mono", "Roboto Mono", ui-monospace, monospace';
@@ -307,6 +311,7 @@
   }
 
   M.renderCard = renderCard;
+  M.CARD_THEMES = THEME_NAMES;
   M.ordinal = ordinal;
   M.downloadCard = downloadCard;
 })(window.MILES);

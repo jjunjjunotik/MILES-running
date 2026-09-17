@@ -155,6 +155,106 @@ const path = require('path');
   ok('the locked panel comes back',
     await page.evaluate(() => document.querySelector('#tmPanel').hidden && !document.querySelector('#tmLocked').hidden));
 
+  // --- 5. Two tiers, and a ladder between them ----------------------------
+  const tiers = await page.evaluate(() => {
+    const S = MILES.State.data, P = MILES.Pro;
+    const caps = () => Object.keys(P.FEATURES).filter((f) => P.can(f));
+    P.cancel(S);
+    const free = { tier: P.tier(), caps: caps(), rivals: P.maxRivals() };
+    P.subscribe(S, 'supporter_monthly');
+    const sup = { tier: P.tier(), caps: caps(), rivals: P.maxRivals() };
+    P.subscribe(S, 'pro_yearly');
+    const pro = { tier: P.tier(), caps: caps(), rivals: P.maxRivals() };
+    return { free, sup, pro, plans: Object.keys(P.PLANS) };
+  });
+  ok('there are two paid tiers, each monthly or yearly', tiers.plans.length === 4, JSON.stringify(tiers.plans));
+  ok('free buys no capability', tiers.free.caps.length === 0, JSON.stringify(tiers.free.caps));
+  ok('Supporter buys expression only',
+    tiers.sup.caps.length === 2 && tiers.sup.caps.every((c) => ['plotStyle', 'cardThemes'].includes(c)),
+    JSON.stringify(tiers.sup.caps));
+  ok('Pro contains everything Supporter has',
+    tiers.sup.caps.every((c) => tiers.pro.caps.includes(c)) && tiers.pro.caps.length > tiers.sup.caps.length,
+    JSON.stringify(tiers.pro.caps));
+  ok('no tier buys a bigger claim, a longer hold, or faster XP',
+    !Object.keys(await page.evaluate(() => MILES.Pro.FEATURES))
+      .some((f) => /claim|hold|xp|rank|defen|protect|boost/i.test(f)));
+  ok('only the host pays for a wider race field',
+    tiers.free.rivals === 4 && tiers.sup.rivals === 4 && tiers.pro.rivals === 16,
+    `${tiers.free.rivals}/${tiers.sup.rivals}/${tiers.pro.rivals}`);
+
+  // --- 6. Scout points at ground that is genuinely empty -------------------
+  await page.evaluate(() => MILES.UI.go('territory'));
+  await page.waitForTimeout(600);
+  const scout = await page.evaluate(() => {
+    const m = MILES.UI.maps.territory;
+    const found = MILES.Pro.scout(MILES.State.data, m.bounds(), m.layers.territories);
+    if (!found) return null;
+    // Checked against the claims themselves, not against the sampler that
+    // found it — a sampled maximum that overlaps a claim would be a lie.
+    let nearest = Infinity;
+    m.layers.territories.forEach((t) => {
+      const ring = (t.pieces && t.pieces.length ? t.pieces[0].ring : t.polygon) || [];
+      ring.forEach((pt) => {
+        const d = MILES.Geo.distance(found.centre, pt);
+        if (d < nearest) nearest = d;
+      });
+    });
+    return { radius: found.radius, nearest };
+  });
+  ok('scout finds open ground', scout && scout.radius >= 120, JSON.stringify(scout));
+  ok('the ground it finds is actually unclaimed', scout && scout.nearest >= scout.radius - 1,
+    scout && `radius ${Math.round(scout.radius)} vs nearest claim ${Math.round(scout.nearest)}`);
+
+  // --- 7. The offer is reachable, and leads with the right tier ------------
+  await page.evaluate(() => { MILES.Pro.cancel(MILES.State.data); MILES.State.save(); MILES.UI.go('profile'); });
+  await page.waitForTimeout(400);
+  ok('the You screen has a Pro card above the fold',
+    await page.evaluate(() => {
+      const c = document.querySelector('#proCard');
+      if (!c) return false;
+      const screen = document.querySelector('#screen-profile');
+      return c.getBoundingClientRect().top - screen.getBoundingClientRect().top < screen.clientHeight;
+    }));
+  await page.click('#proCard');
+  await page.waitForTimeout(300);
+  ok('the card opens the offer', await page.evaluate(() => !document.querySelector('#proSheet').hidden));
+  await page.click('#proLater');
+  await page.waitForTimeout(200);
+
+  const leads = await page.evaluate(async () => {
+    const out = {};
+    for (const f of ['cardThemes', 'timeMachine', 'plotStyle', 'crewCreate']) {
+      MILES.UI.openPro(f);
+      out[f] = document.querySelector('#proTiers button[aria-pressed="true"]').dataset.tier;
+      MILES.UI.closeSheet('#proSheet');
+    }
+    return out;
+  });
+  ok('a cosmetic lock offers Supporter, not analysis',
+    leads.cardThemes === 'supporter' && leads.plotStyle === 'supporter', JSON.stringify(leads));
+  ok('an analysis lock offers Pro', leads.timeMachine === 'pro' && leads.crewCreate === 'pro',
+    JSON.stringify(leads));
+
+  // --- 8. Everything the offer advertises actually exists ------------------
+  const advertised = await page.evaluate(() => {
+    const U = MILES.UI, P = MILES.Pro;
+    return {
+      benefits: P.BENEFITS.supporter.length + P.BENEFITS.pro.length,
+      // Each headline benefit maps to something that runs.
+      hasPlotStyle: typeof U.openPlotStyle === 'function',
+      hasThemes: !!MILES.CARD_THEMES && Object.keys(MILES.CARD_THEMES).length >= 4,
+      hasScout: typeof P.scout === 'function',
+      hasTimeMachine: typeof P.mapAt === 'function',
+      hasRaiders: typeof P.raiders === 'function',
+      hasBigRaces: P.MAX_RIVALS_PRO > P.MAX_RIVALS_FREE,
+      hasMapStyles: Object.keys(MILES.Tiles.SOURCES).length >= 4,
+    };
+  });
+  ok('the offer lists eight benefits', advertised.benefits === 8, advertised.benefits);
+  Object.keys(advertised).filter((k) => k.startsWith('has')).forEach((k) => {
+    ok(`${k.replace('has', '')} is implemented, not just advertised`, advertised[k]);
+  });
+
   console.log('ERRORS:', errors.length ? errors.join('\n') : 'none');
   console.log(bad === 0 ? 'ALL PASS' : `${bad} FAILURES`);
   await browser.close();

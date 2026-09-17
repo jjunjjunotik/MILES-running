@@ -23,25 +23,76 @@
 
   const { Geo, Land } = M;
 
+  /** Distance from a point to a line segment, in projected metres. */
+  function segDistance(p, a, b) {
+    const dx = b.x - a.x;
+    const dy = b.y - a.y;
+    const len = dx * dx + dy * dy;
+    let t = len ? ((p.x - a.x) * dx + (p.y - a.y) * dy) / len : 0;
+    t = t < 0 ? 0 : t > 1 ? 1 : t;
+    return Math.hypot(p.x - (a.x + dx * t), p.y - (a.y + dy * t));
+  }
+
   const TRIAL_DAYS = 14;
   const DAY = 864e5;
 
+  /* Two paid tiers. Supporter is the cosmetic half on its own, for people who
+     want to back the app and mark their ground without the analysis. */
+  const TIERS = { free: 0, supporter: 1, pro: 2 };
+
   const PLANS = {
-    pro_monthly: { id: 'pro_monthly', tier: 'pro', name: 'Pro', price: 4900, period: 'month', label: '₩4,900 / mo' },
-    pro_yearly:  { id: 'pro_yearly',  tier: 'pro', name: 'Pro', price: 39000, period: 'year', label: '₩39,000 / yr', note: 'Two months free, paid once' },
+    supporter_monthly: { id: 'supporter_monthly', tier: 'supporter', name: 'Supporter', price: 2900, period: 'month', label: '₩2,900 / mo' },
+    supporter_yearly:  { id: 'supporter_yearly',  tier: 'supporter', name: 'Supporter', price: 24000, period: 'year', label: '₩24,000 / yr', note: 'Two months free, paid once' },
+    pro_monthly:       { id: 'pro_monthly',       tier: 'pro',       name: 'Pro',       price: 4900, period: 'month', label: '₩4,900 / mo' },
+    pro_yearly:        { id: 'pro_yearly',        tier: 'pro',       name: 'Pro',       price: 39000, period: 'year', label: '₩39,000 / yr', note: 'Two months free, paid once' },
   };
 
-  /* What the tier buys, in the order it is worth buying it for. */
-  const BENEFITS = [
-    { icon: '⏳', name: 'Time machine', note: 'Replay the map week by week and watch the borders move' },
-    { icon: '⚔', name: 'Who took your land', note: 'Every claim measured back to the runner who made it' },
-    { icon: '🎨', name: 'Name and colour your plots', note: 'Your ground, marked your way' },
-  ];
+  /**
+   * Every gate in the app names a capability here rather than testing a tier,
+   * so moving a feature between tiers is one line in this table and nothing
+   * else in the codebase moves.
+   *
+   * Note what is absent: nothing that claims ground, holds it, or earns XP.
+   * A contest you can buy is not one, so the paid line is drawn at knowing and
+   * at expression, never at outcome.
+   */
+  const FEATURES = {
+    // Supporter — expression. Changes how your running looks, never how it scores.
+    plotStyle:      'supporter',   // name and colour your own plots
+    cardThemes:     'supporter',   // record card colourways
+    // Pro — information and organising.
+    timeMachine:    'pro',
+    raiders:        'pro',
+    scout:          'pro',         // where the unclaimed ground is
+    bigRaces:       'pro',         // a wider field; everyone you invite runs free
+    customDistance: 'pro',
+    crewCreate:     'pro',         // founding a crew; joining one is always free
+    mapStyles:      'pro',
+  };
+
+  const BENEFITS = {
+    supporter: [
+      { icon: '🎨', name: 'Name and colour your plots', note: 'Your ground, marked and named your way' },
+      { icon: '🖼', name: 'Record card themes', note: 'Four colourways for the card you actually share' },
+    ],
+    pro: [
+      { icon: '⏳', name: 'Time machine', note: 'Replay the map week by week and watch the borders move' },
+      { icon: '⚔', name: 'Who took your land', note: 'Every claim measured back to the runner who made it' },
+      { icon: '🔭', name: 'Scout', note: 'The biggest unclaimed ground in view, measured' },
+      { icon: '🏁', name: 'Races up to 16', note: 'Everyone you line up against runs free' },
+      { icon: '🚩', name: 'Found a crew', note: 'Joining a crew is free, always' },
+      { icon: '🗺', name: 'Every map style', note: 'Street and light basemaps as well as dark' },
+    ],
+  };
 
   const Pro = {
     PLANS,
     BENEFITS,
+    FEATURES,
+    TIERS,
     TRIAL_DAYS,
+    MAX_RIVALS_FREE: 4,
+    MAX_RIVALS_PRO: 16,
 
     /* --- Entitlement -------------------------------------------------------- */
 
@@ -54,16 +105,34 @@
     verify(state) {
       const p = (state || M.State.data || {}).pro;
       if (!p) return { tier: 'free', plan: null, trial: false, until: null };
+      // A trial is always of the top tier — there is no point trialling less.
       if (p.trialEndsAt && Date.now() < p.trialEndsAt) {
         return { tier: 'pro', plan: null, trial: true, until: p.trialEndsAt };
       }
       if (p.plan && PLANS[p.plan]) {
-        return { tier: 'pro', plan: PLANS[p.plan], trial: false, until: p.renewsAt || null };
+        return { tier: PLANS[p.plan].tier, plan: PLANS[p.plan], trial: false, until: p.renewsAt || null };
       }
       return { tier: 'free', plan: null, trial: false, until: null };
     },
 
-    active(state) { return this.verify(state).tier === 'pro'; },
+    tier(state) { return this.verify(state).tier; },
+
+    /** Whether this account may use a named capability. */
+    can(feature, state) {
+      const need = FEATURES[feature];
+      if (!need) return true;                      // unlisted is free
+      return TIERS[this.tier(state)] >= TIERS[need];
+    },
+
+    /** The tier a capability needs, for the offer to lead with the right one. */
+    tierFor(feature) { return FEATURES[feature] || 'free'; },
+
+    active(state) { return TIERS[this.tier(state)] >= TIERS.pro; },
+
+    /** A race field is the host's to widen; guests never pay to line up. */
+    maxRivals(state) {
+      return this.can('bigRaces', state) ? this.MAX_RIVALS_PRO : this.MAX_RIVALS_FREE;
+    },
 
     /** Whether the trial is still on the table — it is offered once. */
     trialAvailable(state) {
@@ -155,6 +224,69 @@
       });
 
       return [...byOwner.values()].sort((a, b) => b.area - a.area);
+    },
+
+    /* --- Scout --------------------------------------------------------------
+       "Where should I run next" has an answer on a map of claims: the largest
+       circle you can draw that touches nobody's land. ------------------------ */
+
+    /**
+     * The biggest open ground inside the given bounds, as a centre and a
+     * radius in metres, or null if the view is full. Found by sampling: for a
+     * grid of candidate centres, measure the distance to the nearest claimed
+     * edge and keep the best, then refine around the winner. Sampling is
+     * honest here in a way it would not be for area — a circle that clears
+     * every sampled edge is checked against the claims themselves before it
+     * is offered, so what comes back is always genuinely empty.
+     */
+    scout(state, bounds, claims) {
+      const origin = state.profile.home;
+      const all = (claims || (state.territories || []).concat(state.rivalLand || []))
+        .map((c) => ((c.pieces && c.pieces.length ? c.pieces[0].ring : c.polygon) || []))
+        .filter((ring) => ring.length >= 3)
+        .map((ring) => ring.map((p) => Geo.project(p, origin)));
+      if (!bounds) return null;
+
+      const nw = Geo.project({ lat: bounds.north, lng: bounds.west }, origin);
+      const se = Geo.project({ lat: bounds.south, lng: bounds.east }, origin);
+      const x0 = Math.min(nw.x, se.x), x1 = Math.max(nw.x, se.x);
+      const y0 = Math.min(nw.y, se.y), y1 = Math.max(nw.y, se.y);
+      // Keep the circle fully inside the view, so it is somewhere you can see.
+      const edge = (p) => Math.min(p.x - x0, x1 - p.x, p.y - y0, y1 - p.y);
+
+      const clearance = (p) => {
+        let best = edge(p);
+        for (let i = 0; i < all.length && best > 0; i++) {
+          const ring = all[i];
+          if (M.Clip.pointInRing(p, ring)) return 0;         // standing on someone's land
+          for (let j = 0; j < ring.length; j++) {
+            const d = segDistance(p, ring[j], ring[(j + 1) % ring.length]);
+            if (d < best) best = d;
+          }
+        }
+        return best;
+      };
+
+      let best = null;
+      const scan = (ax0, ay0, ax1, ay1, steps) => {
+        for (let i = 0; i <= steps; i++) {
+          for (let j = 0; j <= steps; j++) {
+            const p = { x: ax0 + ((ax1 - ax0) * i) / steps, y: ay0 + ((ay1 - ay0) * j) / steps };
+            const r = clearance(p);
+            if (!best || r > best.r) best = { x: p.x, y: p.y, r };
+          }
+        }
+      };
+
+      scan(x0, y0, x1, y1, 16);
+      if (!best) return null;
+      // Refine around the winner, which is where the true maximum sits.
+      const span = Math.max(x1 - x0, y1 - y0) / 16;
+      scan(best.x - span, best.y - span, best.x + span, best.y + span, 8);
+
+      // Below this it is a gap between plots, not somewhere to run a loop.
+      if (!best || best.r < 120) return null;
+      return { centre: Geo.unproject({ x: best.x, y: best.y }, origin), radius: best.r };
     },
 
     /** Total ground lost to other runners, all claims counted. */

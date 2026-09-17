@@ -32,7 +32,7 @@
     /**
      * @param {object} options
      *   kind    'free' | 'territory' | 'race'
-     *   rivals  friends to race (up to MAX_RIVALS); race only
+     *   rivals  friends to race (up to Pro.maxRivals()); race only
      *   target  metres to the finish line; race only
      */
     start(options) {
@@ -41,7 +41,7 @@
 
       this.active = true;
       this.kind = opts.kind || 'free';
-      this.rivals = (opts.rivals || []).slice(0, M.MAX_RIVALS);
+      this.rivals = (opts.rivals || []).slice(0, M.Pro.maxRivals());
 
       this.state = {
         id: uid(),

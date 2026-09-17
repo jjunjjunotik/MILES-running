@@ -48,7 +48,6 @@
   };
 
   /** A race holds you plus up to four others. */
-  const MAX_RIVALS = 4;
 
   const RACE_DISTANCES = [1000, 3000, 5000, 10000];
 
@@ -706,5 +705,5 @@
     },
   };
 
-  Object.assign(M, { State, Stats, QUESTS, RANKS, TIERS, KINDS, MAX_RIVALS, RACE_DISTANCES, OWNER_COLORS, FRIEND_COLORS, questView, DEFAULT_HOME });
+  Object.assign(M, { State, Stats, QUESTS, RANKS, TIERS, KINDS, RACE_DISTANCES, OWNER_COLORS, FRIEND_COLORS, questView, DEFAULT_HOME });
 })(window.MILES);

@@ -278,9 +278,19 @@ entitlement needs a server, and `Pro.verify()` in `src/js/pro.js` is the single
 function that has to change when there is one: it asks the backend, caches the
 answer, and nothing above it moves.
 
-**Nothing paid affects fairness.** Pro cannot claim more ground, hold it
+There are two paid tiers. **Supporter** (₩2,900/mo, ₩24,000/yr) is expression:
+naming and colouring your own plots, and the record card's colourways.
+**Pro** (₩4,900/mo, ₩39,000/yr) adds everything below, and contains Supporter.
+A 14-day trial of Pro needs no card.
+
+Every gate names a capability in `Pro.FEATURES` rather than testing a tier, so
+moving a feature between tiers is one line in that table and nothing else in
+the codebase moves.
+
+**Nothing paid affects fairness.** No tier can claim more ground, hold it
 longer, or level faster. Territory is a contest, and a contest you can buy is
-not one. What Pro buys is knowing more about a map everybody plays on equally:
+not one. What Pro buys is knowing more about a map everybody plays on equally,
+and organising more of it:
 
 - **Time machine** — the map as it stood at any point in its life. The past is
   not stored: claims carry the time they were made and exclusivity is decided
@@ -291,6 +301,13 @@ not one. What Pro buys is knowing more about a map everybody plays on equally:
   one claim at a time in order, so ground two people later ran over is credited
   once, to whoever reached it first, and the total can never exceed what was
   actually lost.
+
+- **Scout** — the largest circle in view that touches nobody's land, found by
+  sampling and then checked against the claims themselves before it is offered.
+- **Races up to 16** — the host's tier sets the field; everyone invited runs
+  free, whatever they pay.
+- **Founding a crew** — joining one is free and always will be.
+- **Every map style** — street and light basemaps as well as dark.
 
 The free tier keeps everything it had, including **all** of your history —
 holding a runner's own data hostage is not a business model. What is free is

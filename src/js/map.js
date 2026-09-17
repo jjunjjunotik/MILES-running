@@ -25,6 +25,17 @@
     return ((h ^ (h >> 16)) >>> 0) / 4294967296;
   }
 
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    if (ctx.roundRect) { ctx.roundRect(x, y, w, h, r); return; }
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
   class MapView {
     constructor(canvas, options) {
       this.canvas = canvas;
@@ -33,7 +44,7 @@
       this.anchor = M.DEFAULT_HOME;      // projection origin
       this.center = this.anchor;
       this.mpp = this.opts.mpp;
-      this.layers = { territories: [], route: [], ghost: [], me: null, rivals: [] };
+      this.layers = { territories: [], route: [], ghost: [], me: null, rivals: [], scout: null };
       this._dpr = 1;
       this._raf = null;
       this._resize();
@@ -266,6 +277,7 @@
       this._drawRoute();
       this._drawRivals();
       this._drawMe();
+      if (this.layers.scout) this._drawScout();
       if (this.opts.scale) this._drawScale();
       if (imagery) this._drawAttribution();
 
@@ -343,6 +355,40 @@
         ctx.restore();
       }
       return true;
+    }
+
+    /**
+     * Open ground: a dashed ring nobody owns, with its size on it. Dashed and
+     * unfilled so it never reads as another claim — this is an invitation, not
+     * a plot.
+     */
+    _drawScout() {
+      const { centre, radius } = this.layers.scout;
+      const c = this.toScreen(centre);
+      const r = radius / this.mpp;
+      if (r < 10) return;
+
+      const ctx = this.ctx;
+      ctx.save();
+      ctx.setLineDash([7, 6]);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = 'rgba(255, 196, 87, 0.85)';
+      ctx.beginPath();
+      ctx.arc(c.x, c.y, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      const label = `OPEN · ${M.Units.distText(radius * 2)} ${M.Units.distLabel()} across`;
+      ctx.font = '800 10px ui-sans-serif, system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      const w = ctx.measureText(label).width + 14;
+      ctx.fillStyle = 'rgba(8, 11, 16, 0.85)';
+      roundRect(ctx, c.x - w / 2, c.y - 9, w, 18, 9);
+      ctx.fill();
+      ctx.fillStyle = '#ffc457';
+      ctx.fillText(label, c.x, c.y + 1);
+      ctx.restore();
     }
 
     /**

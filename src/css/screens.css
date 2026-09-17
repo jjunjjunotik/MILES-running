@@ -579,6 +579,7 @@
   flex: none;
   background: rgba(255,255,255,0.07);
   border: 1px solid var(--line-strong);
+  color: var(--text-hi);
   overflow: hidden;
 }
 .crew-badge--photo {
@@ -836,3 +837,32 @@
 /* The plan picker belongs to the Pro sheet, so it wears the Pro colour rather
    than the app's lime accent — two accents in one sheet reads as two offers. */
 .seg--pro button[aria-pressed="true"] { background: var(--amber-ink); color: #2a1a00; }
+
+/* The offer's own front door on the You screen. Buried in Settings it was
+   findable only by someone already looking for it. */
+.pro-card {
+  display: flex; align-items: center; gap: var(--s-3);
+  width: 100%; text-align: left;
+  margin-top: var(--s-5);
+  padding: var(--s-4);
+  border-radius: var(--r-lg);
+  border: 1px solid rgba(255, 196, 87, 0.35);
+  background: linear-gradient(135deg, rgba(255, 196, 87, 0.13), rgba(255, 154, 60, 0.05));
+  cursor: pointer;
+}
+.pro-card:active { transform: scale(0.99); }
+.pro-card-title { font-size: 17px; font-weight: 800; letter-spacing: -0.01em; color: var(--text-hi); }
+.pro-card .start-arrow { color: var(--amber-ink); }
+
+.map-btn--scout { position: absolute; right: var(--s-3); bottom: var(--s-3); font-size: 15px; }
+.map-btn--scout[aria-pressed="true"] { border-color: rgba(255,196,87,0.6); color: var(--amber-ink); }
+
+.plot { cursor: pointer; }
+.plot-name { font-weight: 800; font-size: 14px; color: var(--text-hi); }
+
+.swatch-row { display: flex; flex-wrap: wrap; gap: var(--s-2); }
+.swatch {
+  width: 34px; height: 34px; border-radius: 10px;
+  border: 2px solid transparent; cursor: pointer;
+}
+.swatch[aria-pressed="true"] { border-color: var(--text-hi); }

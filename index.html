@@ -192,6 +192,8 @@
 
         <div class="record-card"><canvas id="cardCanvas"></canvas></div>
 
+        <div class="seg seg--block" id="cardThemes" role="group" aria-label="Card theme"></div>
+
         <div class="finish-actions">
           <button class="btn" type="button" id="saveCardBtn">Save card</button>
           <button class="btn btn--primary" type="button" id="doneBtn">Done</button>
@@ -219,6 +221,7 @@
             <button class="map-btn" type="button" id="terrRecentre" aria-label="Back to your area">◎</button>
           </div>
           <div class="map-hint" id="terrHint">Drag to explore · pinch or scroll to zoom</div>
+          <button class="map-btn map-btn--scout" type="button" id="terrScout" aria-label="Find open ground" aria-pressed="false">🔭</button>
         </div>
         <div class="legend" id="terrLegend"></div>
 
@@ -346,6 +349,15 @@
           <div class="kpi"><div class="stat-value" id="kpiArea">0.00</div><div class="stat-label" id="kpiAreaUnit">km² land</div></div>
         </div>
 
+        <button class="pro-card" type="button" id="proCard">
+          <div class="stack grow" style="gap:4px;align-items:flex-start">
+            <span class="chip chip--pro" id="proCardChip">PRO</span>
+            <span class="pro-card-title" id="proCardTitle">Know your ground</span>
+            <span class="tiny" id="proCardNote">Time machine, who took your land, and five more</span>
+          </div>
+          <span class="start-arrow" style="position:static" aria-hidden="true">→</span>
+        </button>
+
         <div class="stack" style="margin-top:var(--s-5)">
           <div class="row row--between">
             <span class="card-title">Run history</span>
@@ -397,7 +409,9 @@
           <div class="setting">
             <div><div style="font-weight:700;font-size:14px">Map</div><div class="tiny" id="mapStyleNote">Real imagery, or the drawn city</div></div>
             <div class="seg" id="mapStyleSeg">
-              <button type="button" data-tiles="dark" aria-pressed="true">Real</button>
+              <button type="button" data-tiles="dark" aria-pressed="true">Dark</button>
+              <button type="button" data-tiles="light" aria-pressed="false">Light</button>
+              <button type="button" data-tiles="osm" aria-pressed="false">Street</button>
               <button type="button" data-tiles="drawn" aria-pressed="false">Drawn</button>
             </div>
           </div>
@@ -455,6 +469,10 @@
             Pro never takes an extra metre for you — the map stays a fair fight.
             It tells you what happened on it.
           </p>
+        </div>
+        <div class="seg seg--block seg--pro" id="proTiers" role="group" aria-label="Tier" style="margin-top:var(--s-4)">
+          <button type="button" data-tier="supporter">Supporter</button>
+          <button type="button" data-tier="pro">Pro</button>
         </div>
         <div class="stack" id="proBenefits" style="margin:var(--s-4) 0"></div>
         <div class="seg seg--block seg--pro" id="proPlans" role="group" aria-label="Plan"></div>

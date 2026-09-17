@@ -418,8 +418,13 @@
           const at = this.pendingRivals.findIndex((r) => r.id === f.id);
           if (at >= 0) {
             this.pendingRivals.splice(at, 1);
-          } else if (this.pendingRivals.length >= M.MAX_RIVALS) {
-            this.toast(`A race holds you and <b>${M.MAX_RIVALS}</b> others — drop someone first`);
+          } else if (this.pendingRivals.length >= M.Pro.maxRivals()) {
+            if (M.Pro.can('bigRaces')) {
+              this.toast(`A race holds you and <b>${M.Pro.MAX_RIVALS_PRO}</b> others — drop someone first`);
+            } else {
+              // Everyone you invite runs free; only the host's tier sets the size.
+              this.openPro('bigRaces');
+            }
             return;
           } else {
             this.pendingRivals.push(f);
@@ -429,7 +434,7 @@
         picker.appendChild(btn);
       });
 
-      $('#raceCount').textContent = `${this.pendingRivals.length} of ${M.MAX_RIVALS} picked`;
+      $('#raceCount').textContent = `${this.pendingRivals.length} of ${M.Pro.maxRivals()} picked`;
     },
 
     /** Shared by the lobby and the profile: one prompt, one new friend. */
@@ -566,20 +571,56 @@
 
     /** Chooses the basemap and remembers it across sessions. */
     setMapStyle(style) {
-      State.data.mapStyle = style === 'drawn' ? 'drawn' : 'dark';
+      const allowed = M.Tiles.SOURCES[style] ? style : 'dark';
+      State.data.mapStyle = (allowed === 'dark' || allowed === 'drawn' || M.Pro.can('mapStyles'))
+        ? allowed : 'dark';
       State.save();
       M.Tiles.setSource(State.data.mapStyle);
       this.renderMapStyle();
     },
 
     renderMapStyle() {
-      const style = State.data.mapStyle === 'drawn' ? 'drawn' : 'dark';
+      const style = M.Tiles.SOURCES[State.data.mapStyle] ? State.data.mapStyle : 'dark';
       $$('#mapStyleSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tiles === style)));
       $('#mapStyleNote').textContent = style === 'drawn'
         ? 'The drawn city — works with no network'
         : M.Tiles.blocked()
           ? 'Imagery unreachable — showing the drawn city'
-          : 'Real imagery, © OpenStreetMap · © CARTO';
+          : M.Tiles.attribution() || 'Real imagery';
+    },
+
+    /**
+     * Draws the record card and offers its colourways. The default per run
+     * kind is free — what Supporter buys is choosing a different one, so the
+     * card you share is yours rather than the app's.
+     */
+    paintCard(activity, athlete) {
+      M.renderCard($('#cardCanvas'), activity, {
+        athlete,
+        rank: Stats.rank(State.data).current.name,
+        totalArea: Stats.totalArea(State.data),
+        theme: this.cardTheme || undefined,
+      });
+
+      const seg = $('#cardThemes');
+      seg.innerHTML = '';
+      const unlocked = M.Pro.can('cardThemes');
+      seg.appendChild(el('button', {
+        type: 'button', text: 'Default', 'aria-pressed': String(!this.cardTheme),
+        onclick: () => { this.cardTheme = null; this.paintCard(activity, athlete); },
+      }));
+      Object.keys(M.CARD_THEMES).forEach((key) => {
+        seg.appendChild(el('button', {
+          type: 'button',
+          text: unlocked ? M.CARD_THEMES[key] : M.CARD_THEMES[key] + ' 🔒',
+          'aria-pressed': String(this.cardTheme === key),
+          onclick: () => {
+            if (!unlocked) return this.openPro('cardThemes');
+            this.cardTheme = key;
+            this.paintCard(activity, athlete);
+          },
+        }));
+      });
     },
 
     /** Gives up on an open loop: the run is kept, the land is not. */
@@ -712,11 +753,7 @@
       $('#finishTitle').textContent = activity.title;
       $('#finishEyebrow').textContent = 'Run complete';
       $('#doneBtn').textContent = 'Done';
-      M.renderCard($('#cardCanvas'), activity, {
-        athlete: State.data.profile.name,
-        rank: Stats.rank(State.data).current.name,
-        totalArea: Stats.totalArea(State.data),
-      });
+      this.paintCard(activity, State.data.profile.name);
 
       const extras = $('#finishExtras');
       extras.innerHTML = '';
@@ -836,11 +873,16 @@
         const row = el('div', { class: 'plot' }, [
           canvas,
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
-            el('span', { style: 'font-weight:700;font-size:14px', text: `${Units.areaText(t.area)} ${Units.areaLabel()}` }),
-            el('span', { class: 'tiny', text: lost(t) ? `${relTime(t.claimedAt)} · ${Units.areaText(lost(t))} ${Units.areaLabel()} taken since` : relTime(t.claimedAt) }),
+            el('span', { class: 'plot-name', text: t.name || `${Units.areaText(t.area)} ${Units.areaLabel()}` }),
+            el('span', { class: 'tiny', text: [
+              t.name ? `${Units.areaText(t.area)} ${Units.areaLabel()}` : null,
+              relTime(t.claimedAt),
+              lost(t) ? `${Units.areaText(lost(t))} ${Units.areaLabel()} taken since` : null,
+            ].filter(Boolean).join(' · ') }),
           ]),
           el('span', { class: 'chip', text: (t.pieces || []).length > 1 ? `${t.pieces.length} parts` : 'Held' }),
         ]);
+        row.addEventListener('click', () => this.openPlotStyle(t));
         list.appendChild(row);
         // Draw what is still held, so the shape matches the number beside it.
         requestAnimationFrame(() => {
@@ -924,7 +966,7 @@
        answers a question the screen has already raised. -------------------- */
 
     renderTimeMachine() {
-      const on = M.Pro.active();
+      const on = M.Pro.can('timeMachine');
       $('#tmChip').hidden = !on;
       $('#tmLocked').hidden = on;
       $('#tmPanel').hidden = !on;
@@ -974,7 +1016,7 @@
     },
 
     renderRaiders() {
-      const on = M.Pro.active();
+      const on = M.Pro.can('raiders');
       const raiders = M.Pro.raiders(State.data);
       const lost = raiders.reduce((a, r) => a + r.area, 0);
 
@@ -1006,11 +1048,30 @@
       });
     },
 
-    openPro(reason) {
-      this.proPlan = this.proPlan || 'pro_yearly';
+    /**
+     * Opens the offer on whichever tier answers the thing that was locked, so
+     * someone who tapped a cosmetic lock is not sold analysis.
+     */
+    openPro(feature) {
+      this.proTier = feature ? M.Pro.tierFor(feature) : (this.proTier || 'pro');
+      if (this.proTier === 'free') this.proTier = 'pro';
+      this.proPeriod = this.proPeriod || 'yearly';
+      this.renderProOffer();
+      this.openSheet('#proSheet');
+    },
+
+    /** Everything in the offer that depends on the chosen tier and period. */
+    renderProOffer() {
+      const tier = this.proTier;
+      $$('#proTiers button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tier === tier)));
+
       const benefits = $('#proBenefits');
       benefits.innerHTML = '';
-      M.Pro.BENEFITS.forEach((b) => {
+      // Pro contains Supporter, so showing Pro means showing both lists.
+      const lists = tier === 'pro'
+        ? M.Pro.BENEFITS.pro.concat(M.Pro.BENEFITS.supporter)
+        : M.Pro.BENEFITS.supporter;
+      lists.forEach((b) => {
         benefits.appendChild(el('div', { class: 'pro-benefit' }, [
           el('span', { class: 'pro-benefit-icon', text: b.icon }),
           el('div', { class: 'stack', style: 'gap:2px' }, [
@@ -1020,26 +1081,23 @@
         ]));
       });
 
+      const ids = [`${tier}_monthly`, `${tier}_yearly`];
       const plans = $('#proPlans');
       plans.innerHTML = '';
-      Object.keys(M.Pro.PLANS).forEach((id) => {
+      ids.forEach((id) => {
         plans.appendChild(el('button', {
           type: 'button', text: M.Pro.PLANS[id].label,
-          onclick: () => { this.proPlan = id; this.renderProOffer(); },
+          'aria-pressed': String(id.endsWith(this.proPeriod)),
+          onclick: () => { this.proPeriod = id.endsWith('yearly') ? 'yearly' : 'monthly'; this.renderProOffer(); },
         }));
       });
 
-      this.renderProOffer();
-      this.openSheet('#proSheet');
-    },
-
-    /** The part of the offer that changes with the chosen plan. */
-    renderProOffer() {
-      const plan = M.Pro.PLANS[this.proPlan];
-      $$('#proPlans button').forEach((b) => b.setAttribute('aria-pressed', String(b.textContent === plan.label)));
+      const plan = M.Pro.PLANS[`${tier}_${this.proPeriod}`];
+      this.proPlan = plan.id;
       $('#proPlanNote').textContent = plan.note || '';
 
-      const trial = M.Pro.trialAvailable();
+      // The trial is of Pro, so it is only the headline on the Pro tier.
+      const trial = M.Pro.trialAvailable() && tier === 'pro';
       $('#proPrimary').textContent = trial
         ? `Start ${M.Pro.TRIAL_DAYS}-day trial`
         : `Subscribe · ${plan.label}`;
@@ -1049,33 +1107,39 @@
     },
 
     bindPro() {
-      const offer = () => this.openPro();
-      $('#tmUnlock').addEventListener('click', offer);
-      $('#raidUnlock').addEventListener('click', offer);
+      $('#tmUnlock').addEventListener('click', () => this.openPro('timeMachine'));
+      $('#raidUnlock').addEventListener('click', () => this.openPro('raiders'));
+      $('#proCard').addEventListener('click', () => this.openPro());
+      $$('#proTiers button').forEach((btn) => {
+        btn.addEventListener('click', () => { this.proTier = btn.dataset.tier; this.renderProOffer(); });
+      });
       $('#proBtn').addEventListener('click', () => {
-        if (!M.Pro.active()) return this.openPro();
+        if (M.Pro.tier() === 'free') return this.openPro();
+        const name = M.Pro.verify(State.data).trial ? 'the trial' : M.Pro.tier() === 'pro' ? 'Pro' : 'Supporter';
         this.confirm({
-          title: 'Cancel Pro?',
-          body: 'The time machine and the breakdown of who took your land lock again. Your runs, your land and your history are untouched.',
-          confirmLabel: 'Cancel Pro', cancelLabel: 'Keep Pro', danger: true,
+          title: `Cancel ${name}?`,
+          body: 'The paid features lock again. Your runs, your land, your plot names and your history are untouched.',
+          confirmLabel: 'Cancel', cancelLabel: 'Keep it', danger: true,
         }).then((yes) => {
           if (!yes) return;
           M.Pro.cancel(State.data);
           State.save();
-          this.toast('Pro cancelled — everything you ran is still yours');
+          this.toast('Cancelled — everything you ran is still yours');
         });
       });
       $('#proLater').addEventListener('click', () => this.closeSheet('#proSheet'));
       $('#proPrimary').addEventListener('click', () => {
-        const trial = M.Pro.trialAvailable();
+        const trial = M.Pro.trialAvailable() && this.proTier === 'pro';
         if (trial) M.Pro.startTrial(State.data);
         else M.Pro.subscribe(State.data, this.proPlan);
         State.save();
         this.closeSheet('#proSheet');
         this.toast(trial
           ? `<b>Pro</b> for ${M.Pro.TRIAL_DAYS} days — open the time machine`
-          : '<b>Pro</b> is on');
+          : `<b>${M.Pro.PLANS[this.proPlan].name}</b> is on`);
       });
+
+      $('#terrScout').addEventListener('click', () => this.toggleScout());
 
       $('#tmScrub').addEventListener('input', (e) => {
         if (this._tmTimer) this.stopScrub();
@@ -1088,7 +1152,18 @@
       const v = M.Pro.verify(State.data);
       const note = $('#proStatus');
       const btn = $('#proBtn');
-      if (v.tier !== 'pro') {
+
+      // The card at the top of the screen is the front door; the settings row
+      // is for managing what you already have.
+      const chip = $('#proCardChip');
+      chip.textContent = v.tier === 'supporter' ? 'SUPPORTER' : 'PRO';
+      $('#proCardTitle').textContent = v.tier === 'free' ? 'Know your ground' : 'Your plan';
+      $('#proCardNote').textContent = v.tier === 'free'
+        ? 'Time machine, who took your land, and five more'
+        : v.trial ? `Trial · ${Math.max(0, Math.ceil((v.until - Date.now()) / 864e5))} days left`
+          : `${v.plan.name} · ${v.plan.label}`;
+
+      if (v.tier === 'free') {
         note.textContent = M.Pro.trialAvailable()
           ? `Free plan · ${M.Pro.TRIAL_DAYS}-day trial available`
           : 'Free plan';
@@ -1096,12 +1171,76 @@
         btn.classList.add('btn--ghost');
         return;
       }
-      const days = Math.max(0, Math.ceil((v.until - Date.now()) / 864e5));
+      const days = Math.max(0, Math.ceil(((v.until || Date.now()) - Date.now()) / 864e5));
       note.textContent = v.trial
-        ? `Trial · ${days} ${days === 1 ? 'day' : 'days'} left`
+        ? `Pro trial · ${days} ${days === 1 ? 'day' : 'days'} left`
         : `${v.plan.name} · renews in ${days} ${days === 1 ? 'day' : 'days'}`;
       btn.textContent = 'Manage';
       btn.classList.add('btn--ghost');
+    },
+
+    /** Points at the biggest unclaimed ground in the current view. */
+    toggleScout() {
+      if (!M.Pro.can('scout')) return this.openPro('scout');
+      const map = this.maps.territory;
+      if (map.layers.scout) {
+        map.layers.scout = null;
+        $('#terrScout').setAttribute('aria-pressed', 'false');
+        map.invalidate();
+        return;
+      }
+      const found = M.Pro.scout(State.data, map.bounds(), map.layers.territories);
+      if (!found) { this.toast('No open ground in view — try zooming out'); return; }
+      map.layers.scout = found;
+      $('#terrScout').setAttribute('aria-pressed', 'true');
+      map.invalidate();
+      this.toast(`Open ground · <b>${Units.distText(found.radius * 2)} ${Units.distLabel()}</b> across`);
+    },
+
+    /** Naming and colouring your own ground. Cosmetic, so Supporter reaches it. */
+    openPlotStyle(territory) {
+      if (!M.Pro.can('plotStyle')) return this.openPro('plotStyle');
+      const body = $('#askBody');
+      body.innerHTML = '';
+      let colour = territory.color || M.OWNER_COLORS[0];
+
+      const input = el('input', {
+        class: 'input', type: 'text', maxlength: '28',
+        value: territory.name || '', placeholder: 'Name this ground',
+      });
+      const swatches = el('div', { class: 'swatch-row' });
+      const paint = () => $$('.swatch', swatches).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.color === colour)));
+      M.OWNER_COLORS.concat(['#c8ff2e', '#ff5964']).forEach((c) => {
+        swatches.appendChild(el('button', {
+          class: 'swatch', type: 'button', 'data-color': c, style: `background:${c}`,
+          'aria-label': c, onclick: () => { colour = c; paint(); },
+        }));
+      });
+      paint();
+
+      const done = (save) => {
+        this.closeSheet('#askSheet');
+        if (!save) return;
+        territory.name = input.value.trim().slice(0, 28);
+        territory.color = colour;
+        State.save();
+        this.toast(territory.name ? `Named <b>${territory.name}</b>` : 'Plot updated');
+      };
+      this._askDismiss = () => done(false);
+
+      body.appendChild(el('div', { class: 'stack' }, [
+        el('h3', { class: 'ask-title', text: 'Your ground' }),
+        el('span', { class: 'field-label', text: 'Name' }),
+        input,
+        el('span', { class: 'field-label', style: 'margin-top:var(--s-3)', text: 'Colour' }),
+        swatches,
+        el('div', { class: 'row', style: 'gap:var(--s-3);margin-top:var(--s-4)' }, [
+          el('button', { class: 'btn grow', type: 'button', text: 'Cancel', onclick: () => done(false) }),
+          el('button', { class: 'btn grow btn--primary', type: 'button', text: 'Save', onclick: () => done(true) }),
+        ]),
+      ]));
+      this.openSheet('#askSheet');
+      setTimeout(() => input.focus({ preventScroll: true }), 40);
     },
 
     bindTerritoryMap() {
@@ -1178,8 +1317,10 @@
               : 'Join one of the crews near you, or start your own and run it yourself.',
           }),
           el('button', {
-            class: 'btn btn--primary btn--block', type: 'button', text: 'Start a crew',
-            onclick: () => this.openCreateCrew(),
+            class: 'btn btn--primary btn--block', type: 'button',
+            text: M.Pro.can('crewCreate') ? 'Start a crew' : 'Start a crew · Pro',
+            // Founding one is Pro; joining any crew above is free and always will be.
+            onclick: () => (M.Pro.can('crewCreate') ? this.openCreateCrew() : this.openPro('crewCreate')),
           }),
         ]));
       }
@@ -1216,7 +1357,9 @@
         badge.classList.add('crew-badge--photo');
         badge.style.backgroundImage = `url(${crew.photo})`;
       } else {
-        badge.style.color = crew.color;
+        // The monogram is plain high-contrast ink, not the crew colour: crew
+        // colours are picked for fills and the saturated ones drop below AA as
+        // text. The colour stays where it is safe — the border.
         badge.textContent = M.Crew.monogram(crew);
       }
       return badge;
@@ -1560,6 +1703,7 @@
     },
 
     openCreateCrew() {
+      if (!M.Pro.can('crewCreate')) return this.openPro('crewCreate');
       if (M.Crew.mine(State.data)) {
         this.toast('Leave your current crew first');
         return;
@@ -2251,11 +2395,7 @@
       $('#finishEyebrow').textContent = item && !item.me && item.who !== State.data.profile.name
         ? `${item.who}'s card` : 'Record card';
       $('#doneBtn').textContent = 'Back';
-      M.renderCard($('#cardCanvas'), activity, {
-        athlete: item ? item.who : State.data.profile.name,
-        rank: Stats.rank(State.data).current.name,
-        totalArea: Stats.totalArea(State.data),
-      });
+      this.paintCard(activity, item ? item.who : State.data.profile.name);
       const extras = $('#finishExtras');
       extras.innerHTML = '';
       if (activity.splits && activity.splits.length) {
@@ -2332,10 +2472,16 @@
 
       $$('#mapStyleSeg button').forEach((btn) => {
         btn.addEventListener('click', () => {
-          this.setMapStyle(btn.dataset.tiles);
-          this.toast(btn.dataset.tiles === 'drawn'
+          const style = btn.dataset.tiles;
+          // Dark and Drawn are free; the other basemaps are Pro.
+          if (style !== 'dark' && style !== 'drawn' && !M.Pro.can('mapStyles')) {
+            this.renderMapStyle();
+            return this.openPro('mapStyles');
+          }
+          this.setMapStyle(style);
+          this.toast(style === 'drawn'
             ? 'Map is the <b>drawn city</b> — no network needed'
-            : 'Map is <b>real imagery</b> where it can be reached');
+            : `Map is <b>${M.Tiles.SOURCES[style].name}</b> imagery where it can be reached`);
         });
       });
       // Imagery that never arrives must not leave the setting claiming it did.
