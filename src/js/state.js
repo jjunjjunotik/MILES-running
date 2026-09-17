@@ -363,6 +363,74 @@
   }
 
   /** The neighbours' claims. Generated once, then resolved like any other. */
+  /* Runners you have never met, holding ground in the districts around you.
+     They exist so that panning the map is worth doing: the city keeps going
+     past your own neighbourhood, and it is already spoken for. */
+  const LOCAL_NAMES = [
+    'Haru Jung', 'Bo Lim', 'Iris Nam', 'Dane Oh', 'Yuna Seo', 'Kai Moon',
+    'Remy Baek', 'Nari Gu', 'Sol Hwang', 'Jae Min', 'Tae Yun', 'Mira Han',
+    'Eun Ha', 'Orin Koo', 'Lia Shin', 'Doyun Ha', 'Vera Song', 'Nico Ahn',
+  ];
+
+  function initialsOf(name) {
+    return name.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase();
+  }
+
+  /** A closed, slightly irregular ring around a point — one runner's loop. */
+  function loopAround(centre, radius, wobble, rand) {
+    const ring = [];
+    for (let i = 0; i < 16; i++) {
+      const t = (i / 16) * Math.PI * 2;
+      const r = radius * (0.75 + Math.sin(t * 3 + wobble) * 0.2);
+      ring.push(Geo.offset(centre, Math.cos(t) * r, Math.sin(t) * r));
+    }
+    return ring;
+  }
+
+  /**
+   * Districts of claimed land spread across the wider city. Each district is a
+   * cluster of a few runners, so panning somewhere new shows a neighbourhood
+   * with its own owners rather than a thin scatter of strangers.
+   */
+  function seedDistrictLand(home) {
+    const rand = M.rng(90210);
+    const land = [];
+    let n = 0;
+
+    for (let d = 0; d < 12; d++) {
+      // Ringed outwards so the districts do not all land in one direction, and
+      // close enough together that panning finds one without a hunt.
+      const bearing = (d / 12) * Math.PI * 2 + rand() * 0.4;
+      const reach = 1800 + rand() * 5200;
+      const hub = Geo.offset(home, Math.cos(bearing) * reach, Math.sin(bearing) * reach);
+      const locals = 2 + Math.floor(rand() * 3);
+
+      for (let k = 0; k < locals; k++) {
+        const name = LOCAL_NAMES[n % LOCAL_NAMES.length];
+        // Colours repeat between districts, never inside one — and every plot
+        // carries its owner's initials, so colour is never the only cue.
+        const color = FRIEND_COLORS[k % FRIEND_COLORS.length];
+        const claims = 1 + Math.floor(rand() * 2);
+        for (let c = 0; c < claims; c++) {
+          const centre = Geo.offset(hub, (rand() - 0.5) * 1700, (rand() - 0.5) * 1700);
+          const polygon = loopAround(centre, 230 + rand() * 340, n + c, rand);
+          land.push({
+            id: `local-${n}-${c}`,
+            owner: `local-${n}`,
+            ownerName: name,
+            initials: initialsOf(name),
+            color,
+            polygon,
+            area: Geo.polygonArea(polygon),
+            claimedAt: Date.now() - Math.floor(rand() * 1400 + 1) * 864e5,
+          });
+        }
+        n++;
+      }
+    }
+    return land;
+  }
+
   function seedRivalLand(state) {
     const home = state.profile.home;
     const land = [];
@@ -390,7 +458,7 @@
         });
       }
     });
-    return land;
+    return land.concat(seedDistrictLand(home));
   }
 
   /** Initials, colour and a race pace derived from how much they run. */
@@ -477,6 +545,11 @@
       }
       if (!this.data.rivalLand.length) {
         this.data.rivalLand = seedRivalLand(this.data);
+        this.resolveLand();
+      } else if (!this.data.rivalLand.some((t) => String(t.owner).indexOf('local-') === 0)) {
+        // Saved before the map could be panned, when land stopped at the edge
+        // of your own neighbourhood. Give the rest of the city its owners.
+        this.data.rivalLand = this.data.rivalLand.concat(seedDistrictLand(this.data.profile.home));
         this.resolveLand();
       }
       // Claims saved before territory became exclusive have no `pieces`.

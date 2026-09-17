@@ -54,6 +54,23 @@
     return out;
   }
 
+  /** A ring's extent, so pairs that cannot touch are never clipped. */
+  function bbox(ring) {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (let i = 0; i < ring.length; i++) {
+      const p = ring[i];
+      if (p.x < minX) minX = p.x;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.y > maxY) maxY = p.y;
+    }
+    return { minX, minY, maxX, maxY };
+  }
+
+  function apart(a, b) {
+    return a.maxX < b.minX || b.maxX < a.minX || a.maxY < b.minY || b.maxY < a.minY;
+  }
+
   function pieceArea(piece) {
     return piece.holes.reduce((a, h) => a - Clip.area(h), Clip.area(piece.ring));
   }
@@ -76,11 +93,16 @@
 
       const rings = order.map((entry) =>
         (entry.claim.polygon || []).map((p) => Geo.project(p, anchor)));
+      // Claims are scattered across a city, so almost every pair is nowhere
+      // near another. Rejecting those on extent alone keeps this linear in
+      // practice instead of clipping every claim against every later one.
+      const boxes = rings.map((ring) => (ring.length >= 3 ? bbox(ring) : null));
 
       order.forEach((entry, i) => {
         let pieces = rings[i].length >= 3 ? [{ ring: rings[i], holes: [] }] : [];
         for (let j = i + 1; j < order.length && pieces.length; j++) {
-          if (rings[j].length >= 3) pieces = cut(pieces, rings[j]);
+          if (!boxes[j] || apart(boxes[i], boxes[j])) continue;
+          pieces = cut(pieces, rings[j]);
         }
 
         const kept = pieces.filter((piece) => pieceArea(piece) > 50);   // ignore slivers

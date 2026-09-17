@@ -211,7 +211,15 @@
           Start and finish in the same place — the run ends the moment you close the loop. Everything it encloses becomes yours.
         </p>
 
-        <div class="territory-map"><canvas id="terrMap"></canvas></div>
+        <div class="territory-map">
+          <canvas id="terrMap"></canvas>
+          <div class="map-tools">
+            <button class="map-btn" type="button" id="terrZoomIn" aria-label="Zoom in">+</button>
+            <button class="map-btn" type="button" id="terrZoomOut" aria-label="Zoom out">−</button>
+            <button class="map-btn" type="button" id="terrRecentre" aria-label="Back to your area">◎</button>
+          </div>
+          <div class="map-hint" id="terrHint">Drag to explore · pinch or scroll to zoom</div>
+        </div>
         <div class="legend" id="terrLegend"></div>
 
         <div class="card stack" style="margin-top:var(--s-3)">
@@ -225,11 +233,6 @@
               <div class="stat-label">Plots</div>
             </div>
           </div>
-        </div>
-
-        <div class="card stack" style="margin-top:var(--s-3)">
-          <span class="card-title">Neighbourhood standings</span>
-          <div id="terrBoard"></div>
         </div>
 
         <div class="stack" style="margin-top:var(--s-3)">

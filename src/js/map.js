@@ -12,7 +12,9 @@
 
   const { Geo, clamp } = M;
 
-  const CITY_ANGLE = -0.21;      // the grain of the street grid, radians
+  const MIN_MPP = 0.3;          // closest zoom: a street fills the screen
+  const MAX_MPP = 60;           // furthest: a whole city's worth of claims
+  const CITY_ANGLE = -0.21;     // the grain of the street grid, radians
   const BLOCK = 92;              // metres between minor streets
   const AVENUE = 4;              // every Nth street is an avenue
 
@@ -67,14 +69,155 @@
       this.h = rect.height || 1;
     }
 
+    /**
+     * Whether this map is the one being looked at. Off-screen maps still draw
+     * (cheaply, from local geometry) but must not fetch imagery: three maps
+     * pulling tiles for screens nobody is on wastes the viewer's bandwidth and
+     * the tile provider's.
+     */
+    setVisible(on) {
+      const was = this.visible !== false;
+      this.visible = !!on;
+      if (on && !was) this.invalidate();
+    }
+
     setAnchor(latlng) { this.anchor = latlng; }
 
     setCenter(latlng) { this.center = latlng; }
+
+    /* --- Gestures ----------------------------------------------------------
+       Only the Territory map is driven by hand; the home and run maps frame
+       themselves and must not move under a scrolling finger. ---------------- */
+
+    /** Screen pixels to projected metres, in the anchor's frame. */
+    _toWorld(sx, sy) {
+      const c = Geo.project(this.center, this.anchor);
+      return { x: (sx - this.w / 2) * this.mpp + c.x, y: (sy - this.h / 2) * this.mpp + c.y };
+    }
+
+    /** Moves the view so a world point sits under a given screen pixel. */
+    _anchorWorldAt(world, sx, sy) {
+      this.center = Geo.unproject({
+        x: world.x - (sx - this.w / 2) * this.mpp,
+        y: world.y - (sy - this.h / 2) * this.mpp,
+      }, this.anchor);
+    }
+
+    /** Zooms about a screen point, keeping whatever is under it in place. */
+    zoomAt(factor, sx, sy) {
+      const x = sx === undefined ? this.w / 2 : sx;
+      const y = sy === undefined ? this.h / 2 : sy;
+      const before = this._toWorld(x, y);
+      const next = clamp(this.mpp / factor, MIN_MPP, MAX_MPP);
+      if (next === this.mpp) return;
+      this.mpp = next;
+      this._anchorWorldAt(before, x, y);
+      this.moved = true;
+      this._announce();
+      this.invalidate();
+    }
+
+    /** The visible world, so callers can ask what is on screen right now. */
+    bounds() {
+      const nw = Geo.unproject(this._toWorld(0, 0), this.anchor);
+      const se = Geo.unproject(this._toWorld(this.w, this.h), this.anchor);
+      return { north: nw.lat, west: nw.lng, south: se.lat, east: se.lng };
+    }
+
+    _announce() {
+      if (!this.opts.onMove || this._movePending) return;
+      this._movePending = true;
+      requestAnimationFrame(() => { this._movePending = false; this.opts.onMove(this); });
+    }
+
+    /**
+     * Drag to pan, pinch or wheel to zoom. `moved` latches so whoever framed
+     * this map knows not to snatch the view back on the next render.
+     */
+    enableGestures() {
+      const cv = this.canvas;
+      const pts = new Map();
+      let lastMid = null;
+      let lastSpread = 0;
+
+      const local = (e) => {
+        const r = cv.getBoundingClientRect();
+        return { x: e.clientX - r.left, y: e.clientY - r.top };
+      };
+      const midpoint = () => {
+        const all = [...pts.values()];
+        return {
+          x: all.reduce((a, p) => a + p.x, 0) / all.length,
+          y: all.reduce((a, p) => a + p.y, 0) / all.length,
+        };
+      };
+      const spread = () => {
+        const all = [...pts.values()];
+        return all.length < 2 ? 0 : Math.hypot(all[0].x - all[1].x, all[0].y - all[1].y);
+      };
+
+      cv.addEventListener('pointerdown', (e) => {
+        cv.setPointerCapture(e.pointerId);
+        pts.set(e.pointerId, local(e));
+        lastMid = midpoint();
+        lastSpread = spread();
+      });
+
+      cv.addEventListener('pointermove', (e) => {
+        if (!pts.has(e.pointerId)) return;
+        e.preventDefault();
+        pts.set(e.pointerId, local(e));
+        const mid = midpoint();
+
+        // Pinch first: the zoom has to be applied about the same midpoint the
+        // pan then uses, or the two fight each other.
+        const now = spread();
+        if (pts.size >= 2 && lastSpread > 0 && now > 0) {
+          const next = clamp(this.mpp * (lastSpread / now), MIN_MPP, MAX_MPP);
+          const before = this._toWorld(mid.x, mid.y);
+          this.mpp = next;
+          this._anchorWorldAt(before, mid.x, mid.y);
+        }
+        lastSpread = now;
+
+        if (lastMid) {
+          const c = Geo.project(this.center, this.anchor);
+          this.center = Geo.unproject({
+            x: c.x - (mid.x - lastMid.x) * this.mpp,
+            y: c.y - (mid.y - lastMid.y) * this.mpp,
+          }, this.anchor);
+        }
+        lastMid = mid;
+        this.moved = true;
+        this._announce();
+        this.invalidate();
+      });
+
+      const release = (e) => {
+        pts.delete(e.pointerId);
+        lastMid = pts.size ? midpoint() : null;
+        lastSpread = spread();
+      };
+      cv.addEventListener('pointerup', release);
+      cv.addEventListener('pointercancel', release);
+
+      cv.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const p = local(e);
+        this.zoomAt(Math.pow(2, -e.deltaY / 380), p.x, p.y);
+      }, { passive: false });
+
+      cv.addEventListener('dblclick', (e) => {
+        const p = local(e);
+        this.zoomAt(2, p.x, p.y);
+      });
+    }
 
     /** Frames a set of points with padding; used after a run and on the map tab. */
     fit(pointGroups) {
       const pts = [].concat.apply([], pointGroups.filter(Boolean));
       if (!pts.length) return;
+      this.moved = false;
       const proj = pts.map((p) => Geo.project(p, this.anchor));
       const minX = Math.min(...proj.map((p) => p.x));
       const maxX = Math.max(...proj.map((p) => p.x));
@@ -83,8 +226,17 @@
       const pad = this.opts.padding;
       const spanX = Math.max(40, maxX - minX);
       const spanY = Math.max(40, maxY - minY);
-      this.mpp = clamp(Math.max(spanX / Math.max(1, this.w - pad * 2), spanY / Math.max(1, this.h - pad * 2)), 0.25, 40);
+      this.mpp = clamp(Math.max(spanX / Math.max(1, this.w - pad * 2), spanY / Math.max(1, this.h - pad * 2)), MIN_MPP, MAX_MPP);
       this.center = Geo.unproject({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 }, this.anchor);
+    }
+
+    /**
+     * Widens the framing without moving it. Fitting tight to your own land
+     * fills the screen with it and hides the neighbours it borders, which is
+     * exactly the context this map exists to show.
+     */
+    pullBack(factor) {
+      this.mpp = clamp(this.mpp * factor, MIN_MPP, MAX_MPP);
     }
 
     toScreen(latlng) {
@@ -114,6 +266,7 @@
       this._drawRoute();
       this._drawRivals();
       this._drawMe();
+      if (this.opts.scale) this._drawScale();
       if (imagery) this._drawAttribution();
 
       ctx.restore();
@@ -140,7 +293,7 @@
      */
     _drawTiles() {
       const T = M.Tiles;
-      if (!T || !T.usable()) return false;
+      if (!T || !T.usable() || this.visible === false) return false;
 
       const ctx = this.ctx;
       const z = T.zoomFor(this.mpp, this.center.lat);
@@ -190,6 +343,45 @@
         ctx.restore();
       }
       return true;
+    }
+
+    /**
+     * A scale bar, because once the map can be zoomed by hand the only honest
+     * answer to "how big is that" is a measured one. The bar picks a round
+     * distance that fits in about a quarter of the width.
+     */
+    _drawScale() {
+      const want = this.w * 0.26 * this.mpp;                   // metres, roughly
+      const pow = Math.pow(10, Math.floor(Math.log10(want)));
+      const metres = [1, 2, 5, 10].map((m) => m * pow).filter((m) => m <= want).pop() || pow;
+      const px = metres / this.mpp;
+      const label = M.Units.isMetric()
+        ? (metres >= 1000 ? `${metres / 1000} km` : `${metres} m`)
+        : (metres >= 1609 ? `${(metres / 1609.344).toFixed(metres / 1609.344 < 10 ? 1 : 0)} mi` : `${Math.round(metres * 3.28084)} ft`);
+
+      const ctx = this.ctx;
+      const x = 12;
+      const y = this.h - 14;
+      ctx.save();
+      ctx.lineCap = 'butt';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = 'rgba(8, 11, 16, 0.75)';
+      ctx.beginPath();
+      ctx.moveTo(x, y); ctx.lineTo(x + px, y);
+      ctx.moveTo(x, y - 4); ctx.lineTo(x, y + 4);
+      ctx.moveTo(x + px, y - 4); ctx.lineTo(x + px, y + 4);
+      ctx.stroke();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = 'rgba(226, 232, 240, 0.85)';
+      ctx.stroke();
+      ctx.font = '700 10px ui-sans-serif, system-ui, sans-serif';
+      ctx.textBaseline = 'bottom';
+      ctx.fillStyle = 'rgba(8, 11, 16, 0.75)';
+      ctx.fillText(label, x + 1, y - 6);
+      ctx.fillText(label, x - 1, y - 6);
+      ctx.fillStyle = 'rgba(226, 232, 240, 0.92)';
+      ctx.fillText(label, x, y - 7);
+      ctx.restore();
     }
 
     /** Tile licences require visible credit wherever the imagery is shown. */

@@ -137,6 +137,18 @@ purpose — otherwise the app would go flat every Monday morning.
 
 ### Territory
 
+The Territory tab is a map you drive: **drag to pan, pinch or scroll to zoom**,
+with a scale bar so a claim's size is a measured thing rather than a guess. It
+opens framed on your own ground with the neighbours around it, and `◎` brings
+that framing back whenever you have wandered. Once you have moved the view it
+is yours — re-rendering the screen never snatches it back.
+
+The city keeps going past your own neighbourhood, and it is already spoken for:
+districts of other runners' claims are seeded across several kilometres in every
+direction. The legend under the map answers for **whatever is on screen**, so
+panning somewhere new tells you whose land you are looking at; when there is
+none in view it points the way to the nearest, with a distance and a bearing.
+
 Territory is **exclusive**: where two loops enclose the same ground, whoever
 claimed it later owns it and the earlier claim gives up that part. No two plots
 on the map overlap, and no area is counted twice. A claim keeps two shapes — the
@@ -244,6 +256,7 @@ has it. The three marked `:8765` want `python3 -m http.server 8765` running.
 ```
 node test-clip.js         polygon subtraction, against a sampled oracle
 node test-tiles.js        tile alignment, seams, canvas taint, fallback
+node test-map.js          panning, zooming, and who owns what is in view
 node test-territory.js    a loop is the only way a territory run ends
 node test-contrast.js     every text style against WCAG AA          :8765
 node test-sheets.js       sheets never leave the shell scrolled     :8765

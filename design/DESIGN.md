@@ -236,9 +236,24 @@ Underneath, the same three cells appear on every card — Distance / Time / Pace
 
 ### 6.4 Land
 
-A neighbourhood map of every claim — yours in violet, each rival tinted in
-their own colour — over total area held, standings, and your plots as
-thumbnails.
+A map of every claim — yours in violet, each rival tinted in their own colour —
+over total area held and your plots as thumbnails.
+
+**The map is the screen.** It was a 240px pane above a standings table; the
+table is gone and the map has the room, because a ranked list of five names
+answered a question nobody was asking while the thing people actually want —
+where is this land, and whose is next to mine — was reduced to a thumbnail. In
+its place the map pans and zooms by hand, and the legend beneath it names only
+what is currently in view. That makes the legend a readout of the map rather
+than a roster, and it is what turns panning into something worth doing: drag
+two kilometres east and the legend changes to the people who run there.
+
+A map you can get lost on needs two things a framed one does not: a way back
+(`◎`, which re-frames your own ground with its neighbours around it) and a way
+to know how big what you are looking at is (a scale bar, since the zoom is now
+arbitrary). Off-screen maps stop fetching imagery entirely — three maps pulling
+tiles for screens nobody is on spends the viewer's bandwidth and the tile
+provider's goodwill on nothing.
 
 **Territory is exclusive.** Where two loops enclose the same ground, the one
 claimed later owns it and the earlier claim gives up that part, so no two plots

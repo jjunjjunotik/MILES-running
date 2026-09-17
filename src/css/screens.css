@@ -324,18 +324,53 @@
    TERRITORY
    -------------------------------------------------------------------------- */
 
-.territory-map { position: relative; flex: none; height: 240px; border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--line); }
+/* The map is the point of this screen, so it gets the room. */
+.territory-map {
+  position: relative; flex: none;
+  height: clamp(320px, 54vh, 520px);
+  border-radius: var(--r-lg); overflow: hidden; border: 1px solid var(--line);
+  touch-action: none;                 /* drag pans the map, not the screen */
+}
 .territory-map canvas { display: block; width: 100%; height: 100%; }
 
 /* Who owns which colour. Present whenever more than one owner is on the map —
    identity is never left to colour alone. */
+/* Floating map controls. Kept off the bottom-right, where the tile
+   attribution has to stay legible. */
+.map-tools {
+  position: absolute; top: var(--s-3); right: var(--s-3);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.map-btn {
+  width: 34px; height: 34px;
+  display: grid; place-items: center;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: rgba(8, 11, 16, 0.82);
+  color: var(--text-hi);
+  font-size: 16px; font-weight: 700; line-height: 1;
+  cursor: pointer;
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+}
+.map-btn:active { transform: scale(0.94); }
+
+.map-hint {
+  position: absolute; left: var(--s-3); top: var(--s-3);
+  padding: 6px 10px; border-radius: 8px;
+  background: rgba(8, 11, 16, 0.82);
+  border: 1px solid var(--line);
+  font-size: 11px; font-weight: 600; color: var(--text-mid);
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+}
+.map-hint[hidden] { display: none; }
+.map-hint[data-gone="true"] { opacity: 0; }
+
 .legend { display: flex; flex-wrap: wrap; gap: var(--s-2); padding: var(--s-3) 0 0; }
 .legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--text-mid); }
 .legend-item[data-me="true"] { color: var(--text-hi); font-weight: 700; }
 .legend-swatch { width: 11px; height: 11px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.25); flex: none; }
 
-.owner-row { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3) 0; border-bottom: 1px solid var(--line); }
-.owner-row:last-child { border-bottom: none; }
 .owner-swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
 
 .plot { display: flex; align-items: center; gap: var(--s-3); padding: var(--s-3); border-radius: var(--r-md); background: rgba(255,255,255,0.035); border: 1px solid var(--line); }

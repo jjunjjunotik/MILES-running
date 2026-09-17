@@ -29,6 +29,7 @@
       this.bindFinish();
       this.bindProfile();
       this.bindCrew();
+      this.bindTerritoryMap();
 
       Bus.on('state:changed', () => this.renderAll());
       this.renderAll();
@@ -38,7 +39,13 @@
     buildMaps() {
       this.maps.home = new M.MapView($('#homeMap'), { mpp: 1.4, padding: 30 });
       this.maps.run = new M.MapView($('#runMap'), { mpp: 1.1, padding: 34 });
-      this.maps.territory = new M.MapView($('#terrMap'), { mpp: 2.4, padding: 26 });
+      // The only map you drive yourself, so it is the only one with gestures,
+      // a scale bar, and a legend that answers for whatever is on screen now.
+      this.maps.territory = new M.MapView($('#terrMap'), {
+        mpp: 2.4, padding: 26, scale: true,
+        onMove: () => this.renderTerrLegend(),
+      });
+      this.maps.territory.enableGestures();
       Object.values(this.maps).forEach((map) => map.setAnchor(State.data.profile.home));
     },
 
@@ -76,6 +83,11 @@
       const screen = $('#screen-' + tab);
       if (screen) screen.scrollTop = 0;
       this.pinShell();
+
+      // Only the map on screen may fetch imagery.
+      this.maps.home.setVisible(tab === 'home');
+      this.maps.run.setVisible(tab === 'run');
+      this.maps.territory.setVisible(tab === 'territory');
 
       if (tab === 'territory') this.renderTerritory();
       if (tab === 'feed') this.renderFeed();
@@ -786,45 +798,17 @@
       map.layers.route = [];
       map.layers.me = s.profile.home;
       map.layers.rivals = [];
-      const all = map.layers.territories.map((t) =>
-        (t.pieces && t.pieces.length ? t.pieces[0].ring : t.polygon));
-      if (all.length) map.fit(all.concat([[s.profile.home]]));
+      // Frame your own land the first time, then leave the view alone: once
+      // you have dragged somewhere, a re-render must not snatch it back.
+      if (!map.moved) {
+        const mine = s.territories.map((t) =>
+          (t.pieces && t.pieces.length ? t.pieces[0].ring : t.polygon));
+        map.fit(mine.concat([[s.profile.home]]));
+        map.pullBack(1.8);
+      }
       map.invalidate();
 
-      // Legend: name every colour on the map.
-      const legend = $('#terrLegend');
-      legend.innerHTML = '';
-      const owners = [{ name: 'You', color: M.OWNER_COLORS[0], me: true }].concat(
-        s.friends
-          .filter((f) => rivalLand.some((t) => t.owner === f.id && t.area > 0))
-          .map((f) => ({ name: f.name, color: f.color, me: false }))
-      );
-      owners.forEach((o) => {
-        legend.appendChild(el('span', { class: 'legend-item', 'data-me': String(o.me) }, [
-          el('span', { class: 'legend-swatch', style: `background:${o.color}` }),
-          el('span', { text: o.name }),
-        ]));
-      });
-
-      // Standings
-      const board = $('#terrBoard');
-      board.innerHTML = '';
-      const rows = [{ name: 'You', color: M.OWNER_COLORS[0], area: total, me: true }].concat(
-        s.friends.map((f) => ({
-          name: f.name,
-          color: f.color,
-          area: rivalLand.filter((t) => t.owner === f.id).reduce((a, t) => a + (t.area || 0), 0),
-        }))
-      ).sort((a, b) => b.area - a.area);
-
-      rows.forEach((r, i) => {
-        board.appendChild(el('div', { class: 'owner-row' }, [
-          el('span', { class: 'stat-label', style: 'width:14px', text: String(i + 1) }),
-          el('span', { class: 'owner-swatch', style: `background:${r.color}` }),
-          el('span', { class: 'grow truncate', style: `font-size:13px;font-weight:${r.me ? 800 : 600};color:${r.me ? 'var(--violet)' : 'var(--text-hi)'}`, text: r.name }),
-          el('span', { class: 'stat-value', style: 'font-size:13px', text: `${Units.areaText(r.area)} ${Units.areaLabel()}` }),
-        ]));
-      });
+      this.renderTerrLegend();
 
       // Plots
       const list = $('#terrList');
@@ -852,6 +836,95 @@
           if (t.pieces && t.pieces.length) M.drawLandThumb(canvas, t.pieces);
           else M.drawRouteThumb(canvas, t.polygon, { stroke: '#a855f7', fill: 'rgba(168,85,247,0.30)', pad: 6, width: 1.8 });
         });
+      });
+    },
+
+    /**
+     * Names every colour currently on screen. Panning into a district you have
+     * never run in should tell you whose land you are looking at, so the legend
+     * follows the view rather than listing your friends.
+     */
+    renderTerrLegend() {
+      const map = this.maps.territory;
+      const legend = $('#terrLegend');
+      if (!legend || !map.w) return;
+      const b = map.bounds();
+
+      const visible = (t) => {
+        const ring = (t.pieces && t.pieces.length ? t.pieces[0].ring : t.polygon) || [];
+        return ring.some((p) => p.lat <= b.north && p.lat >= b.south && p.lng >= b.west && p.lng <= b.east);
+      };
+
+      const seen = new Map();
+      State.data.territories.forEach((t) => {
+        if ((t.area || 0) > 0 && visible(t)) seen.set('me', { name: 'You', color: M.OWNER_COLORS[0], me: true });
+      });
+      this.rivalTerritories().forEach((t) => {
+        if (!(t.area > 0) || seen.has(t.owner) || !visible(t)) return;
+        seen.set(t.owner, { name: t.ownerName || 'Runner', color: t.color, me: false });
+      });
+
+      const owners = [...seen.values()].sort((a, b2) => (b2.me ? 1 : 0) - (a.me ? 1 : 0));
+      legend.innerHTML = '';
+      if (!owners.length) {
+        // A dead end is no use on a map you are meant to explore: say which way
+        // the nearest claimed ground is, and how far.
+        legend.appendChild(el('span', { class: 'legend-item', text: this.nearestLandHint() }));
+        return;
+      }
+      owners.slice(0, 7).forEach((o) => {
+        legend.appendChild(el('span', { class: 'legend-item', 'data-me': String(o.me) }, [
+          el('span', { class: 'legend-swatch', style: `background:${o.color}` }),
+          el('span', { text: o.name }),
+        ]));
+      });
+      if (owners.length > 7) {
+        legend.appendChild(el('span', { class: 'legend-item', text: `+${owners.length - 7} more` }));
+      }
+    },
+
+    /** "Nearest land · 2.4 km northeast", measured from the middle of the view. */
+    nearestLandHint() {
+      const map = this.maps.territory;
+      const here = map.center;
+      let best = null;
+
+      map.layers.territories.forEach((t) => {
+        const ring = (t.pieces && t.pieces.length ? t.pieces[0].ring : t.polygon) || [];
+        if (!ring.length || !(t.area > 0)) return;
+        const mid = {
+          lat: ring.reduce((a, p) => a + p.lat, 0) / ring.length,
+          lng: ring.reduce((a, p) => a + p.lng, 0) / ring.length,
+        };
+        const d = Geo.distance(here, mid);
+        if (!best || d < best.d) best = { d, mid };
+      });
+
+      if (!best) return 'No claimed land anywhere near';
+      const v = Geo.project(best.mid, here);
+      // Projected y grows southward, so north is -y.
+      const COMPASS = ['east', 'northeast', 'north', 'northwest', 'west', 'southwest', 'south', 'southeast'];
+      const way = COMPASS[(Math.round(Math.atan2(-v.y, v.x) / (Math.PI / 4)) + 8) % 8];
+      return `Nearest land · ${Units.distText(best.d)} ${Units.distLabel()} ${way}`;
+    },
+
+    bindTerritoryMap() {
+      const map = this.maps.territory;
+      const hint = $('#terrHint');
+      // The hint has done its job the moment the map is touched.
+      const dismiss = () => {
+        if (!hint || hint.dataset.gone === 'true') return;
+        hint.dataset.gone = 'true';
+        setTimeout(() => { hint.hidden = true; }, 500);
+      };
+      ['pointerdown', 'wheel'].forEach((e) => $('#terrMap').addEventListener(e, dismiss, { passive: true }));
+
+      $('#terrZoomIn').addEventListener('click', () => { map.zoomAt(1.6); dismiss(); });
+      $('#terrZoomOut').addEventListener('click', () => { map.zoomAt(1 / 1.6); dismiss(); });
+      $('#terrRecentre').addEventListener('click', () => {
+        map.moved = false;
+        this.renderTerritory();
+        this.toast('Back to your own ground');
       });
     },
 
