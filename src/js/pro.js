@@ -67,6 +67,7 @@
     bigRaces:       'pro',         // a wider field; everyone you invite runs free
     customDistance: 'pro',
     crewCreate:     'pro',         // founding a crew; joining one is always free
+    crewTerritory:  'pro',         // the map read by crew rather than by runner
     mapStyles:      'pro',
   };
 
@@ -81,6 +82,7 @@
       { icon: '🔭', name: 'Scout', note: 'The biggest unclaimed ground in view, measured' },
       { icon: '🏁', name: 'Races up to 16', note: 'Everyone you line up against runs free' },
       { icon: '🚩', name: 'Found a crew', note: 'Joining a crew is free, always' },
+      { icon: '🛡', name: 'Crew territory', note: 'The map by crew — whose ground is whose, block by block' },
       { icon: '🗺', name: 'Every map style', note: 'Street and light basemaps as well as dark' },
     ],
   };

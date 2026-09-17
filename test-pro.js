@@ -248,12 +248,124 @@ const path = require('path');
       hasRaiders: typeof P.raiders === 'function',
       hasBigRaces: P.MAX_RIVALS_PRO > P.MAX_RIVALS_FREE,
       hasMapStyles: Object.keys(MILES.Tiles.SOURCES).length >= 4,
+      hasCrewTerritory: typeof MILES.Crew.territory === 'function'
+        && typeof MILES.Crew.landStandings === 'function'
+        && MILES.State.data.rivalLand.some((t) => t.crewId),
     };
   });
-  ok('the offer lists eight benefits', advertised.benefits === 8, advertised.benefits);
+  ok('the offer lists every benefit it has', advertised.benefits >= 9, advertised.benefits);
   Object.keys(advertised).filter((k) => k.startsWith('has')).forEach((k) => {
     ok(`${k.replace('has', '')} is implemented, not just advertised`, advertised[k]);
   });
+
+  // --- 9. Crew territory ---------------------------------------------------
+  // The feature only means anything if crew members own ground, so that is the
+  // first thing to check: a heading over an empty box is what deferred this.
+  const crewLand = await page.evaluate(() => {
+    const s = MILES.State.data;
+    const claims = s.rivalLand.filter((t) => t.crewId);
+    const memberOf = (t) => {
+      const crew = s.crews.find((c) => c.id === t.crewId);
+      return !!crew && (crew.members || []).some((m) => m.id === t.owner);
+    };
+    return {
+      claims: claims.length,
+      crewsHolding: new Set(claims.map((t) => t.crewId)).size,
+      allOwnedByMembers: claims.every(memberOf),
+      // A claim wholly overrun by a later one legitimately holds nothing; what
+      // would be wrong is most of the crew land being buried on arrival.
+      holding: claims.filter((t) => t.area > 0).length,
+      totalArea: claims.reduce((a, t) => a + (t.area || 0), 0),
+    };
+  });
+  ok('crew members actually hold ground', crewLand.claims > 0, crewLand.claims);
+  ok('more than one crew holds some', crewLand.crewsHolding > 1, crewLand.crewsHolding);
+  ok('every crew claim belongs to a member of that crew', crewLand.allOwnedByMembers);
+  ok('nearly all of it survives the exclusivity pass',
+    crewLand.holding >= crewLand.claims * 0.8 && crewLand.totalArea > 0,
+    `${crewLand.holding}/${crewLand.claims} still holding`);
+
+  // Joining a crew brings your ground with you.
+  const joined = await page.evaluate(() => {
+    const s = MILES.State.data, C = MILES.Crew;
+    const open = s.crews.find((c) => c.openJoin);
+    const before = C.territory(s, open).area;
+    MILES.State.crewAction((st) => C.join(st, open.id));
+    const mine = C.mine(s);
+    const after = C.territory(s, mine).area;
+    const myOwn = s.territories.reduce((a, t) => a + (t.area || 0), 0);
+    return { before, after, myOwn, name: mine && mine.name, holders: C.territory(s, mine).holders };
+  });
+  ok('joining a crew adds your ground to theirs',
+    Math.abs(joined.after - (joined.before + joined.myOwn)) < 1,
+    `${Math.round(joined.before)} + ${Math.round(joined.myOwn)} vs ${Math.round(joined.after)}`);
+  ok('the crew has several members holding land', joined.holders > 1, joined.holders);
+
+  // A crew total is a sum of non-overlapping claims, so it can never exceed
+  // everything held on the map.
+  const sums = await page.evaluate(() => {
+    const s = MILES.State.data, C = MILES.Crew;
+    const everything = s.territories.concat(s.rivalLand).reduce((a, t) => a + (t.area || 0), 0);
+    const standings = C.landStandings(s);
+    return { everything, crews: standings.reduce((a, c) => a + c.area, 0), count: standings.length };
+  });
+  ok('crew holdings never exceed the whole map', sums.crews <= sums.everything + 1,
+    `${Math.round(sums.crews)} vs ${Math.round(sums.everything)}`);
+  ok('every crew is ranked', sums.count >= 5, sums.count);
+
+  // The map reads by crew, and unaffiliated ground stays visible.
+  await page.evaluate(() => { MILES.Pro.subscribe(MILES.State.data, 'pro_yearly'); MILES.State.save(); MILES.UI.go('territory'); });
+  await page.waitForTimeout(600);
+  const crewView = await page.evaluate(() => {
+    MILES.UI.toggleCrewView();
+    const map = MILES.UI.maps.territory;
+    const colors = map.layers.crewColors;
+    const mine = MILES.Crew.mine(MILES.State.data);
+    return {
+      on: !!colors,
+      keyed: Object.keys(colors).length,
+      minePresent: !!colors.me && colors.me.me === true,
+      mineNamed: !!mine && colors[mine.id] && colors[mine.id].me === true,
+      pressed: document.querySelector('#terrCrews').getAttribute('aria-pressed'),
+      legend: [...document.querySelectorAll('#terrLegend .legend-item')].map((e) => e.textContent),
+    };
+  });
+  ok('the crew view turns on', crewView.on && crewView.pressed === 'true');
+  ok('your own plots are keyed to your crew', crewView.minePresent && crewView.mineNamed);
+  ok('the legend names crews, not runners',
+    crewView.legend.length > 0 && crewView.legend.some((t) => t === joined.name),
+    JSON.stringify(crewView.legend));
+
+  await page.evaluate(() => MILES.UI.toggleCrewView());
+  await page.waitForTimeout(200);
+  ok('and turns off again',
+    await page.evaluate(() => !MILES.UI.maps.territory.layers.crewColors
+      && document.querySelector('#terrCrews').getAttribute('aria-pressed') === 'false'));
+
+  // Locked, the card still states the total — the fact is free.
+  const lockedCrew = await page.evaluate(() => {
+    MILES.Pro.cancel(MILES.State.data);
+    MILES.State.save();
+    MILES.UI.go('crew');
+    const host = document.querySelector('#myCrew');
+    return {
+      hasCard: /Crew territory/.test(host.textContent),
+      rows: host.querySelectorAll('.holding-row').length,
+      offersUpgrade: !!host.querySelector('.btn--pro'),
+    };
+  });
+  await page.waitForTimeout(300);
+  ok('the locked crew card still shows the total', lockedCrew.hasCard);
+  ok('but not the breakdown', lockedCrew.rows === 0, lockedCrew.rows);
+  ok('and offers the upgrade in place', lockedCrew.offersUpgrade);
+
+  ok('crew view is gated', await page.evaluate(() => {
+    MILES.UI.go('territory');
+    MILES.UI.toggleCrewView();
+    const gated = !MILES.UI.maps.territory.layers.crewColors && !document.querySelector('#proSheet').hidden;
+    MILES.UI.closeSheet('#proSheet');
+    return gated;
+  }));
 
   console.log('ERRORS:', errors.length ? errors.join('\n') : 'none');
   console.log(bad === 0 ? 'ALL PASS' : `${bad} FAILURES`);

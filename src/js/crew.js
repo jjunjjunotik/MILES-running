@@ -400,6 +400,66 @@
       });
     },
 
+    /* --- Territory ----------------------------------------------------------
+       A crew's ground is simply its members' ground. Claims are already
+       exclusive across the whole map — no two overlap, whoever owns them — so
+       the crew total is a sum and needs no geometry of its own. What the crew
+       adds is the grouping: adjacent plots drawn in one colour read as one
+       holding, which is the thing a crew actually wants to see. ------------- */
+
+    /** Every claim on the map held by a member of this crew. */
+    claims(state, crew) {
+      if (!crew) return [];
+      const ids = new Set((crew.members || []).map((m) => m.id));
+      const mine = ids.has('me') ? (state.territories || []) : [];
+      return (state.rivalLand || []).filter((t) => ids.has(t.owner)).concat(mine);
+    },
+
+    /**
+     * What a crew holds, and who put it there. `byMember` is the honest answer
+     * to "who is carrying this crew" — it counts ground still held, not ground
+     * ever claimed, so a member whose land has been taken back does not keep
+     * credit for it.
+     */
+    territory(state, crew) {
+      const claims = this.claims(state, crew);
+      const byId = new Map();
+
+      claims.forEach((t) => {
+        const id = t.owner === 'me' || !t.owner ? 'me' : t.owner;
+        const prev = byId.get(id);
+        if (prev) { prev.area += t.area || 0; prev.plots += 1; }
+        else byId.set(id, { id, area: t.area || 0, plots: 1 });
+      });
+
+      const byMember = (crew.members || []).map((m) => {
+        const row = byId.get(m.id) || { area: 0, plots: 0 };
+        return { id: m.id, name: m.id === 'me' ? 'You' : m.name, initials: m.initials, me: m.id === 'me', area: row.area, plots: row.plots };
+      }).filter((r) => r.plots > 0).sort((a, b) => b.area - a.area);
+
+      return {
+        claims,
+        plots: claims.length,
+        area: claims.reduce((sum, t) => sum + (t.area || 0), 0),
+        byMember,
+        holders: byMember.length,
+      };
+    },
+
+    /** Crews ranked by ground held, yours included wherever it lands. */
+    landStandings(state) {
+      const all = (state.crews || []).slice();
+      const mine = this.mine(state);
+      if (mine && !all.some((c) => c.id === mine.id)) all.push(mine);
+      return all
+        .map((crew) => ({
+          id: crew.id, name: crew.name, color: crew.color,
+          me: !!mine && crew.id === mine.id,
+          area: this.territory(state, crew).area,
+        }))
+        .sort((a, b) => b.area - a.area);
+    },
+
     /* --- Membership ------------------------------------------------------- */
 
     /** Your own member record, with a pace taken from what you actually run. */

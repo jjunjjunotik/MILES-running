@@ -275,6 +275,16 @@ falls back to the procedurally drawn city, which is the same view with the same
 geometry and no network. That is deliberate — the drawn city is a real design,
 not an error state, so the fallback never looks like a failure.
 
+**Crew territory is a reading, not a mechanic.** A crew does not own ground —
+its members do, and the map already decides ownership the same way for
+everyone. What the crew layer changes is which question the colour answers:
+whose legs, or whose crew. That keeps it on the right side of the paid line
+(it claims nothing) and it is why it needed the crews around you to hold real
+land before it could ship at all — a grouping of nothing is nothing. Ground
+belonging to no crew dims rather than disappearing, because it still blocks
+you, and your own crew's labels stay lime so "mine" reads the same here as
+everywhere else in the app.
+
 **What the paid tier may not do.** Pro never takes an extra metre. The moment a
 subscription can claim faster, hold longer, or defend ground for you, the map
 stops being a contest and becomes a price list — and the free players who make

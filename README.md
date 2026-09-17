@@ -307,6 +307,13 @@ and organising more of it:
 - **Races up to 16** — the host's tier sets the field; everyone invited runs
   free, whatever they pay.
 - **Founding a crew** — joining one is free and always will be.
+- **Crew territory** — the map read by crew rather than by runner. A crew's
+  ground is its members' ground, and since claims are already exclusive across
+  the whole map the total is a sum needing no geometry of its own; what the
+  crew adds is the grouping, so adjacent plots held by one crew read as one
+  holding instead of five strangers. Crews are ranked by ground held, and the
+  crew card names who in yours is carrying it — counted on land still held, so
+  a member whose ground was taken back does not keep the credit.
 - **Every map style** — street and light basemaps as well as dark.
 
 The free tier keeps everything it had, including **all** of your history —

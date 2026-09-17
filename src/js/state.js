@@ -465,6 +465,42 @@
     };
   }
 
+  /**
+   * Ground held by the members of the crews around you. Without it "crew
+   * territory" is a heading over an empty box — the same trap the raiders
+   * panel fell into — so the crews on the map own land the way their members
+   * would if they were real: clustered around where the crew actually meets,
+   * which is what makes a crew's holding read as one block rather than a
+   * scatter of unrelated plots.
+   */
+  function seedCrewLand(state) {
+    const rand = M.rng(515151);
+    const land = [];
+
+    (state.crews || []).forEach((crew, ci) => {
+      const base = crew.home || state.profile.home;
+      // Enough of the crew to make a block, not so many that the map silts up.
+      const holders = (crew.members || []).filter((m) => m.id !== 'me').slice(0, 3 + Math.floor(rand() * 2));
+      holders.forEach((m, k) => {
+        const centre = Geo.offset(base, (rand() - 0.5) * 1500, (rand() - 0.5) * 1500);
+        const polygon = loopAround(centre, 200 + rand() * 300, ci + k, null);
+        land.push({
+          id: `crew-${crew.id}-${m.id}`,
+          owner: m.id,
+          ownerName: m.name,
+          initials: m.initials,
+          color: m.color,
+          crewId: crew.id,                       // what lets the map group it
+          polygon,
+          area: Geo.polygonArea(polygon),
+          claimedAt: Date.now() - Math.floor(rand() * 500 + 2) * 864e5,
+        });
+      });
+    });
+
+    return land;
+  }
+
   function seedRivalLand(state) {
     const home = state.profile.home;
     const land = [];
@@ -603,6 +639,13 @@
       if (this.data.coach) delete this.data.coach;      // the coach feature is gone
       if (!this.data.crews.length && M.Crew) {
         this.data.crews = M.Crew.seedNearby(this.data.profile.home);
+        this.save();
+      }
+      // Crew land is seeded after the crews themselves, since every claim is
+      // owned by a member who has to exist first.
+      if (this.data.crews.length && !this.data.rivalLand.some((t) => t.crewId)) {
+        this.data.rivalLand = this.data.rivalLand.concat(seedCrewLand(this.data));
+        this.resolveLand();
         this.save();
       }
 

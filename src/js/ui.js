@@ -909,20 +909,33 @@
       };
 
       const seen = new Map();
-      State.data.territories.forEach((t) => {
-        if ((t.area || 0) > 0 && visible(t)) seen.set('me', { name: 'You', color: M.OWNER_COLORS[0], me: true });
-      });
-      this.rivalTerritories().forEach((t) => {
-        if (!(t.area > 0) || seen.has(t.owner) || !visible(t)) return;
-        seen.set(t.owner, { name: t.ownerName || 'Runner', color: t.color, me: false });
-      });
+      const crews = map.layers.crewColors;
+      if (crews) {
+        // In crew view the legend names crews, not runners.
+        const consider = (t, key) => {
+          const c = crews[key];
+          if (!c || seen.has(key) || !(t.area > 0) || !visible(t)) return;
+          seen.set(key, { name: c.name, color: c.color, me: c.me });
+        };
+        State.data.territories.forEach((t) => consider(t, 'me'));
+        this.rivalTerritories().forEach((t) => consider(t, t.crewId));
+      } else {
+        State.data.territories.forEach((t) => {
+          if ((t.area || 0) > 0 && visible(t)) seen.set('me', { name: 'You', color: M.OWNER_COLORS[0], me: true });
+        });
+        this.rivalTerritories().forEach((t) => {
+          if (!(t.area > 0) || seen.has(t.owner) || !visible(t)) return;
+          seen.set(t.owner, { name: t.ownerName || 'Runner', color: t.color, me: false });
+        });
+      }
 
       const owners = [...seen.values()].sort((a, b2) => (b2.me ? 1 : 0) - (a.me ? 1 : 0));
       legend.innerHTML = '';
       if (!owners.length) {
         // A dead end is no use on a map you are meant to explore: say which way
         // the nearest claimed ground is, and how far.
-        legend.appendChild(el('span', { class: 'legend-item', text: this.nearestLandHint() }));
+        legend.appendChild(el('span', { class: 'legend-item',
+          text: crews ? 'No crew ground in view' : this.nearestLandHint() }));
         return;
       }
       owners.slice(0, 7).forEach((o) => {
@@ -1140,6 +1153,7 @@
       });
 
       $('#terrScout').addEventListener('click', () => this.toggleScout());
+      $('#terrCrews').addEventListener('click', () => this.toggleCrewView());
 
       $('#tmScrub').addEventListener('input', (e) => {
         if (this._tmTimer) this.stopScrub();
@@ -1195,6 +1209,102 @@
       $('#terrScout').setAttribute('aria-pressed', 'true');
       map.invalidate();
       this.toast(`Open ground · <b>${Units.distText(found.radius * 2)} ${Units.distLabel()}</b> across`);
+    },
+
+    /**
+     * What the crew holds, where it ranks, and who put it there. Locked, it
+     * still states the total — the fact is free, the breakdown is not — so the
+     * card is useful before it is bought and the offer answers a real question.
+     */
+    crewLandCard(crew) {
+      const on = M.Pro.can('crewTerritory');
+      const land = M.Crew.territory(State.data, crew);
+      const standings = M.Crew.landStandings(State.data);
+      const place = standings.findIndex((c) => c.id === crew.id) + 1;
+      const most = Math.max(1, standings[0] ? standings[0].area : 1);
+
+      const rows = on ? standings.slice(0, 6).map((c) => el('div', { class: 'holding-row', 'data-me': String(c.me) }, [
+        el('span', { class: 'holding-name truncate', text: c.name }),
+        el('span', { class: 'holding-bar' }, [
+          el('i', { style: `width:${Math.round((c.area / most) * 100)}%;background:${c.color}` }),
+        ]),
+        el('span', { class: 'holding-area', text: Units.areaText(c.area) }),
+      ])) : [];
+
+      const contributors = on && land.byMember.length
+        ? el('div', { class: 'stack', style: 'gap:2px;margin-top:var(--s-3)' }, [
+          el('span', { class: 'field-label', text: 'Who holds it' }),
+          el('div', { class: 'stack', style: 'gap:6px' }, land.byMember.slice(0, 4).map((m) => el('div', { class: 'row row--between' }, [
+            el('span', { class: 'tiny', style: m.me ? 'color:var(--text-hi);font-weight:800' : '', text: `${m.name} · ${m.plots} ${m.plots === 1 ? 'plot' : 'plots'}` }),
+            el('span', { class: 'tiny', text: `${Units.areaText(m.area)} ${Units.areaLabel()}` }),
+          ]))),
+        ])
+        : null;
+
+      return el('div', { class: 'card stack', style: 'margin-top:var(--s-3)' }, [
+        el('div', { class: 'row row--between' }, [
+          el('span', { class: 'card-title', text: 'Crew territory' }),
+          on ? el('span', { class: 'chip chip--pro', text: 'PRO' }) : null,
+        ]),
+        el('div', { class: 'row row--between' }, [
+          el('div', { class: 'stack', style: 'gap:2px' }, [
+            el('span', { class: 'stat-value', style: 'font-size:26px', text: Units.areaText(land.area) }),
+            el('span', { class: 'stat-label', text: `${Units.areaLabel()} held by ${crew.name}` }),
+          ]),
+          el('div', { class: 'stack', style: 'gap:2px;align-items:flex-end' }, [
+            el('span', { class: 'stat-value', style: 'font-size:26px', text: M.ordinal(place || standings.length) }),
+            el('span', { class: 'stat-label', text: `of ${standings.length} crews` }),
+          ]),
+        ]),
+        on ? el('div', { class: 'stack', style: 'gap:0;margin-top:var(--s-2)' }, rows) : null,
+        contributors,
+        on ? null : el('div', { class: 'lock-row', style: 'margin-top:var(--s-3)' }, [
+          el('div', { class: 'stack grow', style: 'gap:3px' }, [
+            el('span', { class: 'lock-title', text: 'See the map by crew' }),
+            el('span', { class: 'tiny', text: 'Every crew\u2019s ground in its own colour, and who in yours holds what' }),
+          ]),
+          el('button', {
+            class: 'btn btn--pro', type: 'button',
+            text: M.Pro.trialAvailable() ? 'Try free' : 'Get Pro',
+            onclick: () => this.openPro('crewTerritory'),
+          }),
+        ]),
+      ]);
+    },
+
+    /**
+     * Reads the map by crew instead of by runner. Every crew's members' plots
+     * take the crew's colour, so neighbouring ground held by one crew stops
+     * looking like five strangers and starts looking like a holding.
+     */
+    toggleCrewView() {
+      if (!M.Pro.can('crewTerritory')) return this.openPro('crewTerritory');
+      const map = this.maps.territory;
+      const on = !map.layers.crewColors;
+      map.layers.crewColors = on ? this.crewColorMap() : null;
+      $('#terrCrews').setAttribute('aria-pressed', String(on));
+      map.invalidate();
+      this.renderTerrLegend();
+      if (on) {
+        const mine = M.Crew.mine(State.data);
+        this.toast(mine
+          ? `Map by crew — <b>${mine.name}</b> is yours`
+          : 'Map by crew — join one and your ground joins theirs');
+      }
+    },
+
+    /** crewId → colour, plus 'me' for your own crew's claims. */
+    crewColorMap() {
+      const mine = M.Crew.mine(State.data);
+      const out = {};
+      (State.data.crews || []).concat(mine && !(State.data.crews || []).some((c) => c.id === mine.id) ? [mine] : [])
+        .forEach((crew) => {
+          const me = !!mine && crew.id === mine.id;
+          out[crew.id] = { color: crew.color, name: crew.name, tag: M.Crew.monogram(crew), me };
+        });
+      // Your own plots carry no crewId, so they are keyed separately.
+      if (mine) out.me = { color: mine.color, name: mine.name, tag: M.Crew.monogram(mine), me: true };
+      return out;
     },
 
     /** Naming and colouring your own ground. Cosmetic, so Supporter reaches it. */
@@ -1306,6 +1416,7 @@
 
       if (mine) {
         host.appendChild(this.crewHero(mine));
+        host.appendChild(this.crewLandCard(mine));
       } else {
         const pending = M.Crew.all(state).find((c) => c.pendingMe);
         host.appendChild(el('div', { class: 'card stack' }, [

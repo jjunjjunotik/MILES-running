@@ -44,7 +44,7 @@
       this.anchor = M.DEFAULT_HOME;      // projection origin
       this.center = this.anchor;
       this.mpp = this.opts.mpp;
-      this.layers = { territories: [], route: [], ghost: [], me: null, rivals: [], scout: null };
+      this.layers = { territories: [], route: [], ghost: [], me: null, rivals: [], scout: null, crewColors: null };
       this._dpr = 1;
       this._raf = null;
       this._resize();
@@ -505,9 +505,16 @@
 
     _drawTerritories() {
       const ctx = this.ctx;
+      const byCrew = this.layers.crewColors;
       this.layers.territories.forEach((t) => {
         const mine = t.owner === 'me' || !t.owner;
-        const stroke = t.color || (mine ? '#a855f7' : '#c14685');
+        // In crew view a plot wears its crew's colour instead of its owner's,
+        // so neighbouring plots of one crew read as a single holding. Ground
+        // belonging to no crew is dimmed rather than hidden — it is still
+        // somebody's, and it still blocks you.
+        const crew = byCrew && byCrew[t.crewId || (mine ? 'me' : '')];
+        const loose = !!byCrew && !crew;
+        const stroke = (crew && crew.color) || t.color || (mine ? '#a855f7' : '#c14685');
 
         // `pieces` is what is still held after later claims took their share;
         // fall back to the raw loop for anything not yet resolved. A piece may
@@ -532,8 +539,8 @@
         // Fill strongly enough that the hue actually reads, then separate
         // neighbours with a ring of the map's own ground: plots share borders
         // now, and two fills meeting edge to edge blur into one shape.
-        ctx.fillStyle = stroke;
-        ctx.globalAlpha = mine ? 0.34 : 0.26;
+        ctx.fillStyle = loose ? '#6b7280' : stroke;
+        ctx.globalAlpha = loose ? 0.10 : (crew && crew.me) || (!byCrew && mine) ? 0.34 : 0.26;
         ctx.fill('evenodd');
         ctx.globalAlpha = 1;
 
@@ -542,9 +549,11 @@
         ctx.lineWidth = mine ? 5 : 4;
         ctx.stroke();
 
-        ctx.strokeStyle = stroke;
-        ctx.lineWidth = mine ? 2.4 : 1.8;
+        ctx.globalAlpha = loose ? 0.35 : 1;
+        ctx.strokeStyle = loose ? '#9ca3af' : stroke;
+        ctx.lineWidth = (crew && crew.me) || (!byCrew && mine) ? 2.4 : 1.8;
         ctx.stroke();
+        ctx.globalAlpha = 1;
       });
 
       this._labelTerritories();
@@ -597,7 +606,11 @@
         cy /= 3 * area2;
 
         const mine = t.owner === 'me' || !t.owner;
-        const label = mine ? 'YOU' : (t.initials || '??');
+        const byCrew = this.layers.crewColors;
+        const crew = byCrew && byCrew[t.crewId || (mine ? 'me' : '')];
+        // In crew view the label answers "whose crew", not "whose legs".
+        const label = crew ? crew.tag : mine ? 'YOU' : (t.initials || '??');
+        if (byCrew && !crew) return;                  // unaffiliated ground is dimmed, not named
         const size = Math.max(9, Math.min(13, bestSpan * 0.2));
         ctx.font = `800 ${size}px ${getComputedStyle(document.body).fontFamily}`;
 
@@ -610,7 +623,8 @@
 
         // Lime means "you" everywhere else in the app, so it means it here too;
         // everyone else's initials wear their own plot colour.
-        ctx.fillStyle = mine ? '#c8ff2e' : (t.color || '#f2f6fa');
+        ctx.fillStyle = crew ? (crew.me ? '#c8ff2e' : crew.color)
+          : mine ? '#c8ff2e' : (t.color || '#f2f6fa');
         ctx.fillText(label, cx, cy + 0.5);
       });
 
