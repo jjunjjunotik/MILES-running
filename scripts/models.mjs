@@ -30,7 +30,7 @@ if (!apiKey) {
 
 const baseUrl =
   process.env.GEMINI_BASE_URL?.trim() || "https://generativelanguage.googleapis.com";
-const current = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+const current = process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
 const usable = [];
 
 let payload;

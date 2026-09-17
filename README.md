@@ -161,7 +161,7 @@ npm run smoke               # 업로드 → 분석 → 공유 카드 → 기록�
 | | Gemini | Claude |
 |---|---|---|
 | 환경변수 | `GEMINI_API_KEY` | `ANTHROPIC_API_KEY` |
-| 기본 모델 | `gemini-2.5-flash` (`GEMINI_MODEL`) | `claude-opus-5` (`ANTHROPIC_MODEL`) |
+| 기본 모델 | `gemini-3.8-flash` (`GEMINI_MODEL`) | `claude-opus-5` (`ANTHROPIC_MODEL`) |
 | 구조화 출력 | `responseJsonSchema` + `responseMimeType` | `output_config.format` |
 | 키 전달 | `x-goog-api-key` 헤더 | `x-api-key` 헤더 |
 

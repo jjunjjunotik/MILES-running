@@ -19,7 +19,7 @@ import {
  * 키는 GEMINI_API_KEY 환경변수에서만 읽는다. 이 값은 서버 프로세스 안에만
  * 존재하며, 브라우저로 내려가는 번들에는 어떤 경로로도 포함되지 않는다.
  */
-export const MODEL = process.env.GEMINI_MODEL ?? "gemini-2.5-flash";
+export const MODEL = process.env.GEMINI_MODEL ?? "gemini-3.8-flash";
 
 let cachedClient: GoogleGenAI | null = null;
 
