@@ -254,6 +254,41 @@ const path = require('path');
     };
   });
   ok('the offer lists every benefit it has', advertised.benefits >= 9, advertised.benefits);
+
+  // Icons are sprite references, not emoji, and every one must resolve — a
+  // missing sprite renders as nothing at all, silently.
+  const icons = await page.evaluate(() => {
+    MILES.UI.openPro();
+    const uses = [...document.querySelectorAll('#proBenefits use')];
+    const out = uses.map((u) => {
+      const id = u.getAttribute('href').slice(1);
+      const g = document.getElementById(id);
+      return { id, defined: !!g, shapes: g ? g.children.length : 0 };
+    });
+    MILES.UI.closeSheet('#proSheet');
+    return out;
+  });
+  ok('every benefit icon is a sprite, not an emoji',
+    await page.evaluate(() => MILES.Pro.BENEFITS.pro.concat(MILES.Pro.BENEFITS.supporter)
+      .every((b) => /^i-[a-z]+$/.test(b.icon))));
+  ok('every benefit icon resolves to a defined sprite',
+    icons.length > 0 && icons.every((i) => i.defined && i.shapes > 0),
+    JSON.stringify(icons.filter((i) => !i.defined || !i.shapes)));
+  ok('no two benefits share an icon',
+    new Set(icons.map((i) => i.id)).size === icons.length);
+
+  // Every segmented row has equal columns.
+  const segs = await page.evaluate(() => {
+    MILES.UI.openPro();
+    const widths = (sel) => [...document.querySelectorAll(sel + ' button')]
+      .map((b) => Math.round(b.getBoundingClientRect().width));
+    const out = { tiers: widths('#proTiers'), plans: widths('#proPlans') };
+    MILES.UI.closeSheet('#proSheet');
+    return out;
+  });
+  const even = (w) => w.length > 1 && w.every((x) => Math.abs(x - w[0]) <= 1);
+  ok('the tier picker is split evenly', even(segs.tiers), JSON.stringify(segs.tiers));
+  ok('the plan picker is split evenly', even(segs.plans), JSON.stringify(segs.plans));
   Object.keys(advertised).filter((k) => k.startsWith('has')).forEach((k) => {
     ok(`${k.replace('has', '')} is implemented, not just advertised`, advertised[k]);
   });

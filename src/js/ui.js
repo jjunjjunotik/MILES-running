@@ -1085,8 +1085,15 @@
         ? M.Pro.BENEFITS.pro.concat(M.Pro.BENEFITS.supporter)
         : M.Pro.BENEFITS.supporter;
       lists.forEach((b) => {
+        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+        svg.setAttribute('viewBox', '0 0 24 24');
+        svg.setAttribute('class', 'pro-benefit-icon');
+        svg.setAttribute('aria-hidden', 'true');
+        const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+        use.setAttribute('href', '#' + b.icon);
+        svg.appendChild(use);
         benefits.appendChild(el('div', { class: 'pro-benefit' }, [
-          el('span', { class: 'pro-benefit-icon', text: b.icon }),
+          svg,
           el('div', { class: 'stack', style: 'gap:2px' }, [
             el('span', { class: 'pro-benefit-name', text: b.name }),
             el('span', { class: 'tiny', text: b.note }),

@@ -71,19 +71,23 @@
     mapStyles:      'pro',
   };
 
+  /* Icons name a sprite in index.html rather than an emoji: emoji render as
+     somebody else's artwork at somebody else's weight, which is exactly wrong
+     next to a hand-drawn interface. Each one draws its own mechanism — the
+     scout icon is the dashed ring the feature actually puts on the map. */
   const BENEFITS = {
     supporter: [
-      { icon: '🎨', name: 'Name and colour your plots', note: 'Your ground, marked and named your way' },
-      { icon: '🖼', name: 'Record card themes', note: 'Four colourways for the card you actually share' },
+      { icon: 'i-tag', name: 'Name and colour your plots', note: 'Your ground, marked and named your way' },
+      { icon: 'i-swatch', name: 'Record card themes', note: 'Four colourways for the card you actually share' },
     ],
     pro: [
-      { icon: '⏳', name: 'Time machine', note: 'Replay the map week by week and watch the borders move' },
-      { icon: '⚔', name: 'Who took your land', note: 'Every claim measured back to the runner who made it' },
-      { icon: '🔭', name: 'Scout', note: 'The biggest unclaimed ground in view, measured' },
-      { icon: '🏁', name: 'Races up to 16', note: 'Everyone you line up against runs free' },
-      { icon: '🚩', name: 'Found a crew', note: 'Joining a crew is free, always' },
-      { icon: '🛡', name: 'Crew territory', note: 'The map by crew — whose ground is whose, block by block' },
-      { icon: '🗺', name: 'Every map style', note: 'Street and light basemaps as well as dark' },
+      { icon: 'i-rewind', name: 'Time machine', note: 'Replay the map week by week and watch the borders move' },
+      { icon: 'i-bite', name: 'Who took your land', note: 'Every claim measured back to the runner who made it' },
+      { icon: 'i-scout', name: 'Scout', note: 'The biggest unclaimed ground in view, measured' },
+      { icon: 'i-lanes', name: 'Races up to 16', note: 'Everyone you line up against runs free' },
+      { icon: 'i-found', name: 'Found a crew', note: 'Joining a crew is free, always' },
+      { icon: 'i-blocks', name: 'Crew territory', note: 'The map by crew — whose ground is whose, block by block' },
+      { icon: 'i-layers', name: 'Every map style', note: 'Street and light basemaps as well as dark' },
     ],
   };
 

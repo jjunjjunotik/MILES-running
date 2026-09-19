@@ -288,7 +288,9 @@
 .history-value { font-family: var(--font-num); font-size: 13px; font-weight: 700; letter-spacing: -0.02em; }
 
 /* Full-width segmented control, for the race distance */
-.seg--block { display: grid; grid-template-columns: repeat(4, 1fr); }
+/* Equal columns whatever the count: a two-option row filled two of four and
+   left the rest of the bar empty. */
+.seg--block { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; }
 .seg--block button { padding: 9px 4px; font-size: 12px; }
 
 .run-controls { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); padding-bottom: var(--s-4); }
@@ -831,7 +833,16 @@
 
 .pro-head { text-align: center; }
 .pro-benefit { display: flex; align-items: flex-start; gap: var(--s-3); }
-.pro-benefit-icon { font-size: 18px; line-height: 1.2; flex: none; width: 24px; text-align: center; }
+/* Line icons in the app's own hand, not emoji: emoji arrive as someone else's
+   artwork at someone else's weight, which reads as pasted-in next to a drawn
+   interface. Amber ties the row to the tier it belongs to. */
+.pro-benefit-icon {
+  width: 21px; height: 21px; flex: none;
+  margin-top: 1px;
+  stroke: var(--amber-ink);
+  fill: none;
+  stroke-width: 1.7;
+}
 .pro-benefit-name { font-weight: 700; font-size: 14px; color: var(--text-hi); }
 
 /* The plan picker belongs to the Pro sheet, so it wears the Pro colour rather
