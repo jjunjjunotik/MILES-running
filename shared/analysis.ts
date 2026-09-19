@@ -7,10 +7,16 @@
  * - 모든 항목은 "사진에서 보이는 것"(observation)과
  *   "그 모습이 일반적으로 무엇과 관련될 수 있는지에 대한 일반 정보"(explanation)로만 구성된다.
  * - status 는 중증도가 아니라 "사용자가 얼마나 신경 써서 지켜볼 만한가"를 뜻한다.
- * - findings 는 눈에 띄는 특징을 하나씩 떼어내 "무엇이 보이는지 / 일반적으로 어떤
- *   요인들과 함께 언급되는지 / 사진으로는 무엇을 구분할 수 없는지 / 어떤 변화가
- *   나타나면 전문가에게 보여야 하는지"를 함께 담는다. 요인은 항상 복수의 가능성으로
- *   제시되며, 그중 하나를 이 사용자에게 적용해 단정하는 필드는 존재하지 않는다.
+ * - findings 는 눈에 띄는 특징을 하나씩 떼어내 "무엇이 보이는지 / 이 모습을 의학에서
+ *   뭐라고 부르는지 / 어떤 상태들이 이런 모습을 만드는지 / 위험 신호가 사진에서
+ *   보이는지 / 무엇을 하면 되는지"를 함께 담는다.
+ * - possibilities 에는 실제 상태 이름(조갑진균증, 손발톱 흑색종 같은)이 들어간다.
+ *   다만 **목록**이고 각각 likelihood 가 붙으며, 그중 하나를 이 사용자에게 확정하는
+ *   필드는 존재하지 않는다. 사진으로 확정할 수 없기 때문이지, 이름을 감추기 위해서가 아니다.
+ * - signChecks 는 교과서적인 위험 신호를 하나씩 "사진에서 보이는지"로 점검한 결과다.
+ *   이름을 아는 것보다 이 점검 결과가 실제로 무엇을 해야 할지 알려 준다.
+ * - nextSteps 는 진료과·시점·진료 때 요청할 것 같은 행동이다. 약 이름과 용량, 시술,
+ *   집에서 하는 처치는 담지 않는다.
  */
 
 /** 관찰 항목 키. UI 순서와 동일하게 유지한다. */
@@ -88,14 +94,14 @@ export const ATTENTION_LABELS: Record<Attention, string> = {
   routine: "일상 관리 범위",
   monitor: "경과 지켜보기",
   consult: "전문가 확인 권장",
-  soon: "가까운 시일 내 확인",
+  soon: "빠른 진료 권장",
 };
 
 export const ATTENTION_DESCRIPTIONS: Record<Attention, string> = {
   routine: "흔하게 관찰되는 모습이라 평소 관리만으로 충분한 경우",
   monitor: "지금 당장 할 일은 없지만, 같은 부위를 다시 찍어 비교해 볼 만한 경우",
   consult: "사진만으로는 구분이 어려워 한 번 직접 보여주는 편이 나은 경우",
-  soon: "변화가 뚜렷하거나 다른 증상이 함께 보여 미루지 않는 편이 좋은 경우",
+  soon: "위험 신호가 보여 미루지 말고 진료를 받는 편이 좋은 경우",
 };
 
 /** 화면에서 위험도 순으로 정렬할 때 쓴다. 큰 값이 더 신경 쓸 항목. */
@@ -113,6 +119,55 @@ export const ATTENTION_RANK: Record<Attention, number> = {
  * causes 는 그런 모습이 일반적으로 어떤 요인들과 함께 언급되는지를 복수로 나열한 것이고,
  * 이 사진의 원인을 특정하지 않는다. cannotTell 이 그 한계를 명시한다.
  */
+/**
+ * 이런 모습을 만들 수 있는 상태 하나.
+ *
+ * name 에는 실제로 쓰이는 이름이 들어간다("조갑 흑색선조", "손발톱 흑색종").
+ * 이름을 감추면 사용자가 스스로 찾아볼 수도, 진료 때 물어볼 수도 없기 때문이다.
+ * 대신 반드시 여러 개를 나란히 두고 likelihood 를 붙인다. 사진 한 장으로 이 중
+ * 어느 것인지 가리는 일은 하지 않는다 — 그건 진료실에서 더모스코피와 조직검사로 하는 일이다.
+ */
+export const LIKELIHOOD_KEYS = [
+  "likely",
+  "possible",
+  "uncommon",
+  "rare_important",
+] as const;
+export type Likelihood = (typeof LIKELIHOOD_KEYS)[number];
+
+export const LIKELIHOOD_LABELS: Record<Likelihood, string> = {
+  likely: "사진 소견과 잘 맞음",
+  possible: "가능성 있음",
+  uncommon: "흔하지 않음",
+  rare_important: "드물지만 놓치면 안 됨",
+};
+
+export interface Possibility {
+  /** 실제로 쓰이는 이름. 한글 뒤에 영문이나 한자를 붙여도 된다. */
+  name: string;
+  likelihood: Likelihood;
+  /** 왜 목록에 올랐는지와, 이 상태가 일반적으로 어떻게 생기는지 */
+  why: string;
+}
+
+/** 위험 신호가 사진에서 보였는지 */
+export const SIGN_STATES = ["present", "absent", "unclear"] as const;
+export type SignState = (typeof SIGN_STATES)[number];
+
+export const SIGN_STATE_LABELS: Record<SignState, string> = {
+  present: "보임",
+  absent: "보이지 않음",
+  unclear: "사진으로는 확인 어려움",
+};
+
+export interface SignCheck {
+  /** 점검한 신호 이름 (예: "폭 3mm 이상", "주변 피부로 색소 번짐") */
+  sign: string;
+  state: SignState;
+  /** 사진에서 어떻게 보였는지 한 줄 */
+  note: string;
+}
+
 export interface Finding {
   /** 어떤 관찰 항목에서 나온 특징인지 */
   metric: MetricKey;
@@ -120,11 +175,17 @@ export interface Finding {
   label: string;
   /** 사진에서 어디에 어느 정도로 보이는지 */
   detail: string;
-  /** 일반적으로 이런 모습과 함께 언급되는 요인들 (복수, 단정 아님) */
-  causes: string[];
+  /** 이 모습을 의학에서 부르는 이름 (예: "조갑 흑색선조(melanonychia striata)") */
+  patternNames: string[];
+  /** 이런 모습을 만들 수 있는 상태들. 항상 복수, 각각 likelihood 를 달고 온다. */
+  possibilities: Possibility[];
+  /** 교과서적인 위험 신호를 사진에서 하나씩 점검한 결과 */
+  signChecks: SignCheck[];
   /** 사진만으로는 구분할 수 없는 부분 */
   cannotTell: string;
   attention: Attention;
+  /** 대응 방안: 어느 진료과에 언제, 진료 때 무엇을 요청하고 무엇을 준비할지 */
+  nextSteps: string[];
   /** 이런 변화가 나타나면 전문가에게 보여주세요 */
   watchFor: string[];
   /** 어느 정도 간격으로 다시 살펴보면 되는지 */
@@ -241,7 +302,7 @@ export const FINGER_LABELS: Record<FingerKey, string> = {
 };
 
 export const DISCLAIMER_SHORT =
-  "이 앱은 의료기기가 아니며, 사진만으로는 질병을 진단할 수 없습니다.";
+  "이 앱은 의료기기가 아니며, 사진만으로는 질병을 확정할 수 없습니다.";
 
 export const DISCLAIMER_LONG =
-  "NailSense는 사진에서 보이는 손톱의 겉모습을 정리해 주는 참고용 도구입니다. 질병을 진단하거나 치료법을 안내하지 않으며, 의학적 판단을 대신할 수 없습니다. 손톱의 변화가 지속되거나 통증·출혈 등 다른 증상이 함께 있다면 의료 전문가와 상담하세요.";
+  "NailSense는 사진에서 보이는 손톱의 겉모습을 정리하고, 그런 모습을 만들 수 있는 상태들의 이름과 위험 신호를 함께 알려 주는 참고용 도구입니다. 여러 가능성을 나열할 뿐 어느 하나로 확정하지 않습니다. 손톱 색소 변화는 눈과 사진만으로는 양성과 악성을 가릴 수 없고, 확인하려면 진료실에서 더모스코피나 조직검사가 필요합니다. 약이나 시술을 안내하지 않으며, 결과가 안심의 근거가 될 수도 없습니다. 위험 신호가 하나라도 보이거나 변화가 이어진다면 피부과 진료를 받으세요.";

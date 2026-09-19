@@ -2,6 +2,8 @@ import { z } from "zod";
 import {
   ATTENTION_KEYS,
   CONFIDENCE_KEYS,
+  LIKELIHOOD_KEYS,
+  SIGN_STATES,
   METRIC_KEYS,
   STATUS_KEYS,
   TIP_CATEGORIES,
@@ -37,49 +39,92 @@ export const MetricSchema = z.object({
     ),
 });
 
+export const PossibilitySchema = z.object({
+  name: z
+    .string()
+    .describe(
+      "실제로 쓰이는 이름을 그대로 적을 것. 예: '조갑 흑색선조(melanonychia striata)', '조갑하 혈종', '손발톱 흑색종', '조갑진균증'. 이름을 뭉개거나 '어떤 감염' 같은 식으로 피하지 말 것.",
+    ),
+  likelihood: z
+    .enum(LIKELIHOOD_KEYS)
+    .describe(
+      "likely=사진 소견이 이 상태와 잘 맞음, possible=가능성 있음, uncommon=흔하지 않음, rare_important=드물지만 놓치면 안 되는 것. 사진으로 확정하는 것이 아니라 목록 안에서의 무게다.",
+    ),
+  why: z
+    .string()
+    .describe(
+      "이 이름이 목록에 오른 근거(사진의 어떤 모습 때문인지)와 이 상태가 일반적으로 어떻게 생기는지 2~3문장. 이 사용자가 이 상태라고 단정하지 말 것.",
+    ),
+});
+
+export const SignCheckSchema = z.object({
+  sign: z
+    .string()
+    .describe("점검한 위험 신호 이름 20자 이내. 예: '폭 3mm 이상', '주변 피부로 색소 번짐'"),
+  state: z
+    .enum(SIGN_STATES)
+    .describe(
+      "present=사진에서 보임, absent=사진에서 보이지 않음, unclear=사진으로는 확인이 어려움. 확인이 안 되는 것을 absent 로 적지 말 것. 이 구분이 이 앱에서 가장 중요하다.",
+    ),
+  note: z.string().describe("사진에서 어떻게 보였는지 한 줄"),
+});
+
 /**
  * 눈에 띄는 특징 하나를 자세히 풀어 쓴 항목.
- * "무엇이 보이는지 / 일반적으로 어떤 요인들과 함께 언급되는지 / 사진으로는 무엇을
- * 구분할 수 없는지 / 어떤 변화가 나타나면 전문가에게 보여야 하는지"를 한 묶음으로 담는다.
+ * 보이는 것 → 이 모습의 이름 → 이런 모습을 만드는 상태들 → 위험 신호 점검 →
+ * 사진의 한계 → 무엇을 할지 순서로 한 묶음을 이룬다.
  */
 export const FindingSchema = z.object({
-  metric: z
-    .enum(METRIC_KEYS)
-    .describe("이 특징이 속한 관찰 항목 키"),
+  metric: z.enum(METRIC_KEYS).describe("이 특징이 속한 관찰 항목 키"),
   label: z
     .string()
     .describe(
-      "모양을 가리키는 짧은 이름 20자 이내. 예: '세로 줄무늬', '손톱 끝 층 갈라짐', '가로 방향 얕은 홈', '점처럼 파인 자국', '손톱판과 살의 들뜸', '큐티클 주변 각질'. 병명이나 진단명을 이름으로 쓰지 말 것.",
+      "모양을 가리키는 짧은 이름 20자 이내. 예: '한 손톱의 갈색 세로 띠', '손톱 끝 층 갈라짐', '점처럼 파인 자국'.",
     ),
   detail: z
     .string()
     .describe(
-      "사진에서 이 특징이 어디에(손톱 중앙/끝/옆선 등) 어느 범위로, 얼마나 뚜렷하게 보이는지 2~3문장으로 구체적으로. 몇 개인지, 한 손톱에만인지 등 셀 수 있는 정보가 있으면 함께 적을 것.",
+      "사진에서 이 특징이 어디에(손톱 중앙/끝/옆선 등) 어느 범위로, 얼마나 뚜렷하게 보이는지 2~3문장으로 구체적으로. 폭·개수·색조 차이처럼 셀 수 있는 정보가 있으면 반드시 적을 것.",
     ),
-  causes: z
+  patternNames: z
     .array(z.string())
     .describe(
-      "이런 모습이 일반적으로 어떤 요인들과 함께 언급되는지 2~4개. 반드시 여러 가능성을 나열하고, 흔한 것부터 적을 것. 각 항목은 '반복적인 마찰이나 눌림으로 생기기도 합니다'처럼 일반 서술로 쓸 것. 이 사용자의 원인을 특정하거나 '의심된다'고 쓰지 말 것.",
+      "이 모습 자체를 의학에서 부르는 이름 0~2개. 예: '조갑 흑색선조(melanonychia striata)', '가로 홈(보우선, Beau's line)', '점상 함몰(pitting)'. 상태 이름이 아니라 모양의 이름이다. 해당하는 용어가 없으면 빈 배열.",
+    ),
+  possibilities: z
+    .array(PossibilitySchema)
+    .describe(
+      "이런 모습을 만들 수 있는 상태 2~5개를 실제 이름으로. 흔한 것부터 적되, 드물어도 놓치면 안 되는 것(예: 손발톱 흑색종)이 해당되면 반드시 rare_important 로 포함할 것. 하나로 좁히지 말 것.",
+    ),
+  signChecks: z
+    .array(SignCheckSchema)
+    .describe(
+      "이 특징에 해당하는 위험 신호를 2~6개 점검한 결과. 사진에서 확인되지 않는 항목은 반드시 unclear 로 둘 것.",
     ),
   cannotTell: z
     .string()
     .describe(
-      "사진만으로는 무엇을 구분할 수 없는지 1~2문장. 예: '사진으로는 색소가 손톱판 안에 있는지 아래 피부에 있는지 구분할 수 없습니다.'",
+      "사진만으로는 무엇을 가릴 수 없는지 1~2문장. 확인하려면 진료실에서 어떤 방법이 쓰이는지(더모스코피, 조직검사, 진균 검사 등)를 함께 적을 것.",
     ),
   attention: z
     .enum(ATTENTION_KEYS)
     .describe(
-      "routine=흔한 모습이라 평소 관리로 충분, monitor=다시 찍어 비교해 볼 만함, consult=사진만으로 구분이 어려워 직접 보여주는 편이 나음, soon=변화가 뚜렷하거나 다른 증상이 함께 보여 미루지 않는 편이 좋음. 질병의 위중도가 아니라 '다음에 무엇을 하면 되는지'다.",
+      "routine=평소 관리로 충분, monitor=다시 찍어 비교, consult=직접 보여 주는 편이 나음, soon=미루지 말고 진료. 위험 신호가 하나라도 present 이면 soon, 핵심 신호가 unclear 로 남으면 최소 consult 로 둘 것.",
+    ),
+  nextSteps: z
+    .array(z.string())
+    .describe(
+      "대응 방안 2~4개. 어느 진료과에 언제(예: '피부과 진료, 가능하면 2주 안에'), 진료 때 무엇을 요청하고 무엇을 준비할지(예: '더모스코피로 봐 달라고 요청', '이전 사진을 함께 가져가기'), 그리고 자극을 줄이는 일반 관리. 약 이름·용량·시술·집에서 하는 처치는 절대 쓰지 말 것.",
     ),
   watchFor: z
     .array(z.string())
     .describe(
-      "'이런 변화가 나타나면 전문가에게 보여주세요' 형태로 관찰 가능한 신호 2~3개. 예: '색이 손톱 뿌리 쪽으로 번질 때', '누르면 아프거나 진물이 보일 때'. 병명 없이 보이는 변화로만 쓸 것.",
+      "'이런 변화가 나타나면 전문가에게 보여주세요' 형태로 관찰 가능한 신호 2~3개.",
     ),
   timeframe: z
     .string()
     .describe(
-      "어느 정도 간격으로 다시 살펴보면 되는지 짧은 구절. 예: '2~3주 뒤 같은 부위 재촬영', '손톱이 자라는 3~6개월 동안 관찰'.",
+      "다시 살펴볼 간격 짧은 구절. 손톱은 한 달에 약 3mm 자란다는 점을 감안할 것. 예: '2~3주 뒤 같은 부위 재촬영'.",
     ),
 });
 

@@ -166,6 +166,22 @@ export function ResultScreen({
           </Notice>
         )}
 
+        {attention === "soon" && (
+          <div className="refer mt-12">
+            <div className="ico">
+              <StethoscopeIcon size={18} />
+            </div>
+            <div>
+              <div className="t">진료를 미루지 않는 편이 좋아요</div>
+              <div className="b">
+                아래 특이 사항에서 눈여겨보는 신호가 보였습니다. 사진으로는 그
+                이상을 가릴 수 없으니, 피부과에서 직접 보여 주세요. 확정된
+                진단이 아니라 확인이 필요하다는 뜻입니다.
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 공유용 카드 미리보기. 실제 공유 이미지는 이 구성을 캔버스로 다시 그린다. */}
         <div className="sharecard mt-12">
           <div className="brand">
@@ -287,8 +303,9 @@ export function ResultScreen({
         <FindingList findings={findings} />
         {findings.length > 0 && (
           <div className="small muted mt-8">
-            요인은 이런 모습에서 일반적으로 함께 언급되는 것들을 나열한 일반
-            정보예요. 사진 한 장으로 원인을 가려낼 수는 없습니다.
+            상태 이름은 이런 모습에서 함께 검토되는 것들을 나열한 목록이고, 그중
+            하나로 확정한 것이 아니에요. 사진으로는 가릴 수 없어 진료실에서
+            확대경이나 검사로 확인합니다.
           </div>
         )}
 

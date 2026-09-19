@@ -1,11 +1,17 @@
 import {
   ATTENTION_KEYS,
   ATTENTION_RANK,
+  LIKELIHOOD_KEYS,
   METRIC_KEYS,
+  SIGN_STATES,
   type Attention,
   type Finding,
+  type Likelihood,
   type MetricKey,
   type NailAnalysis,
+  type Possibility,
+  type SignCheck,
+  type SignState,
 } from "../shared/analysis.js";
 
 /**
@@ -113,13 +119,19 @@ function normalizeFindings(findings: Finding[] | undefined): Finding[] {
     if (seen.has(key)) continue;
     seen.add(key);
 
+    const possibilities = toPossibilities(finding.possibilities);
+    const signChecks = toSignChecks(finding.signChecks);
+
     cleaned.push({
       metric: METRIC_KEYS.includes(finding.metric) ? finding.metric : "color",
       label,
       detail: finding.detail ?? "",
-      causes: toLines(finding.causes),
+      patternNames: toLines(finding.patternNames),
+      possibilities,
+      signChecks,
       cannotTell: finding.cannotTell ?? "",
-      attention: toAttention(finding.attention),
+      attention: escalate(toAttention(finding.attention), possibilities, signChecks),
+      nextSteps: toLines(finding.nextSteps),
       watchFor: toLines(finding.watchFor),
       timeframe: finding.timeframe ?? "",
     });
@@ -134,6 +146,62 @@ function normalizeFindings(findings: Finding[] | undefined): Finding[] {
     )
     .slice(0, MAX_FINDINGS)
     .map((entry) => entry.finding);
+}
+
+/**
+ * 단계는 코드에서 한 번 더 올린다. 모델이 위험 신호를 짚어 놓고도 attention 을
+ * 낮게 주는 경우가 있는데, 그 방향의 실수는 사용자가 치른다.
+ * 올리기만 하고 내리지는 않는다.
+ */
+function escalate(
+  attention: Attention,
+  possibilities: Possibility[],
+  signChecks: SignCheck[],
+): Attention {
+  const raise = (floor: Attention) =>
+    ATTENTION_RANK[floor] > ATTENTION_RANK[attention] ? floor : attention;
+
+  // 위험 신호가 하나라도 보이면 진료를 미룰 이유가 없다.
+  if (signChecks.some((check) => check.state === "present")) return raise("soon");
+
+  // 놓치면 안 되는 가능성이 걸려 있는데 사진으로 확인이 안 됐다면, 사진을 더 보는
+  // 것으로는 해결되지 않는다. 직접 보여 주는 쪽으로 보낸다.
+  const rareImportant = possibilities.some(
+    (item) => item.likelihood === "rare_important",
+  );
+  const unclear = signChecks.some((check) => check.state === "unclear");
+  if (rareImportant && unclear) return raise("consult");
+
+  return attention;
+}
+
+function toPossibilities(value: unknown): Possibility[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Possibility => Boolean(item) && typeof item === "object")
+    .map((item) => ({
+      name: String(item.name ?? "").trim(),
+      likelihood: LIKELIHOOD_KEYS.includes(item.likelihood as Likelihood)
+        ? (item.likelihood as Likelihood)
+        : "possible",
+      why: String(item.why ?? "").trim(),
+    }))
+    .filter((item) => item.name);
+}
+
+function toSignChecks(value: unknown): SignCheck[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is SignCheck => Boolean(item) && typeof item === "object")
+    .map((item) => ({
+      sign: String(item.sign ?? "").trim(),
+      // 알 수 없는 값은 absent 가 아니라 unclear 로 떨어뜨린다.
+      state: SIGN_STATES.includes(item.state as SignState)
+        ? (item.state as SignState)
+        : "unclear",
+      note: String(item.note ?? "").trim(),
+    }))
+    .filter((item) => item.sign);
 }
 
 function toLines(value: unknown): string[] {

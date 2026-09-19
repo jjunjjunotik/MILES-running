@@ -38,7 +38,7 @@ async function analyzeNailPhoto(input: AnalyzeInput): Promise<NailAnalysis> {
   try {
     const response = await client.beta.messages.parse({
       model: MODEL,
-      max_tokens: 8000,
+      max_tokens: 12000,
       // 정책상 거절된 경우 같은 호출 안에서 대체 모델로 자동 재시도된다.
       betas: ["server-side-fallback-2026-07-01"],
       fallbacks: "default",

@@ -123,7 +123,7 @@ async function analyzeNailPhoto(input: AnalyzeInput): Promise<NailAnalysis> {
         // 정해진 모양의 JSON 만 받는다. 자유 서술이 끼어들 여지를 없앤다.
         responseMimeType: "application/json",
         responseJsonSchema: responseSchema(),
-        maxOutputTokens: 8000,
+        maxOutputTokens: 12000,
         temperature: 0.4,
       },
     });
