@@ -435,3 +435,19 @@ select.input option { background: var(--ink-700); color: var(--text-hi); }
   border: 1px dashed var(--line-strong);
   border-radius: var(--r-lg);
 }
+
+/* --- Icons ------------------------------------------------------------------
+   One class for every sprite in the app. Drawn marks rather than typed glyphs
+   or emoji, so they all arrive at the app's own weight instead of whatever the
+   viewer's font or emoji set happens to ship. Colour comes from the text the
+   icon sits with, which is what keeps a lock, a tick and a quest badge looking
+   like one family without a rule for each. -------------------------------- */
+
+.ico {
+  width: 1.15em; height: 1.15em;
+  flex: none;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 1.8;
+}
+.ico--sm { width: 0.95em; height: 0.95em; }

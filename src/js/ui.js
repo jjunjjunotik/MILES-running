@@ -104,6 +104,23 @@
        up shifted with no way to scroll it back. Opening and closing a sheet
        goes through here so the shell is always pinned back to the top. ---- */
 
+    /**
+     * A sprite from the shared set, as an element. Every icon in the app goes
+     * through here so they all arrive at the same weight and colour — which is
+     * the whole reason they are drawn rather than typed or borrowed from the
+     * viewer's emoji font.
+     */
+    icon(name, className) {
+      const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+      svg.setAttribute('viewBox', '0 0 24 24');
+      svg.setAttribute('class', 'ico' + (className ? ' ' + className : ''));
+      svg.setAttribute('aria-hidden', 'true');
+      const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+      use.setAttribute('href', '#' + name);
+      svg.appendChild(use);
+      return svg;
+    },
+
     openSheet(id) {
       $(id).hidden = false;
       this.pinShell();
@@ -290,8 +307,12 @@
       const diff = current.distance - previous.distance;
       const deltaNode = $('#volumeDelta');
       const up = diff >= 0;
-      deltaNode.className = 'delta ' + (up ? 'delta--up' : 'delta--down');
-      deltaNode.textContent = `${up ? '▲' : '▼'} ${Units.distText(Math.abs(diff))} ${Units.distLabel()} vs last ${isWeek ? 'week' : 'month'} · ${current.runs} ${current.runs === 1 ? 'run' : 'runs'}`;
+      deltaNode.className = 'delta chip--icon ' + (up ? 'delta--up' : 'delta--down');
+      deltaNode.innerHTML = '';
+      deltaNode.appendChild(this.icon(up ? 'i-rise' : 'i-fall'));
+      deltaNode.appendChild(el('span', {
+        text: `${Units.distText(Math.abs(diff))} ${Units.distLabel()} vs last ${isWeek ? 'week' : 'month'} · ${current.runs} ${current.runs === 1 ? 'run' : 'runs'}`,
+      }));
 
       // Sparkline
       const buckets = isWeek ? Stats.weekDays(s) : Stats.monthBuckets(s);
@@ -612,14 +633,16 @@
       Object.keys(M.CARD_THEMES).forEach((key) => {
         seg.appendChild(el('button', {
           type: 'button',
-          text: unlocked ? M.CARD_THEMES[key] : M.CARD_THEMES[key] + ' 🔒',
           'aria-pressed': String(this.cardTheme === key),
           onclick: () => {
             if (!unlocked) return this.openPro('cardThemes');
             this.cardTheme = key;
             this.paintCard(activity, athlete);
           },
-        }));
+        }, [
+          el('span', { text: M.CARD_THEMES[key] }),
+          unlocked ? null : this.icon('i-lock', 'ico--sm'),
+        ]));
       });
     },
 
@@ -796,7 +819,7 @@
         extras.appendChild(el('div', { class: 'card stack' }, [
           el('span', { class: 'card-title', text: 'Quests completed' }),
           el('div', { class: 'stack' }, result.unlocked.map((q) => el('div', { class: 'row' }, [
-            el('span', { class: 'quest-icon', text: q.icon }),
+            this.icon(q.icon, 'quest-icon'),
             el('div', { class: 'stack grow', style: 'gap:2px' }, [
               el('span', { style: 'font-weight:700;font-size:14px', text: q.name }),
               el('span', { class: 'tiny', text: q.note }),
@@ -1011,20 +1034,27 @@
 
     stopScrub() {
       if (this._tmTimer) { clearInterval(this._tmTimer); this._tmTimer = null; }
-      $('#tmPlay').textContent = '▶';
+      this.setPlayIcon(false);
       if (this.scrubAt) { this.scrubAt = null; $('#tmScrub').value = 1000; this.renderTerritory(); }
+    },
+
+    setPlayIcon(playing) {
+      const btn = $('#tmPlay');
+      btn.innerHTML = '';
+      btn.appendChild(this.icon(playing ? 'i-pause' : 'i-play'));
+      btn.setAttribute('aria-label', playing ? 'Pause' : 'Play');
     },
 
     toggleScrubPlay() {
       if (this._tmTimer) { this.stopScrub(); return; }
-      $('#tmPlay').textContent = '❚❚';
+      this.setPlayIcon(true);
       const scrub = $('#tmScrub');
       if (Number(scrub.value) >= 1000) scrub.value = 0;
       this._tmTimer = setInterval(() => {
         const next = Number(scrub.value) + 14;
         scrub.value = Math.min(1000, next);
         this.setScrub(scrub.value);
-        if (next >= 1000) { clearInterval(this._tmTimer); this._tmTimer = null; $('#tmPlay').textContent = '▶'; }
+        if (next >= 1000) { clearInterval(this._tmTimer); this._tmTimer = null; this.setPlayIcon(false); }
       }, 90);
     },
 
@@ -1085,15 +1115,8 @@
         ? M.Pro.BENEFITS.pro.concat(M.Pro.BENEFITS.supporter)
         : M.Pro.BENEFITS.supporter;
       lists.forEach((b) => {
-        const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
-        svg.setAttribute('viewBox', '0 0 24 24');
-        svg.setAttribute('class', 'pro-benefit-icon');
-        svg.setAttribute('aria-hidden', 'true');
-        const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
-        use.setAttribute('href', '#' + b.icon);
-        svg.appendChild(use);
         benefits.appendChild(el('div', { class: 'pro-benefit' }, [
-          svg,
+          this.icon(b.icon, 'pro-benefit-icon'),
           el('div', { class: 'stack', style: 'gap:2px' }, [
             el('span', { class: 'pro-benefit-name', text: b.name }),
             el('span', { class: 'tiny', text: b.note }),
@@ -1682,13 +1705,13 @@
             el('span', { class: 'notice-meta', text: `${notice.by} · ${relTime(notice.at)}` }),
           ]),
           isLeader ? el('button', {
-            class: 'icon-btn icon-btn--no', type: 'button', text: '✕', 'aria-label': 'Remove notice',
+            class: 'icon-btn icon-btn--no', type: 'button', 'aria-label': 'Remove notice',
             onclick: () => {
               State.crewAction((st) => M.Crew.removeNotice(st, crew.id, notice.id));
               this.openCrewSheet(crew.id);
               this.renderCrew();
             },
-          }) : null,
+          }, [this.icon('i-cross')]) : null,
         ]));
       });
 
@@ -1929,7 +1952,7 @@
               el('span', { class: 'tiny', text: `${Units.distText(person.weekly)} ${Units.distLabel()} a week · asked ${relTime(person.at || Date.now())}` }),
             ]),
             el('button', {
-              class: 'icon-btn icon-btn--ok', type: 'button', text: '✓', 'aria-label': 'Approve',
+              class: 'icon-btn icon-btn--ok', type: 'button', 'aria-label': 'Approve',
               onclick: () => {
                 const r = State.crewAction((st) => M.Crew.approve(st, crew.id, person.id));
                 if (r.error) { this.toast(r.error); return; }
@@ -1937,15 +1960,15 @@
                 this.openCrewSheet(crew.id);
                 this.renderCrew();
               },
-            }),
+            }, [this.icon('i-check')]),
             el('button', {
-              class: 'icon-btn icon-btn--no', type: 'button', text: '✕', 'aria-label': 'Decline',
+              class: 'icon-btn icon-btn--no', type: 'button', 'aria-label': 'Decline',
               onclick: () => {
                 State.crewAction((st) => M.Crew.decline(st, crew.id, person.id));
                 this.openCrewSheet(crew.id);
                 this.renderCrew();
               },
-            }),
+            }, [this.icon('i-cross')]),
           ]));
         });
       }
@@ -1968,9 +1991,9 @@
         ]);
         if (isLeader && !isMe) {
           row.appendChild(el('button', {
-            class: 'icon-btn', type: 'button', text: '⋯', 'aria-label': 'Manage ' + member.name,
+            class: 'icon-btn', type: 'button', 'aria-label': 'Manage ' + member.name,
             onclick: () => this.manageMember(crew.id, member.id),
-          }));
+          }, [this.icon('i-dots')]));
         }
         roster.appendChild(row);
       });
@@ -2224,7 +2247,7 @@
             : `${Math.min(Math.floor(v.have), v.need)} / ${v.need}`;
 
         list.appendChild(el('div', { class: 'quest', 'data-done': String(v.complete) }, [
-          el('span', { class: 'quest-icon', text: v.quest.icon }),
+          this.icon(v.quest.icon, 'quest-icon'),
           el('div', { class: 'stack grow', style: 'gap:6px' }, [
             el('div', { class: 'row row--between' }, [
               el('span', { class: 'quest-name', text: v.quest.name }),
@@ -2472,11 +2495,13 @@
             ]),
           ]),
           el('div', { class: 'feed-foot' }, [
-            el('button', { class: 'chip', type: 'button', text: '👏 Kudos', onclick: () => this.toast('Kudos sent to <b>' + item.who + '</b>') }),
+            el('button', { class: 'chip chip--icon', type: 'button', onclick: () => this.toast('Kudos sent to <b>' + item.who + '</b>') }, [
+              this.icon('i-spark'), el('span', { text: 'Kudos' }),
+            ]),
             el('button', {
-              class: 'chip', type: 'button', text: 'Card ↗',
+              class: 'chip chip--icon', type: 'button',
               onclick: () => { this.lastActivity = a; this.showCardPreview(a, item); },
-            }),
+            }, [el('span', { text: 'Card' }), this.icon('i-open')]),
           ]),
         ]);
         list.appendChild(card);

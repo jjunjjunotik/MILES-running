@@ -75,52 +75,52 @@
 
   const QUESTS = [
     {
-      id: 'first-steps', icon: '👟', name: 'First Steps', xp: 60,
+      id: 'first-steps', icon: 'i-shoe', name: 'First Steps', xp: 60,
       note: 'Finish your first MILES run',
       progress: (s) => ({ have: s.activities.length, need: 1 }),
     },
     {
-      id: 'weekly-20', icon: '📅', name: 'Weekly Twenty', xp: 180, repeatable: true,
+      id: 'weekly-20', icon: 'i-calendar', name: 'Weekly Twenty', xp: 180, repeatable: true,
       note: 'Cover 20 km in a single week',
       progress: (s) => ({ have: Stats.weekly(s).distance, need: 20000, format: 'dist' }),
     },
     {
-      id: 'loop-hunter', icon: '🗺️', name: 'Loop Hunter', xp: 220,
+      id: 'loop-hunter', icon: 'i-loop', name: 'Loop Hunter', xp: 220,
       note: 'Close 3 loops on Territory runs',
       progress: (s) => ({ have: s.territories.length, need: 3 }),
     },
     {
-      id: 'land-baron', icon: '🏴', name: 'Land Baron', xp: 320,
+      id: 'land-baron', icon: 'i-crown', name: 'Land Baron', xp: 320,
       note: 'Hold 2.5 km² of claimed territory',
       progress: (s) => ({ have: Stats.totalArea(s), need: 2.5e6, format: 'area' }),
     },
     {
-      id: 'duel-win', icon: '🥇', name: 'First Blood', xp: 200,
+      id: 'duel-win', icon: 'i-medal', name: 'First Blood', xp: 200,
       note: 'Win a race — cross the line first',
       progress: (s) => ({ have: s.activities.filter((a) => a.kind === 'race' && a.placing === 1).length, need: 1 }),
     },
     {
-      id: 'duo-regular', icon: '🤝', name: 'Better Together', xp: 260,
+      id: 'duo-regular', icon: 'i-together', name: 'Better Together', xp: 260,
       note: 'Line up for 5 races with friends',
       progress: (s) => ({ have: s.activities.filter((a) => a.kind === 'race').length, need: 5 }),
     },
     {
-      id: 'full-grid', icon: '🏁', name: 'Full Grid', xp: 280,
+      id: 'full-grid', icon: 'i-grid', name: 'Full Grid', xp: 280,
       note: 'Race a full field — you and four rivals',
       progress: (s) => ({ have: s.activities.some((a) => a.kind === 'race' && a.fieldSize >= 5) ? 1 : 0, need: 1 }),
     },
     {
-      id: 'streak-3', icon: '🔥', name: 'Three in a Row', xp: 240,
+      id: 'streak-3', icon: 'i-flame', name: 'Three in a Row', xp: 240,
       note: 'Run on 3 consecutive days',
       progress: (s) => ({ have: Stats.streak(s), need: 3 }),
     },
     {
-      id: 'long-haul', icon: '🛣️', name: 'Long Haul', xp: 300,
+      id: 'long-haul', icon: 'i-road', name: 'Long Haul', xp: 300,
       note: 'Finish a single run of 10 km',
       progress: (s) => ({ have: s.activities.reduce((m, a) => Math.max(m, a.distance), 0), need: 10000, format: 'dist' }),
     },
     {
-      id: 'sunrise', icon: '🌅', name: 'Sunrise Club', xp: 160,
+      id: 'sunrise', icon: 'i-sunrise', name: 'Sunrise Club', xp: 160,
       note: 'Start a run before 7:00 am',
       progress: (s) => ({ have: s.activities.some((a) => new Date(a.startedAt).getHours() < 7) ? 1 : 0, need: 1 }),
     },

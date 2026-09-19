@@ -255,6 +255,7 @@ has it. The three marked `:8765` want `python3 -m http.server 8765` running.
 
 ```
 node test-clip.js         polygon subtraction, against a sampled oracle
+node test-icons.js        one icon language, and no emoji anywhere
 node test-pro.js          the paid boundary, and the numbers Pro sells
 node test-tiles.js        tile alignment, seams, canvas taint, fallback
 node test-map.js          panning, zooming, and who owns what is in view
@@ -266,6 +267,33 @@ node test-dialogs.js      confirms and prompts where modals are blocked :8765
 
 `test-tiles.js` serves its own tiles from a throwaway HTTP server, so it needs
 no network and passes with the real CDN blocked.
+
+---
+
+## Icons
+
+Every mark in the app is a sprite from one set in `index.html` — 41 line icons
+at 24×24, stroke only, drawn at the app's own weight. Nothing is an emoji and
+nothing is a typed glyph.
+
+That distinction is the point. An emoji arrives as somebody else's artwork, at
+somebody else's weight, in whatever set the viewer's OS happens to ship — the
+same `🏴` is a different picture on three phones. A typed `▶` or `✓` arrives at
+the *text* font's weight, which is never the icon weight. Either one reads as
+pasted in next to a drawn interface.
+
+Sprites take their colour from the text they sit with (`stroke: currentColor`),
+so a lock in a segmented control, a tick in a crew row and a quest badge look
+like one family without a rule for each. `UI.icon(name)` builds them; nothing
+constructs an icon any other way.
+
+They are drawn for the size they are used at, which is usually 18–23px. Marks
+that survive 40px can be mush at 21, so the set was reviewed by rendering it at
+both — a pass that caught, among others, sliders standing in for a race, a
+molecule for crew territory and a games controller for card themes.
+`test-icons.js` checks that nothing pictographic survives in the source or on
+any screen, that every reference resolves, that no sprite hard-codes a fill
+(which would break colour inheritance), and that each stays inside its box.
 
 ---
 

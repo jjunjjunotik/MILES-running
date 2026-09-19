@@ -21,7 +21,7 @@
       <g id="i-cards"><rect x="3" y="5" width="18" height="14" rx="3"/><path d="M3 10h18M8 15h5"/></g>
       <g id="i-user"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20a7.5 7.5 0 0 1 15 0"/></g>
       <g id="i-crosshair"><circle cx="12" cy="12" r="6"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></g>
-      <g id="i-runner"><circle cx="14.5" cy="4.6" r="2"/><path d="M13 21l2-5-3-2.6.8-4.4-3.4 2-1.4 3M12 13.4l3.8 1.2 1.6 3.4M8 8.6 12 7"/></g>
+      <g id="i-runner"><circle cx="15.2" cy="4.8" r="2.2"/><path d="M14 8.8 10.2 12.2l1.4 3.6-3 4.8"/><path d="m11.6 15.8 4.4.8 1.4 3.8"/><path d="M10.2 12.2 6 10.8"/><path d="m14 8.8 4.4 1.6-1 3.2"/></g>
       <g id="i-duo"><circle cx="9" cy="7" r="3"/><circle cx="17" cy="8.5" r="2.4"/><path d="M3 20a6 6 0 0 1 12 0M15.5 20a5 5 0 0 1 5.5-4.9"/></g>
       <!-- Pro benefits. Each one draws what its feature actually does, so the
            row reads as a list of mechanisms rather than a bag of symbols. -->
@@ -37,7 +37,34 @@
       <g id="i-layers"><path d="M12 3.2 21 8l-9 4.8L3 8z"/><path d="M4.8 11.6 3 12.6l9 4.8 9-4.8-1.8-1"/><path d="M4.8 16.2 3 17.2l9 4.8 9-4.8-1.8-1"/></g>
       <g id="i-tag"><path d="M11.4 3.4H20a.6.6 0 0 1 .6.6v8.6L11.8 21a1.4 1.4 0 0 1-2 0l-6.8-6.8a1.4 1.4 0 0 1 0-2z"/><circle cx="16.6" cy="7.4" r="1.5"/></g>
       <g id="i-swatch"><path d="M7.6 4.6h9.6a2.6 2.6 0 0 1 2.6 2.6v9.6"/><rect x="3.4" y="7.8" width="12.8" height="11.8" rx="2.6"/><circle cx="9.8" cy="13.7" r="1.7"/></g>
-      <g id="i-crew"><circle cx="12" cy="6" r="2.5"/><circle cx="5" cy="10" r="2.2"/><circle cx="19" cy="10" r="2.2"/><path d="M7.5 19a4.5 4.5 0 0 1 9 0M1.5 16a3.8 3.8 0 0 1 5-2.6M22.5 16a3.8 3.8 0 0 0-5-2.6"/></g>
+      <!-- Quests. Each names the thing it asks you to do. -->
+      <g id="i-shoe"><path d="M3.2 17.4v-4l4.4-1.4.8-4.4h3.2l2 2.6 4.2 1.4c1.6.5 2.8 1.3 2.8 2.9a3 3 0 0 1-3 2.9z"/><path d="M3.2 20.2h17.4"/><path d="m11.6 10.2-1.8 1.6M14.4 11.4l-1.8 1.6"/></g>
+      <g id="i-calendar"><rect x="3.4" y="5.6" width="17.2" height="15" rx="2.6"/><path d="M3.4 10.4h17.2"/><path d="M8.4 3.4v4M15.6 3.4v4"/></g>
+      <g id="i-loop"><path d="M12 5.4c4.7 0 8 2.8 8 6.6s-3.3 6.6-8 6.6-8-2.8-8-6.6 3.3-6.6 8-6.6Z"/><circle cx="12" cy="5.4" r="2"/></g>
+      <g id="i-crown"><path d="m3.4 18 1.3-10.6 4.5 3.8L12 5.4l2.8 5.8 4.5-3.8L20.6 18z"/><path d="M4.2 20.6h15.6"/></g>
+      <g id="i-medal"><circle cx="12" cy="15.2" r="5.6"/><path d="M8.4 10.2 6.2 3.6h11.6l-2.2 6.6"/></g>
+      <g id="i-together"><circle cx="8.8" cy="12" r="5.4"/><circle cx="15.2" cy="12" r="5.4"/></g>
+      <g id="i-grid"><path d="M5.4 20.6V3.8"/><path d="M5.4 4.6h13.4V13H5.4z"/><path d="M12.1 4.6V13M5.4 8.8h13.4"/></g>
+      <g id="i-flame"><path d="M12 2.8c3.5 3.7 6.5 6.1 6.5 10.3a6.5 6.5 0 0 1-13 0c0-1.9.6-3.4 1.7-4.8.4 1.5 1.4 2.3 2.4 2.3 1.6 0 2.4-2.6 2.4-7.8Z"/></g>
+      <g id="i-road"><path d="M8.8 3.4 4.4 20.6M15.2 3.4l4.4 17.2"/><path d="M12 5.2v2.6M12 10.7v2.6M12 16.2v2.6"/></g>
+      <g id="i-sunrise"><path d="M3.2 18.8h17.6"/><path d="M7.4 14.8a4.6 4.6 0 0 1 9.2 0"/><path d="M12 3.4V6M5.4 6.8 7.2 8.6M18.6 6.8 16.8 8.6M2.6 14.8h2M19.4 14.8h2"/></g>
+
+      <!-- Controls. Typed glyphs render at the font's weight, not the app's. -->
+      <g id="i-lock"><rect x="4.6" y="10.4" width="14.8" height="10.2" rx="2.6"/><path d="M8 10.4V7.8a4 4 0 0 1 8 0v2.6"/></g>
+      <g id="i-spark"><path d="M12 3.2v3.6M12 17.2v3.6M3.2 12h3.6M17.2 12h3.6M5.8 5.8l2.5 2.5M15.7 15.7l2.5 2.5M18.2 5.8l-2.5 2.5M8.3 15.7l-2.5 2.5"/></g>
+      <g id="i-plus"><path d="M12 5.4v13.2M5.4 12h13.2"/></g>
+      <g id="i-minus"><path d="M5.4 12h13.2"/></g>
+      <g id="i-play"><path d="M8 5.4 18.6 12 8 18.6z"/></g>
+      <g id="i-pause"><path d="M9.4 5.4v13.2M14.6 5.4v13.2"/></g>
+      <g id="i-check"><path d="m4.8 12.6 5 5 9.4-10.8"/></g>
+      <g id="i-cross"><path d="M6.4 6.4 17.6 17.6M17.6 6.4 6.4 17.6"/></g>
+      <g id="i-dots"><circle cx="5.6" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="18.4" cy="12" r="1.5"/></g>
+      <g id="i-rise"><path d="M12 19.4V6.2M6.4 11.8 12 6.2l5.6 5.6"/></g>
+      <g id="i-fall"><path d="M12 4.6v13.2M6.4 12.2 12 17.8l5.6-5.6"/></g>
+      <g id="i-arrow"><path d="M4.6 12h13.2M12.2 6.4 17.8 12l-5.6 5.6"/></g>
+      <g id="i-open"><path d="M6.8 17.2 17.2 6.8"/><path d="M9.4 6.8h7.8v7.8"/></g>
+
+      <g id="i-crew"><circle cx="12" cy="6.4" r="2.8"/><path d="M6.8 19.2a5.2 5.2 0 0 1 10.4 0"/><circle cx="4.4" cy="10.4" r="2"/><circle cx="19.6" cy="10.4" r="2"/><path d="M1.6 17a3.4 3.4 0 0 1 3.6-2.6M22.4 17a3.4 3.4 0 0 0-3.6-2.6"/></g>
     </defs>
   </svg>
 
@@ -55,7 +82,7 @@
             <span class="wordmark">MILES</span>
           </div>
           <div class="row">
-            <span class="chip" id="streakChip">🔥 <b id="streakValue">0</b></span>
+            <span class="chip chip--icon" id="streakChip"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-flame"/></svg><b id="streakValue">0</b></span>
             <button class="avatar" type="button" id="homeAvatar" aria-label="Open your profile">YU</button>
           </div>
         </header>
@@ -137,14 +164,14 @@
             <svg class="start-icon" viewBox="0 0 24 24"><use href="#i-runner"/></svg>
             <span class="start-name">Solo</span>
             <span class="start-sub">A free run, or go out<br />to take ground</span>
-            <span class="start-arrow">→</span>
+            <span class="start-arrow"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg></span>
           </button>
 
           <button class="start start--duo" type="button" id="startDuo">
             <svg class="start-icon" viewBox="0 0 24 24"><use href="#i-duo"/></svg>
             <span class="start-name">Race</span>
             <span class="start-sub">Up to 4 friends,<br />first to the finish</span>
-            <span class="start-arrow">→</span>
+            <span class="start-arrow"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg></span>
           </button>
         </div>
 
@@ -168,7 +195,7 @@
         <div class="run-map">
           <canvas id="runMap"></canvas>
           <div class="loop-hint" id="loopHint" hidden>
-            <span>◎</span><span id="loopHintText">Come back to your start to close the loop</span>
+            <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-crosshair"/></svg><span id="loopHintText">Come back to your start to close the loop</span>
           </div>
         </div>
 
@@ -230,13 +257,13 @@
         <div class="territory-map">
           <canvas id="terrMap"></canvas>
           <div class="map-tools">
-            <button class="map-btn" type="button" id="terrZoomIn" aria-label="Zoom in">+</button>
-            <button class="map-btn" type="button" id="terrZoomOut" aria-label="Zoom out">−</button>
-            <button class="map-btn" type="button" id="terrRecentre" aria-label="Back to your area">◎</button>
+            <button class="map-btn" type="button" id="terrZoomIn" aria-label="Zoom in"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-plus"/></svg></button>
+            <button class="map-btn" type="button" id="terrZoomOut" aria-label="Zoom out"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-minus"/></svg></button>
+            <button class="map-btn" type="button" id="terrRecentre" aria-label="Back to your area"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-crosshair"/></svg></button>
           </div>
           <div class="map-hint" id="terrHint">Drag to explore · pinch or scroll to zoom</div>
-          <button class="map-btn map-btn--scout" type="button" id="terrScout" aria-label="Find open ground" aria-pressed="false">🔭</button>
-          <button class="map-btn map-btn--crews" type="button" id="terrCrews" aria-label="Show the map by crew" aria-pressed="false">🛡</button>
+          <button class="map-btn map-btn--scout" type="button" id="terrScout" aria-label="Find open ground" aria-pressed="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-scout"/></svg></button>
+          <button class="map-btn map-btn--crews" type="button" id="terrCrews" aria-label="Show the map by crew" aria-pressed="false"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-blocks"/></svg></button>
         </div>
         <div class="legend" id="terrLegend"></div>
 
@@ -259,7 +286,7 @@
               <span class="tiny" id="tmHeld">—</span>
             </div>
             <div class="row" style="gap:var(--s-3)">
-              <button class="map-btn" type="button" id="tmPlay" aria-label="Play">▶</button>
+              <button class="map-btn" type="button" id="tmPlay" aria-label="Play"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-play"/></svg></button>
               <input class="scrub grow" type="range" id="tmScrub" min="0" max="1000" value="1000"
                      aria-label="Point in time" />
             </div>
@@ -370,7 +397,7 @@
             <span class="pro-card-title" id="proCardTitle">Know your ground</span>
             <span class="tiny" id="proCardNote">Time machine, who took your land, and five more</span>
           </div>
-          <span class="start-arrow" style="position:static" aria-hidden="true">→</span>
+          <span class="start-arrow" style="position:static"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg></span>
         </button>
 
         <div class="stack" style="margin-top:var(--s-5)">
@@ -459,7 +486,7 @@
               <span class="kind-name">Free Run</span>
               <span class="tiny">Distance, pace and splits. No land is claimed.</span>
             </div>
-            <span class="start-arrow" style="position:static">→</span>
+            <span class="start-arrow" style="position:static"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg></span>
           </button>
           <button class="kind-option kind-option--territory" type="button" data-kind="territory">
             <svg class="rail-icon" viewBox="0 0 24 24" style="stroke:var(--violet)"><use href="#i-flag"/></svg>
@@ -467,7 +494,7 @@
               <span class="kind-name">Territory Run</span>
               <span class="tiny">Ends when you get back to your start. Everything inside the loop is yours.</span>
             </div>
-            <span class="start-arrow" style="position:static">→</span>
+            <span class="start-arrow" style="position:static"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg></span>
           </button>
         </div>
       </div>
