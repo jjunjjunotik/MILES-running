@@ -1,4 +1,4 @@
-import { METRIC_KEYS, type NailAnalysis } from "./analysis.js";
+import { METRIC_KEYS, type Finding, type NailAnalysis } from "./analysis.js";
 
 /**
  * API 키 없이 UI를 확인하기 위한 샘플 응답.
@@ -57,6 +57,70 @@ const OBSERVATIONS: Record<
   ],
 };
 
+
+/**
+ * 특이 사항 샘플. 실제 응답과 같은 모양(무엇이 보이는지 → 일반적으로 함께 언급되는 요인
+ * → 사진으로 알 수 없는 것 → 지켜볼 변화)을 갖춰, 데모에서도 화면 구성이 그대로 드러나게 한다.
+ */
+const FINDINGS: Finding[] = [
+  {
+    metric: "ridges",
+    label: "세로 줄무늬",
+    detail:
+      "손톱 중앙에서 끝쪽으로 이어지는 얕은 세로 결이 3~4줄 보입니다. 손톱 전체에 고르게 퍼져 있고, 한 줄만 유독 깊어 보이지는 않습니다.",
+    causes: [
+      "나이가 들면서 누구에게나 흔하게 늘어나는 변화입니다.",
+      "손이 건조하거나 물과 세제에 자주 닿는 환경에서 더 도드라져 보이기도 합니다.",
+      "드물게는 손톱이 자라는 속도가 달라지면서 결이 함께 달라 보이는 경우도 있습니다.",
+    ],
+    cannotTell:
+      "사진으로는 결의 깊이를 잴 수 없고, 조명 각도에 따라 실제보다 뚜렷해 보이기도 합니다.",
+    attention: "routine",
+    watchFor: [
+      "한 줄만 점점 깊고 넓어질 때",
+      "그 줄을 따라 손톱이 갈라지기 시작할 때",
+    ],
+    timeframe: "3~6개월에 걸쳐 같은 부위를 다시 찍어 비교",
+  },
+  {
+    metric: "skin",
+    label: "큐티클 주변 각질",
+    detail:
+      "손톱 아래쪽 경계와 양 옆선을 따라 하얗게 일어난 각질이 보입니다. 붓거나 붉어진 기색은 이 사진에서 확인되지 않습니다.",
+    causes: [
+      "손을 자주 씻거나 건조한 계절에 흔하게 나타납니다.",
+      "큐티클을 밀거나 뜯는 습관과 함께 관찰되는 경우가 있습니다.",
+      "세제·소독제에 자주 닿는 일을 할 때 더 두드러지기도 합니다.",
+    ],
+    cannotTell:
+      "사진만으로는 단순히 건조한 것인지, 피부에 자극이 남아 있는 상태인지 구분하기 어렵습니다.",
+    attention: "monitor",
+    watchFor: [
+      "손톱 옆선이 붉게 부어오르거나 누르면 아플 때",
+      "진물이 보이거나 같은 자리가 반복해서 덧날 때",
+    ],
+    timeframe: "2~3주 보습을 챙긴 뒤 다시 촬영",
+  },
+  {
+    metric: "color",
+    label: "손톱 끝 흰 띠",
+    detail:
+      "손톱 끝 2~3mm 가 주변보다 하얗게 보입니다. 경계선이 손톱 모양을 따라 매끄럽게 이어집니다.",
+    causes: [
+      "손톱이 손가락 끝에서 떨어져 나온 부분은 아래 피부가 비치지 않아 원래 더 밝게 보입니다.",
+      "길이를 남겨 기를수록 이 부분이 넓어 보이기도 합니다.",
+    ],
+    cannotTell:
+      "사진으로는 손톱판 자체의 색인지 아래 피부가 비쳐 보이는 색인지 정확히 가리기 어렵습니다.",
+    attention: "routine",
+    watchFor: [
+      "흰 부분이 손톱 뿌리 쪽으로 넓어질 때",
+      "그 경계가 울퉁불퉁해지고 들뜬 느낌이 생길 때",
+    ],
+    timeframe: "다음 손톱 정리 때 한 번 더 확인",
+  },
+];
+
 const HEADLINES = [
   "전반적으로 고른 모습이에요",
   "지난번과 비슷해 보여요",
@@ -95,6 +159,8 @@ export function buildDemoAnalysis(seed: number): NailAnalysis {
         explanation: sample.explanation,
       };
     }),
+    // seed 에 따라 특이 사항 개수를 1~3개로 바꿔, 목록이 비었을 때와 찼을 때를 모두 보여 준다.
+    findings: FINDINGS.slice(0, 1 + (seed % 3)),
     tips: [
       {
         category: "hydration",

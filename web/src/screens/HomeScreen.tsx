@@ -1,6 +1,8 @@
 import {
+  ATTENTION_LABELS,
   DISCLAIMER_SHORT,
   FINGER_LABELS,
+  topAttention,
   type NailRecord,
 } from "../../../shared/analysis";
 import type { Settings } from "../lib/storage";
@@ -31,6 +33,8 @@ export function HomeScreen({
   onGoHistory: () => void;
 }) {
   const latest = records[0];
+  const latestFindings = latest?.analysis.findings ?? [];
+  const latestAttention = topAttention(latestFindings);
   const greeting = settings.nickname ? `${settings.nickname}님, ` : "";
 
   return (
@@ -106,6 +110,19 @@ export function HomeScreen({
                     {latest.hand === "left" ? "왼손" : "오른손"}{" "}
                     {FINGER_LABELS[latest.finger]}
                   </div>
+                  {latestFindings.length > 0 && (
+                    <div className="flex gap-8 mt-8" style={{ flexWrap: "wrap" }}>
+                      <span className="small muted">
+                        짚어 본 특징 {latestFindings.length}건
+                      </span>
+                      {latestAttention && (
+                        <span className={`pill att-${latestAttention}`}>
+                          <span className="dot" />
+                          {ATTENTION_LABELS[latestAttention]}
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
                 <ChevronIcon />
               </div>

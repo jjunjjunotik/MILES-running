@@ -1,14 +1,17 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
+  ATTENTION_LABELS,
   DISCLAIMER_LONG,
   FINGER_LABELS,
   METRIC_LABELS,
   STATUS_LABELS,
+  topAttention,
   type NailRecord,
 } from "../../../shared/analysis";
 import type { ResultView } from "../App";
 import type { Settings } from "../lib/storage";
 import { renderShareCard, shareOrDownload } from "../lib/share";
+import { FindingList } from "../components/FindingList";
 import { MetricList } from "../components/MetricList";
 import { TipList } from "../components/TipList";
 import {
@@ -16,6 +19,7 @@ import {
   ArrowUpIcon,
   CameraIcon,
   DownloadIcon,
+  FocusIcon,
   MinusIcon,
   ResultIcon,
   ShareIcon,
@@ -97,6 +101,9 @@ export function ResultScreen({
   }
 
   const { analysis } = result;
+  // 이전 버전에서 저장된 기록에는 findings 가 없다.
+  const findings = analysis.findings ?? [];
+  const attention = topAttention(findings);
   const partLabel = `${result.hand === "left" ? "왼손" : "오른손"} ${FINGER_LABELS[result.finger]}`;
   const delta = previous
     ? Math.round(
@@ -202,6 +209,24 @@ export function ResultScreen({
             ))}
           </div>
 
+          {findings.length > 0 && (
+            <div className="card-findings">
+              <div className="k">
+                <FocusIcon size={14} />
+                짚어 본 특징 {findings.length}건
+              </div>
+              <div className="v">
+                {findings.map((finding) => finding.label).join(" · ")}
+              </div>
+              {attention && (
+                <span className={`pill att-${attention}`}>
+                  <span className="dot" />
+                  {ATTENTION_LABELS[attention]}
+                </span>
+              )}
+            </div>
+          )}
+
           <div className="foot">
             이 카드는 의료 진단이 아닙니다. 사진에 보이는 겉모습만 정리한
             참고용 요약입니다.
@@ -254,6 +279,18 @@ export function ResultScreen({
             <div className="small muted mt-12">내 메모: {result.note}</div>
           )}
         </div>
+
+        <div className="section-title">
+          특이 사항
+          {findings.length > 0 ? ` ${findings.length}건` : ""}
+        </div>
+        <FindingList findings={findings} />
+        {findings.length > 0 && (
+          <div className="small muted mt-8">
+            요인은 이런 모습에서 일반적으로 함께 언급되는 것들을 나열한 일반
+            정보예요. 사진 한 장으로 원인을 가려낼 수는 없습니다.
+          </div>
+        )}
 
         <div className="section-title">항목별 관찰</div>
         <MetricList

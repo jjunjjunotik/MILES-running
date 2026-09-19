@@ -75,6 +75,26 @@ await page.waitForSelector("text=항목별 관찰", { timeout: 60000 });
 await page.waitForTimeout(800);
 await shot(page, "04-result.png");
 
+// 특이 사항 카드가 "무엇이 보였는지 / 요인 / 지켜볼 변화"를 모두 갖췄는지 본다.
+const findingCount = await page.locator(".finding").count();
+if (findingCount === 0) {
+  problems.push("특이 사항 카드가 렌더되지 않았습니다.");
+} else {
+  for (const label of [
+    "일반적으로 함께 언급되는 요인",
+    "사진만으로는 이 중 어느 쪽인지 가릴 수 없어요.",
+    "이런 변화가 보이면 전문가에게",
+    "다시 볼 시점",
+  ]) {
+    if ((await page.locator(`.finding >> text=${label}`).count()) === 0) {
+      problems.push(`특이 사항 카드에 "${label}" 이 없습니다.`);
+    }
+  }
+  await page.locator(".finding").first().scrollIntoViewIfNeeded();
+  await page.waitForTimeout(200);
+  await shot(page, "04b-findings.png");
+}
+
 await page.click("text=색상");
 await page.waitForTimeout(400);
 await shot(page, "05-result-expanded.png");

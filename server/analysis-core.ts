@@ -1,4 +1,12 @@
-import { METRIC_KEYS, type MetricKey, type NailAnalysis } from "../shared/analysis.js";
+import {
+  ATTENTION_KEYS,
+  ATTENTION_RANK,
+  METRIC_KEYS,
+  type Attention,
+  type Finding,
+  type MetricKey,
+  type NailAnalysis,
+} from "../shared/analysis.js";
 
 /**
  * 프로바이더(Claude / Gemini)와 무관한 공통부.
@@ -78,5 +86,66 @@ export function normalize(analysis: NailAnalysis): NailAnalysis {
       Math.min(100, Math.round(analysis.observationScore)),
     ),
     metrics,
+    findings: normalizeFindings(analysis.findings),
   };
+}
+
+const MAX_FINDINGS = 4;
+
+/**
+ * findings 는 모델이 아예 빼먹거나, 같은 특징을 여러 번 적거나, 목록을 길게 늘여
+ * 보낼 수 있다. 화면이 받는 모양을 여기서 한 번 고정한다.
+ * 신경 쓸 항목이 먼저 오도록 attention 순으로 정렬하되, 같은 단계 안에서는
+ * 모델이 준 순서를 지킨다.
+ */
+function normalizeFindings(findings: Finding[] | undefined): Finding[] {
+  if (!Array.isArray(findings)) return [];
+
+  const seen = new Set<string>();
+  const cleaned: Finding[] = [];
+
+  for (const finding of findings) {
+    if (!finding || typeof finding.label !== "string") continue;
+    const label = finding.label.trim();
+    if (!label) continue;
+
+    const key = `${finding.metric}:${label}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    cleaned.push({
+      metric: METRIC_KEYS.includes(finding.metric) ? finding.metric : "color",
+      label,
+      detail: finding.detail ?? "",
+      causes: toLines(finding.causes),
+      cannotTell: finding.cannotTell ?? "",
+      attention: toAttention(finding.attention),
+      watchFor: toLines(finding.watchFor),
+      timeframe: finding.timeframe ?? "",
+    });
+  }
+
+  return cleaned
+    .map((finding, index) => ({ finding, index }))
+    .sort(
+      (a, b) =>
+        ATTENTION_RANK[b.finding.attention] -
+          ATTENTION_RANK[a.finding.attention] || a.index - b.index,
+    )
+    .slice(0, MAX_FINDINGS)
+    .map((entry) => entry.finding);
+}
+
+function toLines(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function toAttention(value: unknown): Attention {
+  return ATTENTION_KEYS.includes(value as Attention)
+    ? (value as Attention)
+    : "monitor";
 }

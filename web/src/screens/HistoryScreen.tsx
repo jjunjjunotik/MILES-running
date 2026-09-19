@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import {
+  ATTENTION_LABELS,
   FINGER_KEYS,
   FINGER_LABELS,
+  topAttention,
   type FingerKey,
   type NailRecord,
 } from "../../../shared/analysis";
@@ -138,6 +140,8 @@ export function HistoryScreen({
                 )
               : null;
 
+            const attention = topAttention(record.analysis.findings);
+
             return (
               <div className="history-item" key={record.id}>
                 <Thumb record={record} />
@@ -162,6 +166,12 @@ export function HistoryScreen({
                       {Math.round(record.analysis.observationScore)}점
                     </span>
                     {delta !== null && <DeltaBadge value={delta} />}
+                    {attention && (
+                      <span className={`pill att-${attention}`}>
+                        <span className="dot" />
+                        {ATTENTION_LABELS[attention]}
+                      </span>
+                    )}
                   </div>
                 </button>
                 <button

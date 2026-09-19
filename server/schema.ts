@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  ATTENTION_KEYS,
   CONFIDENCE_KEYS,
   METRIC_KEYS,
   STATUS_KEYS,
@@ -33,6 +34,52 @@ export const MetricSchema = z.object({
     .string()
     .describe(
       "이런 모습이 일반적으로 어떤 것과 관련될 수 있는지에 대한 교육적 일반 정보 2~3문장. '~인 경우가 있습니다', '~와 관련되기도 합니다' 같은 일반 서술만 사용하고, 이 사용자를 특정 질환으로 단정하지 말 것.",
+    ),
+});
+
+/**
+ * 눈에 띄는 특징 하나를 자세히 풀어 쓴 항목.
+ * "무엇이 보이는지 / 일반적으로 어떤 요인들과 함께 언급되는지 / 사진으로는 무엇을
+ * 구분할 수 없는지 / 어떤 변화가 나타나면 전문가에게 보여야 하는지"를 한 묶음으로 담는다.
+ */
+export const FindingSchema = z.object({
+  metric: z
+    .enum(METRIC_KEYS)
+    .describe("이 특징이 속한 관찰 항목 키"),
+  label: z
+    .string()
+    .describe(
+      "모양을 가리키는 짧은 이름 20자 이내. 예: '세로 줄무늬', '손톱 끝 층 갈라짐', '가로 방향 얕은 홈', '점처럼 파인 자국', '손톱판과 살의 들뜸', '큐티클 주변 각질'. 병명이나 진단명을 이름으로 쓰지 말 것.",
+    ),
+  detail: z
+    .string()
+    .describe(
+      "사진에서 이 특징이 어디에(손톱 중앙/끝/옆선 등) 어느 범위로, 얼마나 뚜렷하게 보이는지 2~3문장으로 구체적으로. 몇 개인지, 한 손톱에만인지 등 셀 수 있는 정보가 있으면 함께 적을 것.",
+    ),
+  causes: z
+    .array(z.string())
+    .describe(
+      "이런 모습이 일반적으로 어떤 요인들과 함께 언급되는지 2~4개. 반드시 여러 가능성을 나열하고, 흔한 것부터 적을 것. 각 항목은 '반복적인 마찰이나 눌림으로 생기기도 합니다'처럼 일반 서술로 쓸 것. 이 사용자의 원인을 특정하거나 '의심된다'고 쓰지 말 것.",
+    ),
+  cannotTell: z
+    .string()
+    .describe(
+      "사진만으로는 무엇을 구분할 수 없는지 1~2문장. 예: '사진으로는 색소가 손톱판 안에 있는지 아래 피부에 있는지 구분할 수 없습니다.'",
+    ),
+  attention: z
+    .enum(ATTENTION_KEYS)
+    .describe(
+      "routine=흔한 모습이라 평소 관리로 충분, monitor=다시 찍어 비교해 볼 만함, consult=사진만으로 구분이 어려워 직접 보여주는 편이 나음, soon=변화가 뚜렷하거나 다른 증상이 함께 보여 미루지 않는 편이 좋음. 질병의 위중도가 아니라 '다음에 무엇을 하면 되는지'다.",
+    ),
+  watchFor: z
+    .array(z.string())
+    .describe(
+      "'이런 변화가 나타나면 전문가에게 보여주세요' 형태로 관찰 가능한 신호 2~3개. 예: '색이 손톱 뿌리 쪽으로 번질 때', '누르면 아프거나 진물이 보일 때'. 병명 없이 보이는 변화로만 쓸 것.",
+    ),
+  timeframe: z
+    .string()
+    .describe(
+      "어느 정도 간격으로 다시 살펴보면 되는지 짧은 구절. 예: '2~3주 뒤 같은 부위 재촬영', '손톱이 자라는 3~6개월 동안 관찰'.",
     ),
 });
 
@@ -73,6 +120,11 @@ export const NailAnalysisSchema = z.object({
     .array(MetricSchema)
     .describe(
       "color, surface, ridges, cracks, shape, skin 6개 항목을 이 순서대로 정확히 한 번씩 모두 포함",
+    ),
+  findings: z
+    .array(FindingSchema)
+    .describe(
+      "사진에서 눈에 띄는 특징만 골라 0~4개. 특별히 눈에 띄는 것이 없으면 빈 배열로 둘 것. 신경 쓸 만한 것부터 먼저 나열할 것. 없는 특징을 만들어 내지 말 것.",
     ),
   tips: z.array(TipSchema).describe("관찰 결과와 연결되는 생활 관리 팁 3~4개"),
   consultSignals: z

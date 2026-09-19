@@ -7,6 +7,10 @@
  * - 모든 항목은 "사진에서 보이는 것"(observation)과
  *   "그 모습이 일반적으로 무엇과 관련될 수 있는지에 대한 일반 정보"(explanation)로만 구성된다.
  * - status 는 중증도가 아니라 "사용자가 얼마나 신경 써서 지켜볼 만한가"를 뜻한다.
+ * - findings 는 눈에 띄는 특징을 하나씩 떼어내 "무엇이 보이는지 / 일반적으로 어떤
+ *   요인들과 함께 언급되는지 / 사진으로는 무엇을 구분할 수 없는지 / 어떤 변화가
+ *   나타나면 전문가에게 보여야 하는지"를 함께 담는다. 요인은 항상 복수의 가능성으로
+ *   제시되며, 그중 하나를 이 사용자에게 적용해 단정하는 필드는 존재하지 않는다.
  */
 
 /** 관찰 항목 키. UI 순서와 동일하게 유지한다. */
@@ -73,6 +77,74 @@ export interface Metric {
   explanation: string;
 }
 
+/**
+ * 특이 사항 하나를 얼마나 신경 쓰면 되는지.
+ * 질병의 위중도가 아니라 "다음에 무엇을 하면 되는지"를 가리킨다.
+ */
+export const ATTENTION_KEYS = ["routine", "monitor", "consult", "soon"] as const;
+export type Attention = (typeof ATTENTION_KEYS)[number];
+
+export const ATTENTION_LABELS: Record<Attention, string> = {
+  routine: "일상 관리 범위",
+  monitor: "경과 지켜보기",
+  consult: "전문가 확인 권장",
+  soon: "가까운 시일 내 확인",
+};
+
+export const ATTENTION_DESCRIPTIONS: Record<Attention, string> = {
+  routine: "흔하게 관찰되는 모습이라 평소 관리만으로 충분한 경우",
+  monitor: "지금 당장 할 일은 없지만, 같은 부위를 다시 찍어 비교해 볼 만한 경우",
+  consult: "사진만으로는 구분이 어려워 한 번 직접 보여주는 편이 나은 경우",
+  soon: "변화가 뚜렷하거나 다른 증상이 함께 보여 미루지 않는 편이 좋은 경우",
+};
+
+/** 화면에서 위험도 순으로 정렬할 때 쓴다. 큰 값이 더 신경 쓸 항목. */
+export const ATTENTION_RANK: Record<Attention, number> = {
+  routine: 0,
+  monitor: 1,
+  consult: 2,
+  soon: 3,
+};
+
+/**
+ * 사진에서 눈에 띈 특징 하나.
+ *
+ * label 은 "세로 줄무늬", "손톱 끝 층 갈라짐"처럼 모양을 가리키는 이름이며 병명이 아니다.
+ * causes 는 그런 모습이 일반적으로 어떤 요인들과 함께 언급되는지를 복수로 나열한 것이고,
+ * 이 사진의 원인을 특정하지 않는다. cannotTell 이 그 한계를 명시한다.
+ */
+export interface Finding {
+  /** 어떤 관찰 항목에서 나온 특징인지 */
+  metric: MetricKey;
+  /** 모양을 가리키는 짧은 이름 */
+  label: string;
+  /** 사진에서 어디에 어느 정도로 보이는지 */
+  detail: string;
+  /** 일반적으로 이런 모습과 함께 언급되는 요인들 (복수, 단정 아님) */
+  causes: string[];
+  /** 사진만으로는 구분할 수 없는 부분 */
+  cannotTell: string;
+  attention: Attention;
+  /** 이런 변화가 나타나면 전문가에게 보여주세요 */
+  watchFor: string[];
+  /** 어느 정도 간격으로 다시 살펴보면 되는지 */
+  timeframe: string;
+}
+
+/**
+ * 가장 신경 쓸 단계를 고른다. 화면 여러 곳에서 "이 기록에서 제일 눈여겨볼 것"을
+ * 한 칸으로 보여 줄 때 쓴다. 특이 사항이 없으면 null.
+ */
+export function topAttention(findings: Finding[] | undefined): Attention | null {
+  let top: Attention | null = null;
+  for (const finding of findings ?? []) {
+    if (top === null || ATTENTION_RANK[finding.attention] > ATTENTION_RANK[top]) {
+      top = finding.attention;
+    }
+  }
+  return top;
+}
+
 export const TIP_CATEGORIES = [
   "nutrition",
   "hydration",
@@ -115,6 +187,11 @@ export interface NailAnalysis {
   observationScore: number;
   /** METRIC_KEYS 순서대로 6개 */
   metrics: Metric[];
+  /**
+   * 눈에 띄는 특징만 골라 자세히 풀어 놓은 목록. 특별한 것이 없으면 빈 배열이다.
+   * (이전 버전에서 저장된 기록에는 이 필드가 없을 수 있으므로 화면에서는 항상 기본값을 둔다.)
+   */
+  findings: Finding[];
   tips: Tip[];
   /** "이런 변화가 이어지면 전문가에게 보여주세요" 형태의 문장들 */
   consultSignals: string[];

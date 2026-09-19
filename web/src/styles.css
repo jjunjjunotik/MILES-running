@@ -22,6 +22,9 @@
   --watch-soft: #fbf2df;
   --consult: #cf6b4f;
   --consult-soft: #fceee9;
+  /* soon 단계에만 쓰는, 한 톤 더 진한 주의색. 붉은 원색은 쓰지 않는다. */
+  --alert: #b04e33;
+  --alert-soft: #fae7e0;
 
   --radius-sm: 12px;
   --radius: 18px;
@@ -266,6 +269,10 @@ select {
 .pill-watch { background: var(--watch-soft); color: var(--watch); }
 .pill-consult { background: var(--consult-soft); color: var(--consult); }
 .pill-neutral { background: var(--line); color: var(--muted); }
+.att-routine { background: var(--good-soft); color: var(--good); }
+.att-monitor { background: var(--watch-soft); color: var(--watch); }
+.att-consult { background: var(--consult-soft); color: var(--consult); }
+.att-soon { background: var(--alert-soft); color: var(--alert); }
 .pill-accent { background: var(--accent-soft); color: var(--accent-ink); }
 
 .dot {
@@ -875,6 +882,31 @@ select {
   margin-bottom: 3px;
 }
 
+.sharecard .card-findings {
+  margin-top: 14px;
+  padding: 12px 13px;
+  border-radius: var(--radius-sm);
+  background: rgba(255, 255, 255, 0.75);
+  border: 1px solid var(--line);
+}
+
+.sharecard .card-findings .k {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.sharecard .card-findings .v {
+  margin: 6px 0 8px;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
 .sharecard .foot {
   margin-top: 14px;
   font-size: 10.5px;
@@ -986,4 +1018,123 @@ select {
   display: grid;
   place-items: center;
   flex: none;
+}
+
+/* ----------------------------- 특이 사항 ----------------------------- */
+.finding-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.finding {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 16px 16px 14px;
+  box-shadow: var(--shadow-sm);
+}
+
+.finding-routine { border-left-color: var(--good); }
+.finding-monitor { border-left-color: var(--watch); }
+.finding-consult { border-left-color: var(--consult); }
+.finding-soon { border-left-color: var(--alert); }
+
+.finding-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.finding-label {
+  font-weight: 700;
+  font-size: 15.5px;
+  letter-spacing: -0.2px;
+}
+
+.finding-detail {
+  margin: 10px 0 0;
+  font-size: 13.5px;
+  line-height: 1.7;
+  color: var(--ink-soft);
+}
+
+.finding-block {
+  margin-top: 12px;
+  padding: 12px 13px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-alt);
+  border: 1px solid var(--line);
+}
+
+.finding-block .k {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  letter-spacing: 0.2px;
+}
+
+.finding-block ul {
+  margin: 8px 0 0;
+  padding-left: 17px;
+  font-size: 13px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+}
+
+.finding-block li + li {
+  margin-top: 5px;
+}
+
+.finding-watch {
+  background: var(--consult-soft);
+  border-color: transparent;
+}
+
+.finding-watch .k {
+  color: var(--consult);
+}
+
+.finding-soon .finding-watch {
+  background: var(--alert-soft);
+}
+
+.finding-soon .finding-watch .k {
+  color: var(--alert);
+}
+
+.finding-limit {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 10px;
+  padding-top: 9px;
+  border-top: 1px dashed var(--line-strong);
+  font-size: 12px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.finding-limit svg {
+  flex: none;
+  margin-top: 2px;
+}
+
+.finding-foot {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+  margin-top: 12px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.finding-foot svg {
+  flex: none;
+  margin-top: 2px;
 }

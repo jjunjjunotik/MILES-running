@@ -1,7 +1,9 @@
 import {
+  ATTENTION_LABELS,
   DISCLAIMER_SHORT,
   METRIC_LABELS,
   STATUS_LABELS,
+  type Attention,
   type NailAnalysis,
   type Status,
 } from "../../../shared/analysis";
@@ -21,6 +23,14 @@ const SOFT: Record<Status, string> = {
   good: "#e8f4ee",
   watch: "#fbf2df",
   consult: "#fceee9",
+};
+
+/** styles.css 의 att-* 와 같은 색을 쓴다. */
+const ATTENTION_COLORS: Record<Attention, string> = {
+  routine: "#2f9169",
+  monitor: "#c08a1e",
+  consult: "#cf6b4f",
+  soon: "#b04e33",
 };
 
 const FONT_STACK =
@@ -174,7 +184,63 @@ function paint(
     ctx.fillText(label, x + 26 + 26, top + 79);
   });
 
-  y += rowH * 3 + 18 * 2 + 48;
+  y += rowH * 3 + 18 * 2 + 44;
+
+  // 짚어 본 특징. 카드에는 이름과 단계만 담고 자세한 설명은 앱에서 보게 한다.
+  const findings = (analysis.findings ?? []).slice(0, 3);
+  if (findings.length > 0) {
+    const boxPad = 30;
+    const rowGap = 50;
+    const boxH = 62 + findings.length * rowGap + 40;
+
+    ctx.fillStyle = "rgba(255,255,255,0.82)";
+    roundRect(ctx, pad, y, W - pad * 2, boxH, 24);
+    ctx.fill();
+    ctx.strokeStyle = "#e3eaee";
+    ctx.lineWidth = 2;
+    roundRect(ctx, pad, y, W - pad * 2, boxH, 24);
+    ctx.stroke();
+
+    ctx.fillStyle = "#77828f";
+    ctx.font = `700 22px ${FONT_STACK}`;
+    ctx.fillText(`짚어 본 특징 ${findings.length}건`, pad + boxPad, y + 26);
+
+    findings.forEach((finding, index) => {
+      const top = y + 66 + index * rowGap;
+      const color = ATTENTION_COLORS[finding.attention];
+      const stage = ATTENTION_LABELS[finding.attention];
+
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(pad + boxPad + 6, top + 14, 6, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.font = `600 23px ${FONT_STACK}`;
+      const stageW = ctx.measureText(stage).width;
+      const labelX = pad + boxPad + 24;
+      const labelMax = W - pad - boxPad - stageW - 24 - labelX;
+
+      ctx.fillStyle = "#11181f";
+      ctx.font = `600 25px ${FONT_STACK}`;
+      ctx.fillText(ellipsize(ctx, finding.label, labelMax), labelX, top);
+
+      ctx.fillStyle = color;
+      ctx.font = `600 23px ${FONT_STACK}`;
+      ctx.textAlign = "right";
+      ctx.fillText(stage, W - pad - boxPad, top + 2);
+      ctx.textAlign = "left";
+    });
+
+    ctx.fillStyle = "#77828f";
+    ctx.font = `500 21px ${FONT_STACK}`;
+    ctx.fillText(
+      "무엇이 보였는지와 지켜볼 변화는 앱에서 확인할 수 있어요.",
+      pad + boxPad,
+      y + 66 + findings.length * rowGap + 4,
+    );
+
+    y += boxH + 32;
+  }
 
   // 고지 문구
   ctx.fillStyle = "#eef2f4";
@@ -227,6 +293,22 @@ function drawRing(
   ctx.fillText(String(Math.round(score)), cx, cy);
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
+}
+
+/** 한 줄에 들어가지 않는 이름은 끝을 줄임표로 자른다. */
+function ellipsize(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+): string {
+  if (maxWidth <= 0) return "";
+  if (ctx.measureText(text).width <= maxWidth) return text;
+
+  let cut = text;
+  while (cut.length > 1 && ctx.measureText(`${cut}…`).width > maxWidth) {
+    cut = cut.slice(0, -1);
+  }
+  return `${cut}…`;
 }
 
 function roundRect(

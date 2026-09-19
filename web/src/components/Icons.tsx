@@ -187,3 +187,25 @@ export const StethoscopeIcon = ({ size = 18, strokeWidth = 1.7 }: IconProps) => 
     <circle cx="17.6" cy="11" r="2.1" />
   </svg>
 );
+
+export const EyeIcon = ({ size = 16, strokeWidth = 1.7 }: IconProps) => (
+  <svg {...base(size)} strokeWidth={strokeWidth}>
+    <path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12Z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+export const ClockIcon = ({ size = 16, strokeWidth = 1.7 }: IconProps) => (
+  <svg {...base(size)} strokeWidth={strokeWidth}>
+    <circle cx="12" cy="12" r="8.5" />
+    <path d="M12 7.5V12l3 2" />
+  </svg>
+);
+
+export const FocusIcon = ({ size = 18, strokeWidth = 1.7 }: IconProps) => (
+  <svg {...base(size)} strokeWidth={strokeWidth}>
+    <circle cx="11" cy="11" r="6.5" />
+    <path d="M15.8 15.8 21 21" />
+    <path d="M11 8.5v5M8.5 11h5" />
+  </svg>
+);
