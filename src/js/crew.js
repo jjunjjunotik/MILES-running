@@ -28,32 +28,68 @@
      Targets scale with crew size, so a mission is the same ask whether there
      are three of you or twelve. ------------------------------------------- */
 
+  /* --- What one member's week is worth -------------------------------------
+     The three missions are only comparable if their targets are the same
+     multiple of what a member actually produces in each unit — and the first
+     set was not: distance asked for less than half a week's running while the
+     two territory missions asked for four times a week's claiming. Guessing at
+     each one separately is how that happens, so these are measured from the
+     app's own numbers instead, and everything below is derived from them.
+
+     Measured across the seeded world: mean weekly volume per member, mean run
+     length, the share of runs that are territory runs, the area a closed loop
+     actually encloses, and the share of claimed ground that came off somebody
+     who already held it. -------------------------------------------------- */
+
+  const MEMBER_WEEK = 32000;        // metres run, per member, per week
+  const MEAN_RUN = 6300;            // metres
+  const TERRITORY_SHARE = 0.25;     // of runs, are territory runs
+  const MEAN_CLAIM = 294000;        // m² enclosed by one closed loop
+  const TAKEN_SHARE = 0.164;        // of claimed ground, was cut out of someone
+
+  const LOOPS_PER_WEEK = (MEMBER_WEEK / MEAN_RUN) * TERRITORY_SHARE;
+
+  /** One member's week, in each mission's own unit. */
+  const PER_WEEK = {
+    distance: MEMBER_WEEK,
+    claimed: LOOPS_PER_WEEK * MEAN_CLAIM,
+    taken: LOOPS_PER_WEEK * MEAN_CLAIM * TAKEN_SHARE,
+  };
+
+  /* How much of that week the mission asks for. Below 1 on purpose: a weekly
+     crew goal should be something a crew running normally clears together,
+     not a coin toss. One number, so all three are equally hard by
+     construction rather than by coincidence. */
+  const ASK = 0.9;
+
   /**
    * Three missions, and only three. They are the three things this app
    * measures — distance run, ground claimed, ground taken off somebody — so a
    * crew's week is always one of those, and a captain choosing between them is
-   * choosing what the crew is for rather than picking from a menu.
+   * choosing what the crew is for rather than picking a difficulty.
    *
-   * `perMember` is the whole difficulty model: the target is that times the
-   * number of members, so a crew of twelve is asked for twelve times what a
-   * crew of one is. Nobody sets a level, and joining a crew raises the bar it
-   * has to clear by exactly one person's worth.
+   * The target is `perMember` times the headcount, so a crew of twelve is
+   * asked for twelve times what a crew of one is. The XP is the same for all
+   * three: equal work, equal reward, or the choice stops being about what the
+   * crew wants to do.
    */
+  const MISSION_XP = 280;
+
   const MISSIONS = {
     distance: {
       key: 'distance', name: 'Cover the ground', unit: 'dist',
       note: 'Every kilometre, added up',
-      perMember: 14000, xp: 220,
+      perMember: Math.round(PER_WEEK.distance * ASK), xp: MISSION_XP,
     },
     claimed: {
       key: 'claimed', name: 'Take ground', unit: 'area',
       note: 'New land claimed this week',
-      perMember: 140000, xp: 300,
+      perMember: Math.round(PER_WEEK.claimed * ASK), xp: MISSION_XP,
     },
     taken: {
       key: 'taken', name: 'Take it off somebody', unit: 'area',
       note: 'Ground cut out of other runners',
-      perMember: 45000, xp: 380,
+      perMember: Math.round(PER_WEEK.taken * ASK), xp: MISSION_XP,
     },
   };
 
@@ -171,6 +207,7 @@
     },
 
     MISSIONS,
+    PER_WEEK,
 
     /* --- Level ------------------------------------------------------------- */
 
@@ -286,9 +323,9 @@
         const mine = (state.territories || [])
           .filter((t) => t.claimedAt >= week)
           .reduce((sum, t) => sum + (t.area || 0), 0);
-        have = others.reduce((sum, m) => sum + Math.round((m.weekly || 0) * 2.2), 0) + (inCrew ? mine : 0);
+        have = others.reduce((sum, m) => sum + this.modelled(m, 'claimed'), 0) + (inCrew ? mine : 0);
       } else if (mission.type === 'taken') {
-        have = others.reduce((sum, m) => sum + Math.round((m.weekly || 0) * 0.55), 0)
+        have = others.reduce((sum, m) => sum + this.modelled(m, 'taken'), 0)
           + (inCrew ? this.takenSince(state, crew, week) : 0);
       }
 
@@ -299,6 +336,19 @@
         progress: M.clamp(have / Math.max(1, mission.target), 0, 1),
         complete,
       };
+    },
+
+    /**
+     * What a team-mate of this volume would have produced this week, in a
+     * mission's unit. Scaled from the same member-week the targets are, so a
+     * crew of team-mates is asked for exactly what a crew of real runners
+     * would be — the two halves of the sum have to agree or the difficulty
+     * depends on how much of your crew is fiction.
+     */
+    modelled(member, type) {
+      const week = member.weekly || 0;
+      if (type === 'distance') return week;
+      return Math.round((week / MEMBER_WEEK) * PER_WEEK[type]);
     },
 
     /**

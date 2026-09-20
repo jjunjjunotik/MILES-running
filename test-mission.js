@@ -49,6 +49,35 @@ const path = require('path');
   ok('the option records the crew it was priced for', scale.heads === 12, scale.heads);
   ok('a bigger crew is not worth more XP per clear', scale.sameXp);
 
+  // --- 2b. The three cost the same ---------------------------------------
+  // Three missions are only a choice if they are equally hard. Targets set by
+  // eye are not: the first set asked for 0.44 of a member's week in distance,
+  // 0.38 in claimed ground and 0.74 in taken, so "pick one" meant "pick the
+  // cheap one". Each target is now the same fraction of what a member
+  // actually produces in that unit.
+  const balance = await page.evaluate(() => {
+    const C = MILES.Crew;
+    const opts = C.missionOptions({ members: [{ id: 'a' }], memberIds: [] });
+    return {
+      cost: opts.map((o) => ({ k: o.key, weeks: o.target / C.PER_WEEK[o.key], xp: o.xp })),
+      modelled: ['distance', 'claimed', 'taken'].map((t) => ({
+        k: t, weeks: C.modelled({ weekly: 32000 }, t) / C.PER_WEEK[t],
+      })),
+    };
+  });
+  const weeks = balance.cost.map((c) => c.weeks);
+  ok('every mission costs the same share of a member\'s week',
+    Math.max(...weeks) - Math.min(...weeks) < 0.02,
+    JSON.stringify(balance.cost.map((c) => `${c.k} ${c.weeks.toFixed(2)}`)));
+  ok('and that share is achievable', weeks.every((w) => w > 0.5 && w <= 1),
+    JSON.stringify(weeks.map((w) => w.toFixed(2))));
+  ok('equal work pays equal XP',
+    new Set(balance.cost.map((c) => c.xp)).size === 1,
+    JSON.stringify(balance.cost.map((c) => c.xp)));
+  ok('a modelled team-mate produces a full week in every unit',
+    balance.modelled.every((m) => Math.abs(m.weeks - 1) < 0.02),
+    JSON.stringify(balance.modelled.map((m) => `${m.k} ${m.weeks.toFixed(2)}`)));
+
   // --- 3. "Taken" is measured, and measured once -------------------------
   // A stranger holds a 400 m square. Two crew members each cut an overlapping
   // slab out of it; between them they take all of it, and exactly once.

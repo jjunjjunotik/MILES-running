@@ -84,6 +84,21 @@ times what a crew of one is and nobody picks a level. A runner joining raises
 the bar by exactly one person's worth; the mission records the size it was
 priced for, so the card can say so.
 
+**All three cost the same.** Three missions are only a choice if they are
+equally hard, and targets set by eye are not — the first set asked for 0.44 of
+a member's week in distance, 0.38 in claimed ground and 0.74 in taken, so
+"pick one" meant "pick the cheap one". The targets are now derived from a
+single measured member-week (mean weekly volume, mean run length, the share of
+runs that are territory runs, the area a closed loop encloses, and the share
+of claimed ground that came off somebody), multiplied by one `ASK` constant.
+Change the ask and all three move together; they cannot drift apart. The XP is
+the same for all three, because equal work paying unequal rewards would make
+the choice about the reward again.
+
+The same member-week scales the modelled half of the sum, so a crew of
+team-mates is asked for exactly what a crew of real runners would be —
+otherwise the difficulty would depend on how much of your crew is fiction.
+
 The third one is measured rather than modelled for your own share: it replays
 the same cuts that decide the live map and counts only the ones your crew made,
 so ground two members both ran over is counted once and the total can never
