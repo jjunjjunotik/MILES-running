@@ -23,6 +23,16 @@ const path = require('path');
   let bad = 0;
   const ok = (label, cond) => { console.log(`${cond ? 'ok  ' : 'FAIL'} ${label}`); if (!cond) bad++; };
   const screen = () => page.evaluate(() => (document.querySelector('.screen[data-active="true"]') || {}).id);
+  // Finishing a run can earn a rank, and that celebration is modal on purpose.
+  // Dismiss it the way a person would before carrying on.
+  const clearCelebration = async () => {
+    await page.waitForTimeout(900);
+    if (!(await page.evaluate(() => document.querySelector('#rankUp').hidden))) {
+      await page.click('#rankUpDone');
+      await page.waitForTimeout(250);
+    }
+  };
+
   const startTerritory = async () => {
     await page.evaluate(() => MILES.UI.go('home'));
     await page.waitForTimeout(250);
@@ -59,7 +69,7 @@ const path = require('path');
   await page.click('#finishBtn');
   await page.waitForTimeout(350);
   await page.evaluate(() => [...document.querySelectorAll('#askSheet .btn')].find((b) => b.textContent === 'Abandon').click());
-  await page.waitForTimeout(600);
+  await clearCelebration();
   const abandoned = await page.evaluate(() => ({
     a: MILES.UI.lastActivity,
     land: MILES.State.data.territories.length,
@@ -71,7 +81,7 @@ const path = require('path');
   // 4. Meeting the start ends the run with no input at all.
   await startTerritory();
   await page.waitForFunction(() => !MILES.Tracker.active, null, { timeout: 120000 });
-  await page.waitForTimeout(500);
+  await clearCelebration();
   const closed = await page.evaluate(() => ({
     screen: (document.querySelector('.screen[data-active="true"]') || {}).id,
     a: MILES.UI.lastActivity,
@@ -95,7 +105,7 @@ const path = require('path');
   }));
   ok('a free run still has a Finish button', free.label === 'Finish' && free.primary && free.hint);
   await page.click('#finishBtn');
-  await page.waitForTimeout(500);
+  await clearCelebration();
   ok('a free run finishes on one press', (await screen()) === 'screen-finish');
 
   console.log('ERRORS:', errors.length ? errors.join('\n') : 'none');

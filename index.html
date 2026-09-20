@@ -458,6 +458,10 @@
             </div>
           </div>
           <div class="setting">
+            <div><div style="font-weight:800;font-size:14px">Rank alerts</div><div class="tiny" id="alertStatus">Off</div></div>
+            <button class="btn btn--ghost" type="button" id="alertBtn" style="padding:8px 14px;font-size:12px">Turn on</button>
+          </div>
+          <div class="setting">
             <div><div style="font-weight:800;font-size:14px">Location</div><div class="tiny" id="geoStatus">Not requested</div></div>
             <button class="btn btn--ghost" type="button" id="askGeoBtn" style="padding:8px 14px;font-size:12px">Enable</button>
           </div>
@@ -497,6 +501,28 @@
             <span class="start-arrow" style="position:static"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg></span>
           </button>
         </div>
+      </div>
+    </div>
+
+    <!-- ================= RANK UP ================= -->
+    <div class="celebrate" id="rankUp" hidden>
+      <div class="celebrate-card">
+        <div class="celebrate-ring">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="track" cx="60" cy="60" r="52" stroke-width="7"></circle>
+            <circle class="fill" cx="60" cy="60" r="52" stroke-width="7"></circle>
+          </svg>
+          <span class="celebrate-letter" id="rankUpLetter">P</span>
+        </div>
+        <span class="stat-label" id="rankUpEyebrow">Rank up</span>
+        <h2 class="celebrate-name" id="rankUpName">Pacer</h2>
+        <p class="celebrate-line" id="rankUpLine"></p>
+        <div class="celebrate-meta">
+          <span id="rankUpFrom">Rookie</span>
+          <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg>
+          <span id="rankUpTo">Pacer</span>
+        </div>
+        <button class="btn btn--primary btn--block" type="button" id="rankUpDone">Keep going</button>
       </div>
     </div>
 

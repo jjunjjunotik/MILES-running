@@ -13,13 +13,21 @@
      Earned with quest XP, never with raw distance: the ladder rewards what
      you set out to do, not only how far you went. ------------------------ */
 
+  /* `line` is what the app says when you reach the rank — the one moment it
+     gets to talk about the running rather than the numbers. */
   const RANKS = [
-    { key: 'rookie',   name: 'Rookie',   badge: 'R', xp: 0 },
-    { key: 'pacer',    name: 'Pacer',    badge: 'P', xp: 300 },
-    { key: 'strider',  name: 'Strider',  badge: 'S', xp: 800 },
-    { key: 'ranger',   name: 'Ranger',   badge: 'G', xp: 1600 },
-    { key: 'vanguard', name: 'Vanguard', badge: 'V', xp: 2800 },
-    { key: 'apex',     name: 'Apex',     badge: 'A', xp: 4500 },
+    { key: 'rookie',   name: 'Rookie',   badge: 'R', xp: 0,
+      line: 'Everyone starts here. The first loop is the hard one.' },
+    { key: 'pacer',    name: 'Pacer',    badge: 'P', xp: 300,
+      line: 'You are turning up. That is most of it.' },
+    { key: 'strider',  name: 'Strider',  badge: 'S', xp: 800,
+      line: 'The distance stopped being the point. Now it is the map.' },
+    { key: 'ranger',   name: 'Ranger',   badge: 'G', xp: 1600,
+      line: 'You hold ground people have to run around.' },
+    { key: 'vanguard', name: 'Vanguard', badge: 'V', xp: 2800,
+      line: 'Your neighbourhood is shaped by where you run.' },
+    { key: 'apex',     name: 'Apex',     badge: 'A', xp: 4500,
+      line: 'Nothing above this one. Everything below it is yours.' },
   ];
 
   /* --- Intensity tiers ----------------------------------------------------
@@ -565,6 +573,7 @@
           profile: { name: 'You', handle: '@you', initials: 'YU', home },
           units: 'km',
           mapStyle: 'dark',
+          rankSeen: RANKS[0].key,
           pro: { plan: null, trialEndsAt: null },
           rangeMode: 'week',
           activities: seeded.activities,
@@ -580,6 +589,10 @@
           ],
         };
         settleQuests(this.data);
+        // The seeded weeks already carry enough XP to be several ranks in, and
+        // none of it was just earned — start from there rather than announcing
+        // a promotion on the first finished run.
+        this.data.rankSeen = Stats.rank(this.data).current.key;
         this.save();
       }
       Units.system = this.data.units;
@@ -606,6 +619,9 @@
       if (!this.data.mapStyle) this.data.mapStyle = 'dark';
       // Saved before there was anything to buy.
       if (!this.data.pro) this.data.pro = { plan: null, trialEndsAt: null };
+      // Saved before rank-ups were announced. Start from where they already
+      // are, so upgrading the app never fakes a promotion they did not just earn.
+      if (!this.data.rankSeen) this.data.rankSeen = Stats.rank(this.data).current.key;
 
       // Owners painted before the palette was validated keep colours that are
       // indistinguishable from each other; restate them in slot order.
@@ -699,6 +715,23 @@
       return claims;
     },
 
+    /**
+     * Whether the rank has gone up since the app last said so, and if it has,
+     * what it went up to. Recorded here rather than worked out at render time:
+     * a promotion is announced once, and reloading the app is not earning it
+     * again. Skipping a rank in one go announces only the one you landed on.
+     */
+    claimRankUp() {
+      const current = Stats.rank(this.data).current;
+      const seenAt = RANKS.findIndex((r) => r.key === this.data.rankSeen);
+      const nowAt = RANKS.findIndex((r) => r.key === current.key);
+      if (nowAt <= seenAt || nowAt < 0) return null;
+
+      const from = RANKS[seenAt >= 0 ? seenAt : 0];
+      this.data.rankSeen = current.key;
+      return { from, to: current, skipped: nowAt - Math.max(seenAt, 0) - 1 };
+    },
+
     /** Runs a Crew action against the live state and persists the result. */
     crewAction(fn) {
       const result = fn(this.data) || {};
@@ -733,11 +766,12 @@
       }
       if (territory) this.resolveLand();
       const unlocked = settleQuests(this.data);
+      const rankUp = this.claimRankUp();
       this.save();
       // The claim may have been trimmed by a later one, though a brand new run
       // is normally the latest thing on the map.
       if (territory) activity.claimedArea = territory.area;
-      return { territory, unlocked };
+      return { territory, unlocked, rankUp };
     },
 
     reset() {

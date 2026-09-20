@@ -285,6 +285,15 @@ belonging to no crew dims rather than disappearing, because it still blocks
 you, and your own crew's labels stay lime so "mine" reads the same here as
 everywhere else in the app.
 
+**The one interruption.** Everything else in the app reports itself quietly —
+a toast, a number that moved, a colour that changed. Ranking up takes the whole
+screen, because it is the only event that is about the runner rather than the
+run, and an achievement delivered in the same corner toast as a kilometre split
+is not an achievement. The ring fills on entry rather than arriving full: the
+rank is drawn being earned, not announced. It is modal, so it has three ways
+out (button, scrim, Escape) — a celebration you cannot leave is a trap sitting
+on top of the card that earned it.
+
 **What the paid tier may not do.** Pro never takes an extra metre. The moment a
 subscription can claim faster, hold longer, or defend ground for you, the map
 stops being a contest and becomes a price list — and the free players who make

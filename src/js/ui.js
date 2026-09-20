@@ -590,6 +590,107 @@
           : `${Math.round(state.backDistance || 0)} m back to your start`;
     },
 
+    /* --- Rank up -------------------------------------------------------------
+       Crossing a rank is the one thing in the app worth interrupting for, so
+       it gets the screen. It can also leave the app entirely: a run usually
+       ends with the phone in a pocket, and a promotion nobody sees is not a
+       promotion. ------------------------------------------------------------ */
+
+    /**
+     * Shows the promotion. Queued rather than shown immediately, because it
+     * lands on the finish screen and the record card should be underneath it,
+     * not replaced by it.
+     */
+    celebrateRank(rankUp) {
+      if (!rankUp) return;
+      this.notifyRank(rankUp);
+
+      $('#rankUpLetter').textContent = rankUp.to.badge;
+      $('#rankUpName').textContent = rankUp.to.name;
+      $('#rankUpLine').textContent = rankUp.to.line || '';
+      $('#rankUpFrom').textContent = rankUp.from.name;
+      $('#rankUpTo').textContent = rankUp.to.name;
+      // Jumping two ranks in one run should say so rather than quietly
+      // pretending the one in between never happened.
+      $('#rankUpEyebrow').textContent = rankUp.skipped > 0
+        ? `Rank up · ${rankUp.skipped + 1} at once`
+        : 'Rank up';
+
+      const sheet = $('#rankUp');
+      sheet.hidden = false;
+      // Restart the entry animation even if the element was shown before.
+      const ring = sheet.querySelector('.fill');
+      const letter = sheet.querySelector('.celebrate-letter');
+      [ring, letter].forEach((n) => { n.style.animation = 'none'; void n.offsetWidth; n.style.animation = ''; });
+      this.pinShell();
+    },
+
+    /**
+     * A real notification, so a rank earned with the phone away still arrives.
+     * Everything here is optional: notifications are blocked outright in a
+     * sandboxed frame and on file URLs, and the celebration on screen is the
+     * part that always happens.
+     */
+    notifyRank(rankUp) {
+      if (!this.canNotify()) return;
+      try {
+        const n = new Notification(`${rankUp.to.name} — rank up`, {
+          body: rankUp.to.line || `You reached ${rankUp.to.name}.`,
+          tag: 'miles-rank',
+          silent: false,
+        });
+        n.onclick = () => { try { window.focus(); n.close(); } catch (err) { /* ignore */ } };
+      } catch (err) { /* blocked; the on-screen celebration still ran */ }
+    },
+
+    canNotify() {
+      try {
+        return typeof Notification !== 'undefined' && Notification.permission === 'granted';
+      } catch (err) { return false; }
+    },
+
+    /** Asks once, and says plainly when the browser will not allow it. */
+    requestAlerts() {
+      if (typeof Notification === 'undefined') {
+        this.toast('This browser has no notifications — rank-ups still show in the app');
+        return;
+      }
+      if (Notification.permission === 'granted') {
+        this.toast('Rank alerts are already on');
+        return;
+      }
+      if (Notification.permission === 'denied') {
+        this.toast('Notifications are blocked for this page — allow them in your browser');
+        return;
+      }
+      Notification.requestPermission().then((state) => {
+        this.renderAlerts();
+        this.toast(state === 'granted'
+          ? 'Rank alerts on — you will hear about the next one'
+          : 'No alerts. Rank-ups still show in the app');
+      }).catch(() => {
+        this.toast('This page cannot ask for notifications');
+      });
+    },
+
+    renderAlerts() {
+      const note = $('#alertStatus');
+      const btn = $('#alertBtn');
+      if (!note) return;
+      let state = 'unsupported';
+      try { if (typeof Notification !== 'undefined') state = Notification.permission; } catch (err) { /* ignore */ }
+
+      const copy = {
+        granted: ['On · told when you rank up', 'On'],
+        denied: ['Blocked by your browser', 'Blocked'],
+        default: ['Off · rank-ups show in the app', 'Turn on'],
+        unsupported: ['Not available here', 'Off'],
+      }[state] || ['Off', 'Turn on'];
+      note.textContent = copy[0];
+      btn.textContent = copy[1];
+      btn.disabled = state === 'granted' || state === 'denied' || state === 'unsupported';
+    },
+
     /** Chooses the basemap and remembers it across sessions. */
     setMapStyle(style) {
       const allowed = M.Tiles.SOURCES[style] ? style : 'dark';
@@ -751,6 +852,8 @@
       this.lastActivity = activity;
       this.cardReturn = null;
       this.showFinish(activity, result);
+      // After the card, so the promotion lands on top of what earned it.
+      if (result.rankUp) setTimeout(() => this.celebrateRank(result.rankUp), 700);
     },
 
     /* --- Finish ------------------------------------------------------------ */
@@ -2630,6 +2733,17 @@
       // Imagery that never arrives must not leave the setting claiming it did.
       Bus.on('tiles:blocked', () => this.renderMapStyle());
 
+      $('#alertBtn').addEventListener('click', () => this.requestAlerts());
+      // The celebration covers the screen, so every ordinary way out of it has
+      // to work: the button, the scrim behind it, and Escape. Without that it
+      // is not a moment, it is a trap over the card you just earned.
+      const closeRankUp = () => { $('#rankUp').hidden = true; this.pinShell(); };
+      $('#rankUpDone').addEventListener('click', closeRankUp);
+      $('#rankUp').addEventListener('click', (e) => { if (e.target === $('#rankUp')) closeRankUp(); });
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !$('#rankUp').hidden) closeRankUp();
+      });
+
       $('#askGeoBtn').addEventListener('click', () => this.locate());
 
       $('#addFriendBtn').addEventListener('click', () => this.promptFriend());
@@ -2686,6 +2800,7 @@
       $('#kpiAreaUnit').textContent = Units.areaLabel() + ' land';
 
       this.renderMapStyle();
+      this.renderAlerts();
       this.renderProStatus();
       this.renderFriendList();
       this.renderHistory();

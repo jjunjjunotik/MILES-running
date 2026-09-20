@@ -255,6 +255,7 @@ has it. The three marked `:8765` want `python3 -m http.server 8765` running.
 
 ```
 node test-clip.js         polygon subtraction, against a sampled oracle
+node test-rank.js         a rank-up fires once, and only when earned
 node test-icons.js        one icon language, and no emoji anywhere
 node test-pro.js          the paid boundary, and the numbers Pro sells
 node test-tiles.js        tile alignment, seams, canvas taint, fallback
@@ -267,6 +268,32 @@ node test-dialogs.js      confirms and prompts where modals are blocked :8765
 
 `test-tiles.js` serves its own tiles from a throwaway HTTP server, so it needs
 no network and passes with the real CDN blocked.
+
+---
+
+## Ranking up
+
+XP comes from quests, and quests settle when a run is saved, so a rank can
+only change at the moment a run ends. When it does, the app stops and says so:
+a full-screen moment with the new rank's badge, its name, and one line about
+what reaching it means. It is modal on purpose — this is the one thing worth
+interrupting for — so the scrim, Escape and the button all close it.
+
+If the browser allows notifications and you have turned them on (**You → Rank
+alerts**), the same promotion arrives as a real notification. That matters for
+a running app: a run usually ends with the phone going back in a pocket, and a
+promotion nobody sees is not a promotion. Notifications are blocked outright in
+a sandboxed frame and on `file://` URLs, so everything about them is optional —
+the on-screen celebration is the part that always happens, and the settings row
+says plainly which state you are in.
+
+**A promotion is announced once.** The rank last announced is stored
+(`rankSeen`), not worked out at render time, so reloading the app is not
+earning it again. Two cases exist only to avoid lying: a fresh save starts from
+the rank its seeded weeks already imply, and an upgrade from a version without
+the field starts from wherever you already are. Without those, the first run
+after installing would announce a promotion nobody ran for. Crossing two ranks
+at once says so rather than quietly dropping the one in between.
 
 ---
 
