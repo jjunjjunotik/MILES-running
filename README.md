@@ -68,6 +68,29 @@ To put this on a real network, replace `_send` and the channel wiring in
 
 The **Feed** is reached from Home ("See feed").
 
+### Crew missions
+
+Three, and only three — the three things the app measures:
+
+| | Counts |
+|---|---|
+| **Cover the ground** | every kilometre the crew runs this week |
+| **Take ground** | new land the crew claims |
+| **Take it off somebody** | ground the crew cuts out of runners outside it |
+
+**Headcount is the difficulty.** Each mission has a per-member target and the
+ask is that times the crew's size, so a crew of twelve is asked for twelve
+times what a crew of one is and nobody picks a level. A runner joining raises
+the bar by exactly one person's worth; the mission records the size it was
+priced for, so the card can say so.
+
+The third one is measured rather than modelled for your own share: it replays
+the same cuts that decide the live map and counts only the ones your crew made,
+so ground two members both ran over is counted once and the total can never
+exceed what those runners actually lost. Your team-mates' share is still
+modelled from their weekly volume, as every other number about them is, until
+there is a server to ask.
+
 ### Crews
 
 A crew is a running club with a home turf. Browse the ones near you sorted by
@@ -256,6 +279,7 @@ has it. The three marked `:8765` want `python3 -m http.server 8765` running.
 ```
 node test-clip.js         polygon subtraction, against a sampled oracle
 node test-rank.js         a rank-up fires once, and only when earned
+node test-mission.js      three crew missions, scaled and reachable
 node test-icons.js        one icon language, and no emoji anywhere
 node test-pro.js          the paid boundary, and the numbers Pro sells
 node test-tiles.js        tile alignment, seams, canvas taint, fallback

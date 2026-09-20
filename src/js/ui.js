@@ -1709,7 +1709,9 @@
         el('div', { class: 'row' }, [
           el('div', { class: 'stack grow', style: 'gap:2px' }, [
             el('span', { class: 'mission-name', text: def.name }),
-            el('span', { class: 'tiny', text: `${def.note} · ${status.mission.sizeName}` }),
+            el('span', { class: 'tiny', text: status.mission.heads
+              ? `${def.note} · ${status.mission.heads} ${status.mission.heads === 1 ? 'member' : 'members'}`
+              : def.note }),
           ]),
           el('span', { class: 'mission-xp', text: `+${status.mission.xp}` }),
         ]),
@@ -1741,7 +1743,7 @@
             : String(option.target);
         return el('button', { class: 'mission-option', type: 'button' }, [
           el('div', { class: 'stack grow', style: 'gap:2px' }, [
-            el('span', { style: 'font-weight:800;font-size:14px', text: `${option.def.name} · ${option.size.name}` }),
+            el('span', { style: 'font-weight:800;font-size:14px', text: option.def.name }),
             el('span', { class: 'tiny', text: `${fmt} — ${option.def.note}` }),
           ]),
           el('span', { class: 'mission-xp', text: `+${option.xp}` }),
@@ -1756,12 +1758,16 @@
         this.renderCrew();
       }));
 
+      const heads = M.Crew.memberCount(crew);
       body.appendChild(el('div', { class: 'stack' }, [
         el('h3', { style: 'font-size:20px', text: "This week's mission" }),
-        el('p', { class: 'muted', text: `Targets scale with your ${M.Crew.memberCount(crew)} members, so the ask is the same whatever the crew size. Clearing it earns the crew XP — the only way to climb a tier.` }),
+        el('p', { class: 'muted', text: `Targets are ${heads} ${heads === 1 ? 'member' : 'members'}' worth. Every runner who joins raises them.` }),
       ].concat(rows).concat([
         el('button', { class: 'btn btn--ghost btn--block', type: 'button', text: 'Back', onclick: () => this.openCrewSheet(crewId) }),
       ])));
+      // Filling the sheet is not showing it: opened from the crew screen this
+      // wrote the whole picker into a hidden panel and looked like a dead button.
+      this.openSheet('#crewSheet');
     },
 
     /** The captain's board. Members read it; only the captain writes. */

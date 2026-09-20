@@ -28,39 +28,34 @@
      Targets scale with crew size, so a mission is the same ask whether there
      are three of you or twelve. ------------------------------------------- */
 
+  /**
+   * Three missions, and only three. They are the three things this app
+   * measures — distance run, ground claimed, ground taken off somebody — so a
+   * crew's week is always one of those, and a captain choosing between them is
+   * choosing what the crew is for rather than picking from a menu.
+   *
+   * `perMember` is the whole difficulty model: the target is that times the
+   * number of members, so a crew of twelve is asked for twelve times what a
+   * crew of one is. Nobody sets a level, and joining a crew raises the bar it
+   * has to clear by exactly one person's worth.
+   */
   const MISSIONS = {
     distance: {
       key: 'distance', name: 'Cover the ground', unit: 'dist',
       note: 'Every kilometre, added up',
-      perMember: 12000, xp: 220,
+      perMember: 14000, xp: 220,
     },
-    runs: {
-      key: 'runs', name: 'Turn out', unit: 'count',
-      note: 'Runs logged this week',
-      perMember: 3, xp: 180,
+    claimed: {
+      key: 'claimed', name: 'Take ground', unit: 'area',
+      note: 'New land claimed this week',
+      perMember: 140000, xp: 300,
     },
-    territory: {
-      key: 'territory', name: 'Take ground', unit: 'area',
-      note: 'Land claimed this week',
-      perMember: 120000, xp: 320,
-    },
-    races: {
-      key: 'races', name: 'Line up', unit: 'count',
-      note: 'Races finished this week',
-      perMember: 1, xp: 260,
-    },
-    turnout: {
-      key: 'turnout', name: 'Nobody sits out', unit: 'count',
-      note: 'Every member runs once',
-      perMember: 1, xp: 300,
+    taken: {
+      key: 'taken', name: 'Take it off somebody', unit: 'area',
+      note: 'Ground cut out of other runners',
+      perMember: 45000, xp: 380,
     },
   };
-
-  const SIZES = [
-    { key: 'steady', name: 'Steady', factor: 0.7, xpFactor: 0.7 },
-    { key: 'solid',  name: 'Solid',  factor: 1,   xpFactor: 1 },
-    { key: 'brutal', name: 'Brutal', factor: 1.6, xpFactor: 1.7 },
-  ];
 
   const CREW_COLORS = ['#ff3d8b', '#2fe0ff', '#ffb020', '#2ee6a8', '#a855f7', '#ff8a4c'];
 
@@ -176,7 +171,6 @@
     },
 
     MISSIONS,
-    SIZES,
 
     /* --- Level ------------------------------------------------------------- */
 
@@ -224,27 +218,19 @@
     },
 
     /** The choices on offer this week, with targets scaled to crew size. */
+    /** The three missions, with this crew's size already priced in. */
     missionOptions(crew) {
       const heads = Math.max(1, this.memberCount(crew));
-      const out = [];
-      Object.values(MISSIONS).forEach((def) => {
-        SIZES.forEach((size) => {
-          // "Nobody sits out" is the same ask at any size: all of them.
-          if (def.key === 'turnout' && size.key !== 'solid') return;
-          const target = def.key === 'turnout'
-            ? heads
-            : Math.max(def.key === 'runs' || def.key === 'races' ? 1 : 1000,
-                       Math.round(def.perMember * heads * size.factor));
-          out.push({
-            key: `${def.key}:${size.key}`,
-            def,
-            size,
-            target,
-            xp: Math.round(def.xp * size.xpFactor),
-          });
-        });
+      return Object.keys(MISSIONS).map((key) => {
+        const def = MISSIONS[key];
+        return {
+          key,
+          def,
+          heads,
+          target: Math.max(1000, Math.round(def.perMember * heads)),
+          xp: def.xp,
+        };
       });
-      return out;
     },
 
     setMission(state, crewId, optionKey) {
@@ -261,7 +247,7 @@
         week,
         key: option.key,
         type: option.def.key,
-        sizeName: option.size.name,
+        heads: option.heads,          // what the crew was when it was set
         target: option.target,
         xp: option.xp,
         setAt: Date.now(),
@@ -281,27 +267,29 @@
       if (mission.week !== week) return { mission, stale: true, week };
 
       const def = MISSIONS[mission.type];
+      // A mission set before the three were settled on no longer exists. Treat
+      // it as last week's so the captain is asked for a new one rather than
+      // shown a bar that measures nothing.
+      if (!def) return { mission, stale: true, week };
+
       const others = crew.members.filter((m) => m.id !== 'me');
-      const mineThisWeek = M.Stats.weekly(state);
       const inCrew = crew.memberIds.indexOf('me') >= 0;
 
+      // Your own contribution is measured from what you actually ran. Your
+      // team-mates' is modelled from their weekly volume, the way every other
+      // number about them in this app is, until there is a server to ask.
       let have = 0;
       if (mission.type === 'distance') {
-        have = others.reduce((sum, m) => sum + (m.weekly || 0), 0) + (inCrew ? mineThisWeek.distance : 0);
-      } else if (mission.type === 'runs') {
-        have = others.reduce((sum, m) => sum + Math.round((m.weekly || 0) / 7000), 0) + (inCrew ? mineThisWeek.runs : 0);
-      } else if (mission.type === 'territory') {
-        const since = week;
-        const mineArea = state.territories
-          .filter((t) => t.claimedAt >= since)
+        have = others.reduce((sum, m) => sum + (m.weekly || 0), 0)
+          + (inCrew ? M.Stats.weekly(state).distance : 0);
+      } else if (mission.type === 'claimed') {
+        const mine = (state.territories || [])
+          .filter((t) => t.claimedAt >= week)
           .reduce((sum, t) => sum + (t.area || 0), 0);
-        have = others.reduce((sum, m) => sum + Math.round((m.weekly || 0) * 2.2), 0) + (inCrew ? mineArea : 0);
-      } else if (mission.type === 'races') {
-        const mineRaces = state.activities
-          .filter((a) => a.kind === 'race' && a.finished && a.startedAt >= week).length;
-        have = others.reduce((sum, m) => sum + ((m.weekly || 0) > 25000 ? 1 : 0), 0) + (inCrew ? mineRaces : 0);
-      } else if (mission.type === 'turnout') {
-        have = others.filter((m) => (m.weekly || 0) > 0).length + (inCrew && mineThisWeek.runs > 0 ? 1 : 0);
+        have = others.reduce((sum, m) => sum + Math.round((m.weekly || 0) * 2.2), 0) + (inCrew ? mine : 0);
+      } else if (mission.type === 'taken') {
+        have = others.reduce((sum, m) => sum + Math.round((m.weekly || 0) * 0.55), 0)
+          + (inCrew ? this.takenSince(state, crew, week) : 0);
       }
 
       const complete = have >= mission.target;
@@ -311,6 +299,30 @@
         progress: M.clamp(have / Math.max(1, mission.target), 0, 1),
         complete,
       };
+    },
+
+    /**
+     * Ground this crew has cut out of runners outside it since a moment in
+     * time. Measured, not modelled: it replays the same cuts that decide the
+     * live map and counts only the ones this crew made, so a plot two members
+     * both ran over is counted once and the total can never exceed what those
+     * runners actually lost.
+     */
+    takenSince(state, crew, since) {
+      if (!crew) return 0;
+      const ids = new Set((crew.members || []).map((m) => m.id));
+      const all = (state.territories || []).concat(state.rivalLand || []);
+      const origin = state.profile.home;
+      const ours = (t) => ids.has(t.owner === 'me' || !t.owner ? 'me' : t.owner);
+
+      let total = 0;
+      all.forEach((victim) => {
+        if (ours(victim)) return;                    // taking your own is not taking
+        M.Land.raiders(victim, all, origin, since).forEach((r) => {
+          if (ids.has(r.owner)) total += r.area;
+        });
+      });
+      return total;
     },
 
     /**

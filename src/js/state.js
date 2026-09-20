@@ -603,6 +603,16 @@
       // schedules existed.
       (this.data.crews || []).forEach((crew) => {
         if (crew.photo === undefined) crew.photo = null;
+        // Missions were cut to three and one was renamed. An in-flight
+        // "territory" mission survives as "claimed"; the retired ones are
+        // dropped so the captain is asked for a new one.
+        if (crew.mission && crew.mission.type === 'territory') {
+          crew.mission.type = 'claimed';
+          crew.mission.key = 'claimed';
+        }
+        if (crew.mission && ['runs', 'races', 'turnout'].indexOf(crew.mission.type) >= 0) {
+          crew.mission = null;
+        }
         if (crew.schedule && !crew.schedule.days) {
           crew.schedule.days = M.Crew.days(crew);
           delete crew.schedule.day;

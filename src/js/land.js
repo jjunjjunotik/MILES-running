@@ -83,8 +83,13 @@
      * area to the claim that caused it — so ground that two people later ran
      * over is credited once, to whoever got there first, and the total never
      * exceeds what was actually lost.
+     *
+     * `since` narrows what is *credited* without narrowing what is replayed:
+     * every later claim still cuts, so the geometry stays right, but only cuts
+     * made at or after that moment are counted. Skipping the earlier ones
+     * instead would hand their ground to whoever came next.
      */
-    raiders(claim, laterClaims, origin) {
+    raiders(claim, laterClaims, origin, since) {
       const anchor = origin || claim.polygon[0];
       const ring = (claim.polygon || []).map((p) => Geo.project(p, anchor));
       if (ring.length < 3) return [];
@@ -107,6 +112,7 @@
           const lost = standing - now;
           standing = now;
           if (lost <= 1) return;
+          if (since !== undefined && (c.claimedAt || 0) < since) return;
 
           const key = c.owner || 'unknown';
           const prev = taken.get(key);
