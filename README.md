@@ -260,13 +260,35 @@ node test-pro.js          the paid boundary, and the numbers Pro sells
 node test-tiles.js        tile alignment, seams, canvas taint, fallback
 node test-map.js          panning, zooming, and who owns what is in view
 node test-territory.js    a loop is the only way a territory run ends
-node test-contrast.js     every text style against WCAG AA          :8765
+node test-contrast.js     text against WCAG AA, and a weight floor  :8765
 node test-sheets.js       sheets never leave the shell scrolled     :8765
 node test-dialogs.js      confirms and prompts where modals are blocked :8765
 ```
 
 `test-tiles.js` serves its own tiles from a throwaway HTTP server, so it needs
 no network and passes with the real CDN blocked.
+
+---
+
+## Type
+
+Text on a dark ground is thinner than its colour suggests — light strokes bloom
+and lose their edges — so **weight carries more of the legibility here than
+contrast does**, and the smaller the text the more of it is needed. The floor
+is `700` at 12px and below, `600` above; body copy is `700`, headings `800`.
+Leading rose with the weight, because heavier lines close the gaps between
+them.
+
+`test-contrast.js` enforces both halves: the AA ratio and the weight floor. The
+floor immediately found three styles carrying no `font-weight` at all and so
+inheriting `400` — a map chip, a rank paragraph and the crew notice body.
+
+Where the heavier type made a line crowd, the **words** gave way rather than
+the weight: "Start and finish in the same place — the run ends the moment you
+close the loop. Everything it encloses becomes yours." is now "Close the loop
+back at your start. Everything inside becomes yours." Around thirty strings
+were cut this way. Nothing lost its meaning; they lost the words that were not
+doing any work.
 
 ---
 

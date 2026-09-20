@@ -77,17 +77,17 @@
      scout icon is the dashed ring the feature actually puts on the map. */
   const BENEFITS = {
     supporter: [
-      { icon: 'i-tag', name: 'Name and colour your plots', note: 'Your ground, marked and named your way' },
-      { icon: 'i-swatch', name: 'Record card themes', note: 'Four colourways for the card you actually share' },
+      { icon: 'i-tag', name: 'Name and colour your plots', note: 'Marked and named your way' },
+      { icon: 'i-swatch', name: 'Record card themes', note: 'Four colourways for your card' },
     ],
     pro: [
-      { icon: 'i-rewind', name: 'Time machine', note: 'Replay the map week by week and watch the borders move' },
-      { icon: 'i-bite', name: 'Who took your land', note: 'Every claim measured back to the runner who made it' },
-      { icon: 'i-scout', name: 'Scout', note: 'The biggest unclaimed ground in view, measured' },
-      { icon: 'i-lanes', name: 'Races up to 16', note: 'Everyone you line up against runs free' },
+      { icon: 'i-rewind', name: 'Time machine', note: 'Replay the map week by week' },
+      { icon: 'i-bite', name: 'Who took your land', note: 'Measured back to whoever took it' },
+      { icon: 'i-scout', name: 'Scout', note: 'The biggest open ground in view' },
+      { icon: 'i-lanes', name: 'Races up to 16', note: 'Everyone you invite runs free' },
       { icon: 'i-found', name: 'Found a crew', note: 'Joining a crew is free, always' },
-      { icon: 'i-blocks', name: 'Crew territory', note: 'The map by crew — whose ground is whose, block by block' },
-      { icon: 'i-layers', name: 'Every map style', note: 'Street and light basemaps as well as dark' },
+      { icon: 'i-blocks', name: 'Crew territory', note: 'Whose ground is whose, block by block' },
+      { icon: 'i-layers', name: 'Every map style', note: 'Street and light, as well as dark' },
     ],
   };
 

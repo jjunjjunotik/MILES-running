@@ -365,7 +365,7 @@
           el('span', { class: 'owner-swatch', style: `background:${r.color};width:8px;height:24px;border-radius:4px` }),
           el('div', { class: 'stack grow', style: 'gap:5px' }, [
             el('div', { class: 'row row--between' }, [
-              el('span', { style: `font-size:13px;font-weight:${r.me ? 800 : 600};color:${r.me ? 'var(--accent)' : 'var(--text-hi)'}`, text: r.name }),
+              el('span', { style: `font-size:13px;font-weight:${r.me ? 900 : 700};color:${r.me ? 'var(--accent)' : 'var(--text-hi)'}`, text: r.name }),
               el('span', { class: 'tiny', text: `${Units.distText(r.weekly)} ${Units.distLabel()}` }),
             ]),
             el('div', { class: 'bar' }, [el('i', { style: `width:${clamp((r.weekly / top) * 100, 3, 100)}%;background:${r.color}` })]),
@@ -429,7 +429,7 @@
         const btn = el('button', { class: 'friend', type: 'button', 'aria-pressed': String(picked) }, [
           el('span', { class: 'friend-avatar', style: `background:${f.color}`, text: f.initials }),
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
-            el('span', { style: 'font-weight:700;font-size:14px', text: f.name }),
+            el('span', { style: 'font-weight:800;font-size:14px', text: f.name }),
             el('span', { class: 'tiny', text: `${Units.paceText(f.pace / 1000)} ${Units.paceLabel()} · ${Units.distText(f.weekly)} ${Units.distLabel()} this week` }),
           ]),
           el('span', { class: 'chip' + (f.online ? ' chip--live' : ''), text: f.online ? 'Online' : 'Bot' }),
@@ -821,7 +821,7 @@
           el('div', { class: 'stack' }, result.unlocked.map((q) => el('div', { class: 'row' }, [
             this.icon(q.icon, 'quest-icon'),
             el('div', { class: 'stack grow', style: 'gap:2px' }, [
-              el('span', { style: 'font-weight:700;font-size:14px', text: q.name }),
+              el('span', { style: 'font-weight:800;font-size:14px', text: q.name }),
               el('span', { class: 'tiny', text: q.note }),
             ]),
             el('span', { class: 'quest-xp', text: `+${q.xp} XP` }),
@@ -880,7 +880,7 @@
       const list = $('#terrList');
       list.innerHTML = '';
       if (!s.territories.length) {
-        list.appendChild(el('div', { class: 'empty', text: 'No land yet. Run a loop back to your starting point and everything inside becomes yours.' }));
+        list.appendChild(el('div', { class: 'empty', text: 'No land yet. Close a loop and everything inside is yours.' }));
         return;
       }
       // How much of a claim other runners have taken. Ground your own later
@@ -1083,7 +1083,7 @@
         list.appendChild(el('div', { class: 'raid-row' }, [
           el('span', { class: 'raid-swatch', style: `background:${r.color || 'var(--text-lo)'}` }),
           el('div', { class: 'stack grow', style: 'gap:2px' }, [
-            el('span', { style: 'font-weight:700;font-size:13.5px', text: r.name }),
+            el('span', { style: 'font-weight:800;font-size:13.5px', text: r.name }),
             el('span', { class: 'tiny', text: `${r.plots} of your plots · last ${relTime(r.at)}` }),
           ]),
           el('span', { class: 'stat-value', style: 'font-size:13px', text: `${Units.areaText(r.area)} ${Units.areaLabel()}` }),
@@ -1161,7 +1161,7 @@
         const name = M.Pro.verify(State.data).trial ? 'the trial' : M.Pro.tier() === 'pro' ? 'Pro' : 'Supporter';
         this.confirm({
           title: `Cancel ${name}?`,
-          body: 'The paid features lock again. Your runs, your land, your plot names and your history are untouched.',
+          body: 'The paid features lock again. Your runs, land and history stay.',
           confirmLabel: 'Cancel', cancelLabel: 'Keep it', danger: true,
         }).then((yes) => {
           if (!yes) return;
@@ -1203,7 +1203,7 @@
       chip.textContent = v.tier === 'supporter' ? 'SUPPORTER' : 'PRO';
       $('#proCardTitle').textContent = v.tier === 'free' ? 'Know your ground' : 'Your plan';
       $('#proCardNote').textContent = v.tier === 'free'
-        ? 'Time machine, who took your land, and five more'
+        ? 'Time machine, raiders, and seven more'
         : v.trial ? `Trial · ${Math.max(0, Math.ceil((v.until - Date.now()) / 864e5))} days left`
           : `${v.plan.name} · ${v.plan.label}`;
 
@@ -1291,7 +1291,7 @@
         on ? null : el('div', { class: 'lock-row', style: 'margin-top:var(--s-3)' }, [
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
             el('span', { class: 'lock-title', text: 'See the map by crew' }),
-            el('span', { class: 'tiny', text: 'Every crew\u2019s ground in its own colour, and who in yours holds what' }),
+            el('span', { class: 'tiny', text: 'Every crew\u2019s ground in its own colour' }),
           ]),
           el('button', {
             class: 'btn btn--pro', type: 'button',
@@ -1455,7 +1455,7 @@
             class: 'muted',
             text: pending
               ? `${pending.name} reviews every request. You will get in when their captain says so.`
-              : 'Join one of the crews near you, or start your own and run it yourself.',
+              : 'Join a crew near you, or start your own.',
           }),
           el('button', {
             class: 'btn btn--primary btn--block', type: 'button',
@@ -1474,7 +1474,7 @@
         const card = el('button', { class: 'crew-card', type: 'button' }, [
           this.crewBadge(crew, 'small'),
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
-            el('span', { style: 'font-weight:700;font-size:14px', text: crew.name }),
+            el('span', { style: 'font-weight:800;font-size:14px', text: crew.name }),
             el('span', { class: 'tiny truncate', text: crew.tagline }),
             el('span', { class: 'tiny', style: `color:${crew.color}`, text: `Tier ${M.Crew.level(crew).tier.index} ${M.Crew.level(crew).tier.name} · ${M.Crew.memberCount(crew)} runners · ${Units.distText(M.Crew.weeklyVolume(crew))} ${Units.distLabel()}` }),
           ]),
@@ -1638,7 +1638,7 @@
             : String(option.target);
         return el('button', { class: 'mission-option', type: 'button' }, [
           el('div', { class: 'stack grow', style: 'gap:2px' }, [
-            el('span', { style: 'font-weight:700;font-size:14px', text: `${option.def.name} · ${option.size.name}` }),
+            el('span', { style: 'font-weight:800;font-size:14px', text: `${option.def.name} · ${option.size.name}` }),
             el('span', { class: 'tiny', text: `${fmt} — ${option.def.note}` }),
           ]),
           el('span', { class: 'mission-xp', text: `+${option.xp}` }),
@@ -1948,7 +1948,7 @@
           parts.push(el('div', { class: 'request' }, [
             el('span', { class: 'friend-avatar', style: `background:${person.color}`, text: person.initials }),
             el('div', { class: 'stack grow', style: 'gap:2px' }, [
-              el('span', { style: 'font-weight:700;font-size:14px', text: person.name }),
+              el('span', { style: 'font-weight:800;font-size:14px', text: person.name }),
               el('span', { class: 'tiny', text: `${Units.distText(person.weekly)} ${Units.distLabel()} a week · asked ${relTime(person.at || Date.now())}` }),
             ]),
             el('button', {
@@ -2058,7 +2058,7 @@
       if (!others.length) {
         this.confirm({
           title: `Disband ${crew.name}?`,
-          body: 'You are its only runner, so the crew goes with you. This cannot be undone.',
+          body: 'You are its only runner, so the crew goes too. Cannot be undone.',
           confirmLabel: 'Disband',
           danger: true,
         }).then((ok) => {
@@ -2090,7 +2090,7 @@
         const row = el('button', { class: 'friend', type: 'button' }, [
           el('span', { class: 'friend-avatar', style: `background:${member.color}`, text: member.initials }),
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
-            el('span', { style: 'font-weight:700;font-size:14px', text: member.name }),
+            el('span', { style: 'font-weight:800;font-size:14px', text: member.name }),
             el('span', { class: 'tiny', text: `${M.Crew.ROLES[member.role]} · ${Units.distText(member.weekly)} ${Units.distLabel()} this week` }),
           ]),
           el('span', { class: 'role-tag', 'data-role': member.role, text: M.Crew.ROLES[member.role] }),
@@ -2163,7 +2163,7 @@
           onclick: () => {
             this.confirm({
               title: `Remove ${member.name}?`,
-              body: 'They lose their place in the crew and stop counting toward the weekly mission.',
+              body: 'They leave the crew and stop counting toward the mission.',
               confirmLabel: 'Remove',
               danger: true,
             }).then((ok) => {
@@ -2480,7 +2480,7 @@
           el('div', { class: 'feed-head' }, [
             el('span', { class: 'friend-avatar', style: `background:${item.color}`, text: item.initials }),
             el('div', { class: 'stack grow', style: 'gap:2px' }, [
-              el('span', { style: 'font-weight:700;font-size:14px', text: item.who }),
+              el('span', { style: 'font-weight:800;font-size:14px', text: item.who }),
               el('span', { class: 'tiny', text: `${a.title} · ${relTime(a.startedAt)}` }),
             ]),
             kindChip(a),
@@ -2658,7 +2658,7 @@
       $('#resetBtn').addEventListener('click', () => {
         this.confirm({
           title: 'Reset MILES?',
-          body: 'Every run, territory, crew and quest on this device is deleted. This cannot be undone.',
+          body: 'Every run, plot, crew and quest here is deleted. Cannot be undone.',
           confirmLabel: 'Delete everything',
           danger: true,
         }).then((ok) => {
@@ -2698,7 +2698,7 @@
       $('#friendCount').textContent = `${friends.length} racing`;
 
       if (!friends.length) {
-        list.appendChild(el('div', { class: 'empty', text: 'No friends yet. Add one and they can line up in your next race.' }));
+        list.appendChild(el('div', { class: 'empty', text: 'No friends yet. Add one to race them.' }));
         return;
       }
 
@@ -2706,7 +2706,7 @@
         list.appendChild(el('div', { class: 'friend' }, [
           el('span', { class: 'friend-avatar', style: `background:${f.color}`, text: f.initials }),
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
-            el('span', { style: 'font-weight:700;font-size:14px', text: f.name }),
+            el('span', { style: 'font-weight:800;font-size:14px', text: f.name }),
             el('span', { class: 'tiny', text: `${Units.paceText(f.pace / 1000)} ${Units.paceLabel()} race pace` }),
           ]),
           el('button', {

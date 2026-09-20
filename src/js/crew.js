@@ -17,8 +17,8 @@
      crew has to clear the week. ------------------------------------------- */
 
   const CREW_TIERS = [
-    { index: 1, name: 'Startline', xp: 0,    note: 'Newly founded. Clear a week together to start climbing.' },
-    { index: 2, name: 'Pack',      xp: 600,  note: 'Running as a unit. The weekly mission is habit now.' },
+    { index: 1, name: 'Startline', xp: 0,    note: 'Newly founded. Clear a week to start climbing.' },
+    { index: 2, name: 'Pack',      xp: 600,  note: 'Running as a unit. The mission is habit now.' },
     { index: 3, name: 'Legion',    xp: 1800, note: 'A crew with a reputation on this map.' },
     { index: 4, name: 'Dynasty',   xp: 4200, note: 'Top tier. Nothing above this one.' },
   ];
@@ -31,27 +31,27 @@
   const MISSIONS = {
     distance: {
       key: 'distance', name: 'Cover the ground', unit: 'dist',
-      note: 'Everyone\'s kilometres this week, added up',
+      note: 'Every kilometre, added up',
       perMember: 12000, xp: 220,
     },
     runs: {
       key: 'runs', name: 'Turn out', unit: 'count',
-      note: 'Runs logged by the crew this week',
+      note: 'Runs logged this week',
       perMember: 3, xp: 180,
     },
     territory: {
       key: 'territory', name: 'Take ground', unit: 'area',
-      note: 'Land claimed by the crew this week',
+      note: 'Land claimed this week',
       perMember: 120000, xp: 320,
     },
     races: {
       key: 'races', name: 'Line up', unit: 'count',
-      note: 'Races finished by the crew this week',
+      note: 'Races finished this week',
       perMember: 1, xp: 260,
     },
     turnout: {
       key: 'turnout', name: 'Nobody sits out', unit: 'count',
-      note: 'Every single member runs at least once',
+      note: 'Every member runs once',
       perMember: 1, xp: 300,
     },
   };

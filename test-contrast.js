@@ -1,5 +1,8 @@
-// Text contrast audit. Every text style in the app is measured against the
-// surface it actually sits on and checked against WCAG AA. Serve on :8765:
+// Text legibility audit. Every text style in the app is measured against the
+// surface it actually sits on and checked against WCAG AA, and against a
+// minimum weight for its size — light strokes on a dark ground bloom and thin
+// out, so small type needs more weight than a ratio alone can tell you.
+// Serve on :8765:
 //   node test-contrast.js
 // Needs Playwright, which the app itself does not: `npm i playwright`, or run
 // with NODE_PATH pointing at an install that has it.
@@ -148,10 +151,22 @@ const AUDIT = `(() => {
     `  FAIL ${Math.round(worst * 100) / 100}:1 (need ${r.need})  on gradient  .${r.cls}  "${r.text}"`));
   console.log(`${gradChecked - gradFails.length}/${gradChecked} gradient-backed styles pass (${gradSkipped} not measurable)`);
   const rows = [...seen.values()];
+
+  // The weight floor. Contrast is measured on a solid stroke; real text on a
+  // dark ground is thinner than its colour suggests, and the smaller it is the
+  // more of the difference weight has to make up.
+  const floorFor = (size) => (size <= 12 ? 700 : 600);
+  const light = rows.concat([...onGradient.values()])
+    .filter((r) => r.weight < floorFor(r.size))
+    .sort((a, b) => a.weight - b.weight);
+  light.forEach((r) => console.log(
+    `  FAIL w${r.weight} (need w${floorFor(r.size)} at ${r.size}px)  .${r.cls}  "${r.text}"`));
+  console.log(`${rows.length + onGradient.size - light.length}/${rows.length + onGradient.size} styles meet the weight floor`);
+
   const fails = rows.filter((r) => !r.pass).sort((a, b) => a.ratio - b.ratio);
   fails.forEach((r) => console.log(`  FAIL ${r.ratio}:1 (need ${r.need})  ${r.size}px w${r.weight}  .${r.cls}  "${r.text}"`));
   console.log(`${rows.length - fails.length}/${rows.length} text styles pass WCAG AA`);
 
   await browser.close();
-  process.exit(fails.length || gradFails.length ? 1 : 0);
+  process.exit(fails.length || gradFails.length || light.length ? 1 : 0);
 })().catch((e) => { console.error('FATAL', e.message); process.exit(1); });

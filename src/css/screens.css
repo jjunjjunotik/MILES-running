@@ -26,11 +26,11 @@
   line-height: 0.92;
   text-shadow: 0 0 calc(var(--energy) * 30px) var(--accent);
 }
-.volume-unit { font-size: 16px; font-weight: 700; color: var(--text-mid); letter-spacing: 0.06em; }
+.volume-unit { font-size: 16px; font-weight: 800; color: var(--text-mid); letter-spacing: 0.06em; }
 
 .volume-meta { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); }
 
-.delta { font-size: 12px; font-weight: 700; }
+.delta { font-size: 12px; font-weight: 800; }
 .delta--up { color: var(--ok); }
 .delta--down { color: var(--text-lo); }
 
@@ -109,6 +109,7 @@
 .geo-note {
   align-self: flex-start;
   font-size: 10px;
+  font-weight: 800;
   letter-spacing: 0.06em;
   padding: 5px 9px;
   border-radius: var(--r-pill);
@@ -177,7 +178,7 @@
 }
 
 .start-name { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; }
-.start-sub { font-size: 11px; font-weight: 600; opacity: 0.78; line-height: 1.35; }
+.start-sub { font-size: 11px; font-weight: 700; opacity: 0.78; line-height: 1.35; }
 .start-icon { width: 24px; height: 24px; stroke: currentColor; fill: none; stroke-width: 1.9; }
 .start--duo .start-icon { stroke: var(--magenta); }
 .start-arrow { position: absolute; right: 14px; bottom: 14px; font-size: 16px; opacity: 0.6; display: inline-flex; }
@@ -201,7 +202,7 @@
   background: rgba(8, 11, 16, 0.86);
   border: 1px solid rgba(168, 85, 247, 0.5);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   color: #d3c4ff;
   display: flex;
   align-items: center;
@@ -241,12 +242,12 @@
 .race-row[data-me="true"] .race-name { color: var(--lime); font-weight: 800; }
 .race-row[data-done="true"] .race-time { color: var(--ok); }
 
-.race-pos { font-family: var(--font-num); font-size: 12px; font-weight: 700; color: var(--text-lo); }
+.race-pos { font-family: var(--font-num); font-size: 12px; font-weight: 800; color: var(--text-lo); }
 .race-dot { width: 18px; height: 18px; border-radius: 6px; display: grid; place-items: center; font-size: 8px; font-weight: 800; color: var(--ink-900); }
-.race-name { font-size: 12px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.race-name { font-size: 12px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .race-track { height: 5px; border-radius: var(--r-pill); background: rgba(255,255,255,0.10); overflow: hidden; margin-top: 4px; }
 .race-track > i { display: block; height: 100%; border-radius: var(--r-pill); transition: width 0.5s cubic-bezier(0.2, 1, 0.3, 1); }
-.race-time { font-family: var(--font-num); font-size: 12px; font-weight: 700; text-align: right; color: var(--text-mid); }
+.race-time { font-family: var(--font-num); font-size: 12px; font-weight: 800; text-align: right; color: var(--text-mid); }
 
 /* Run-kind chooser */
 .kind-option {
@@ -285,7 +286,7 @@
 .history-item[data-kind="free"] .history-badge { color: var(--lime); }
 .history-item[data-kind="territory"] .history-badge { color: var(--violet-ink); }
 .history-item[data-kind="race"] .history-badge { color: var(--magenta-ink); }
-.history-value { font-family: var(--font-num); font-size: 13px; font-weight: 700; letter-spacing: -0.02em; }
+.history-value { font-family: var(--font-num); font-size: 13px; font-weight: 800; letter-spacing: -0.02em; }
 
 /* Full-width segmented control, for the race distance */
 /* Equal columns whatever the count: a two-option row filled two of four and
@@ -350,7 +351,7 @@
   border: 1px solid var(--line);
   background: rgba(8, 11, 16, 0.82);
   color: var(--text-hi);
-  font-size: 16px; font-weight: 700; line-height: 1;
+  font-size: 16px; font-weight: 800; line-height: 1;
   cursor: pointer;
   -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
 }
@@ -361,7 +362,7 @@
   padding: 6px 10px; border-radius: 8px;
   background: rgba(8, 11, 16, 0.82);
   border: 1px solid var(--line);
-  font-size: 11px; font-weight: 600; color: var(--text-mid);
+  font-size: 11px; font-weight: 700; color: var(--text-mid);
   pointer-events: none;
   transition: opacity 0.4s ease;
 }
@@ -369,8 +370,8 @@
 .map-hint[data-gone="true"] { opacity: 0; }
 
 .legend { display: flex; flex-wrap: wrap; gap: var(--s-2); padding: var(--s-3) 0 0; }
-.legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 600; color: var(--text-mid); }
-.legend-item[data-me="true"] { color: var(--text-hi); font-weight: 700; }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: var(--text-mid); }
+.legend-item[data-me="true"] { color: var(--text-hi); font-weight: 800; }
 .legend-swatch { width: 11px; height: 11px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.25); flex: none; }
 
 .owner-swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
@@ -449,10 +450,10 @@
   gap: 2px;
 }
 .rank-letter { font-size: 34px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
-.rank-pct { font-family: var(--font-num); font-size: 11px; font-weight: 700; color: var(--text-lo); }
+.rank-pct { font-family: var(--font-num); font-size: 11px; font-weight: 800; color: var(--text-lo); }
 
 .rank-slide-name { font-size: 14px; font-weight: 800; letter-spacing: -0.01em; }
-.rank-slide-xp { font-family: var(--font-num); font-size: 11px; font-weight: 700; color: var(--text-lo); }
+.rank-slide-xp { font-family: var(--font-num); font-size: 11px; font-weight: 800; color: var(--text-lo); }
 
 .rank-slide[data-state="done"] .rank-letter { color: var(--ok); }
 .rank-slide[data-state="current"] .rank-letter { color: var(--amber); }
@@ -474,7 +475,7 @@
 .rank-detail[data-state="done"] { border-color: rgba(46, 230, 168, 0.3); background: linear-gradient(160deg, rgba(46,230,168,0.12), rgba(255,255,255,0.02)); }
 .rank-detail[data-state="locked"] { border-color: var(--line); background: rgba(255,255,255,0.035); }
 .rank-detail h3 { font-size: 20px; font-weight: 800; letter-spacing: -0.02em; }
-.rank-detail p { font-size: 13px; color: var(--text-mid); line-height: 1.55; }
+.rank-detail p { font-size: 13px; font-weight: 700; color: var(--text-mid); line-height: 1.55; }
 
 .quest {
   display: flex;
@@ -498,7 +499,7 @@
 }
 .quest[data-done="true"] .quest-icon { background: rgba(46,230,168,0.16); color: var(--ok-ink); }
 .quest-icon.ico { width: 38px; height: 38px; }
-.quest-name { font-size: 14px; font-weight: 700; }
+.quest-name { font-size: 14px; font-weight: 800; }
 .quest-xp { font-size: 11px; font-weight: 800; color: var(--amber); flex: none; }
 .quest[data-done="true"] .quest-xp { color: var(--ok); }
 
@@ -645,7 +646,7 @@
 .mission[data-empty="true"] { border-color: var(--line); background: rgba(255,255,255,0.035); }
 
 .mission-name { font-size: 15px; font-weight: 800; letter-spacing: -0.01em; }
-.mission-count { font-family: var(--font-num); font-size: 13px; font-weight: 700; }
+.mission-count { font-family: var(--font-num); font-size: 13px; font-weight: 800; }
 
 .mission-option {
   display: flex;
@@ -670,7 +671,7 @@
   background: rgba(255,255,255,0.04);
   color: var(--text-lo);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   transition: background 0.14s ease, color 0.14s ease, border-color 0.14s ease;
 }
 .day-chip[aria-pressed="true"] {
@@ -692,9 +693,9 @@
   border: 1px solid var(--line);
   background: rgba(255,255,255,0.045);
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 700;
 }
-.pacesetter b { font-family: var(--font-num); font-weight: 700; color: var(--accent); }
+.pacesetter b { font-family: var(--font-num); font-weight: 800; color: var(--accent); }
 .pacesetter-dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
 
 /* The board is its own compose button — no separate control above it. */
@@ -709,7 +710,7 @@
   background: rgba(255,255,255,0.02);
   color: var(--text-lo);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   text-align: left;
   transition: border-color 0.15s ease, color 0.15s ease, background 0.15s ease;
 }
@@ -734,8 +735,8 @@
   border: 1px solid var(--line);
   background: rgba(255,255,255,0.035);
 }
-.notice p { font-size: 13px; line-height: 1.5; color: var(--text-hi); }
-.notice-meta { font-size: 11px; font-weight: 500; color: var(--text-lo); margin-top: 4px; }
+.notice p { font-size: 13px; font-weight: 700; line-height: 1.5; color: var(--text-hi); }
+.notice-meta { font-size: 11px; font-weight: 700; color: var(--text-lo); margin-top: 4px; }
 .notice--hero { border-color: rgba(47, 224, 255, 0.3); background: rgba(47, 224, 255, 0.07); }
 
 .member {
@@ -805,7 +806,7 @@
 }
 
 .lock-row { display: flex; align-items: center; gap: var(--s-3); }
-.lock-title { font-weight: 700; font-size: 13.5px; color: var(--text-hi); }
+.lock-title { font-weight: 800; font-size: 13.5px; color: var(--text-hi); }
 
 .timemachine {
   flex: none;
@@ -848,7 +849,7 @@
   fill: none;
   stroke-width: 1.7;
 }
-.pro-benefit-name { font-weight: 700; font-size: 14px; color: var(--text-hi); }
+.pro-benefit-name { font-weight: 800; font-size: 14px; color: var(--text-hi); }
 
 /* The plan picker belongs to the Pro sheet, so it wears the Pro colour rather
    than the app's lime accent — two accents in one sheet reads as two offers. */
@@ -890,9 +891,9 @@
 .holding-row { display: flex; align-items: center; gap: var(--s-3); padding: 7px 0; }
 .holding-bar { flex: 1; height: 8px; border-radius: 4px; background: rgba(255,255,255,0.06); overflow: hidden; }
 .holding-bar i { display: block; height: 100%; border-radius: 4px; }
-.holding-name { font-size: 12.5px; font-weight: 700; color: var(--text-mid); width: 88px; flex: none; }
-.holding-row[data-me="true"] .holding-name { color: var(--text-hi); font-weight: 800; }
-.holding-area { font-size: 12px; font-weight: 700; color: var(--text-mid); width: 66px; text-align: right; flex: none; }
+.holding-name { font-size: 12.5px; font-weight: 800; color: var(--text-mid); width: 104px; flex: none; }
+.holding-row[data-me="true"] .holding-name { color: var(--text-hi); font-weight: 900; }
+.holding-area { font-size: 12px; font-weight: 800; color: var(--text-mid); width: 66px; text-align: right; flex: none; }
 
 /* A chip carrying a mark as well as a word. */
 .chip--icon { display: inline-flex; align-items: center; gap: 5px; }

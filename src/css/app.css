@@ -32,7 +32,7 @@ button { font-family: inherit; color: inherit; cursor: pointer; border: none; ba
    what make an icon set read as hard; rounding them softens the whole UI for
    the cost of one rule. */
 svg { stroke-linecap: round; stroke-linejoin: round; }
-h1, h2, h3, h4 { margin: 0; font-weight: 700; letter-spacing: -0.02em; }
+h1, h2, h3, h4 { margin: 0; font-weight: 800; letter-spacing: -0.02em; }
 p { margin: 0; }
 
 /* --- Phone shell --------------------------------------------------------- */
@@ -144,7 +144,7 @@ p { margin: 0; }
   width: 36px; height: 36px;
   border-radius: var(--r-pill);
   display: grid; place-items: center;
-  font-size: 13px; font-weight: 700;
+  font-size: 13px; font-weight: 800;
   background: linear-gradient(140deg, var(--accent), var(--accent-2));
   color: var(--ink-900);
 }
@@ -166,7 +166,7 @@ p { margin: 0; }
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: var(--text-lo);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 /* --- Segmented control --------------------------------------------------- */
@@ -181,7 +181,7 @@ p { margin: 0; }
 }
 .seg button {
   font-size: 11.5px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-lo);
@@ -203,7 +203,7 @@ p { margin: 0; }
   gap: var(--s-2);
   border-radius: var(--r-pill);
   padding: 14px 20px;
-  font-weight: 700;
+  font-weight: 800;
   font-size: 14px;
   letter-spacing: 0.03em;
   background: rgba(255,255,255,0.07);
@@ -220,7 +220,7 @@ p { margin: 0; }
 
 .stat-value {
   font-family: var(--font-num);
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
 }
@@ -230,7 +230,7 @@ p { margin: 0; }
   letter-spacing: 0.07em;
   text-transform: uppercase;
   color: var(--text-lo);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 /* --- Bottom navigation --------------------------------------------------- */
@@ -256,12 +256,12 @@ p { margin: 0; }
   border-radius: var(--r-md);
   color: var(--text-lo);
   font-size: 11.5px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.005em;
   transition: color 0.15s ease;
 }
 .tabbar button svg { width: 23px; height: 23px; stroke: currentColor; fill: none; stroke-width: 1.7; }
-.tabbar button[aria-selected="true"] { font-weight: 700; }
+.tabbar button[aria-selected="true"] { font-weight: 800; }
 .tabbar button[aria-selected="true"] { color: var(--accent); }
 
 /* --- Toast --------------------------------------------------------------- */
@@ -289,7 +289,7 @@ p { margin: 0; }
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow-2);
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   animation: toast-in 0.28s cubic-bezier(0.2, 1, 0.3, 1);
 }
 .toast b { color: var(--accent); }
@@ -351,8 +351,11 @@ p { margin: 0; }
 .row--between { justify-content: space-between; }
 .stack { display: flex; flex-direction: column; gap: var(--s-3); }
 .grow { flex: 1; min-width: 0; }
-.muted { color: var(--text-mid); font-size: 13px; font-weight: 500; }
-.tiny { font-size: 11.5px; font-weight: 500; color: var(--text-lo); line-height: 1.45; }
+/* The smallest type carries the most weight: light strokes on a dark ground
+   bloom and thin out, so 11px needs more of it than 20px does. Leading goes
+   up with the weight, or the heavier lines close the gaps between them. */
+.muted { color: var(--text-mid); font-size: 13px; font-weight: 700; line-height: 1.5; }
+.tiny { font-size: 11.5px; font-weight: 700; color: var(--text-lo); line-height: 1.5; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 .chip {
@@ -364,7 +367,7 @@ p { margin: 0; }
   background: rgba(255,255,255,0.06);
   border: 1px solid var(--line);
   font-size: 11px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 0.04em;
 }
 .chip--live { border-color: rgba(47,224,255,0.45); color: var(--cyan); }
@@ -402,12 +405,12 @@ p { margin: 0; }
   color: var(--text-hi);
   font-family: inherit;
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   -webkit-appearance: none;
   appearance: none;
 }
 .input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.input::placeholder { color: var(--text-lo); font-weight: 500; }
+.input::placeholder { color: var(--text-lo); font-weight: 600; }
 
 select.input {
   background-image: linear-gradient(45deg, transparent 50%, var(--text-mid) 50%),
@@ -424,7 +427,7 @@ select.input option { background: var(--ink-700); color: var(--text-hi); }
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--text-lo);
-  font-weight: 700;
+  font-weight: 800;
 }
 
 .empty {
