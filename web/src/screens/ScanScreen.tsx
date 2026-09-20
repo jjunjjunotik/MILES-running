@@ -24,6 +24,49 @@ const STEPS = [
   "설명과 팁 정리하기",
 ];
 
+/**
+ * 서버가 잠깐 막히거나 모델이 혼잡한 것 때문에 사용자를 오류 화면으로 내보내지 않는다.
+ * 될 때까지 계속 다시 시도하고, 그동안 화면은 분석 중인 상태 그대로 둔다.
+ * 빠져나갈 길은 언제나 "취소" 버튼이다.
+ *
+ * 다만 아무리 다시 보내도 답이 달라지지 않는 것들은 여기서 걸러 낸다.
+ * 사진에 손톱이 없거나, 너무 흐리거나, 애초에 보낼 수 없는 파일인 경우가 그렇다.
+ * 이건 실패가 아니라 "다시 찍어 주세요"라는 결과이므로 바로 알려 주는 편이 맞다.
+ */
+const STOP_CODES = new Set([
+  "not_a_nail_photo",
+  "unusable_image",
+  "bad_request",
+  "declined",
+]);
+
+const RETRY_FIRST_MS = 2000;
+const RETRY_MAX_MS = 15000;
+
+/** 1차 2초에서 시작해 15초까지 늘린다. 상한을 둬서 영원히 느려지지는 않게 한다. */
+function retryDelay(attempt: number): number {
+  return Math.min(RETRY_FIRST_MS * 1.6 ** (attempt - 1), RETRY_MAX_MS);
+}
+
+/** 기다리는 동안에도 취소가 먹어야 한다. */
+function wait(ms: number, signal: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal.aborted) {
+      reject(new DOMException("취소되었습니다.", "AbortError"));
+      return;
+    }
+    const timer = setTimeout(() => {
+      signal.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    function onAbort() {
+      clearTimeout(timer);
+      reject(new DOMException("취소되었습니다.", "AbortError"));
+    }
+    signal.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
 export function ScanScreen({
   settings,
   demoMode,
@@ -40,6 +83,10 @@ export function ScanScreen({
   const [busy, setBusy] = useState(false);
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  /** 몇 번째 시도인지. 1보다 커지면 분석 화면에 조용히 진행 상황을 덧붙인다. */
+  const [attempt, setAttempt] = useState(1);
+  /** 마지막으로 막힌 이유. 오래 걸릴 때만, 참고 정보로 보여 준다. */
+  const [lastReason, setLastReason] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
 
   const fileInput = useRef<HTMLInputElement>(null);
@@ -92,17 +139,37 @@ export function ScanScreen({
     if (!image || busy) return;
     setBusy(true);
     setError(null);
+    setAttempt(1);
+    setLastReason(null);
     abort.current = new AbortController();
+    const signal = abort.current.signal;
 
     try {
-      const { analysis, demo } = await analyze({
-        base64: image.base64,
-        mediaType: image.mediaType,
-        hand,
-        finger: FINGER_LABELS[finger],
-        note,
-        signal: abort.current.signal,
-      });
+      // 될 때까지 시도한다. 끝내는 길은 성공, 취소, 그리고 다시 보내도 소용없는 응답뿐이다.
+      let result: Awaited<ReturnType<typeof analyze>> | null = null;
+      for (let tries = 1; result === null; tries += 1) {
+        try {
+          result = await analyze({
+            base64: image.base64,
+            mediaType: image.mediaType,
+            hand,
+            finger: FINGER_LABELS[finger],
+            note,
+            signal,
+          });
+        } catch (err) {
+          if (err instanceof DOMException && err.name === "AbortError") throw err;
+          if (err instanceof ApiError && STOP_CODES.has(err.code)) throw err;
+
+          setLastReason(err instanceof Error ? err.message : null);
+          setAttempt(tries + 1);
+          const backoff = retryDelay(tries);
+          const asked = err instanceof ApiError ? err.retryAfterMs ?? 0 : 0;
+          await wait(Math.max(backoff, asked), signal);
+        }
+      }
+
+      const { analysis, demo } = result;
 
       const record = {
         id: crypto.randomUUID(),
@@ -136,7 +203,7 @@ export function ScanScreen({
       setError(
         err instanceof ApiError
           ? err.message
-          : "분석 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+          : "이 사진으로는 결과를 만들지 못했어요. 다른 사진으로 다시 시도해 주세요.",
       );
     } finally {
       setBusy(false);
@@ -155,7 +222,11 @@ export function ScanScreen({
               <div style={{ fontWeight: 600, marginBottom: 4 }}>
                 사진을 살펴보고 있어요
               </div>
-              <div className="small muted">보통 10~30초 정도 걸려요</div>
+              <div className="small muted">
+                {attempt > 1
+                  ? "생각보다 오래 걸리고 있어요. 계속 시도하고 있으니 그대로 두셔도 돼요."
+                  : "보통 10~30초 정도 걸려요"}
+              </div>
             </div>
             <div className="step-list">
               {STEPS.map((label, index) => (
@@ -170,11 +241,22 @@ export function ScanScreen({
                 </div>
               ))}
             </div>
+            {attempt > 1 && (
+              <div className="small muted center">
+                {attempt}번째 시도 중
+                {attempt > 4 && lastReason ? (
+                  <>
+                    <br />
+                    <span style={{ opacity: 0.8 }}>서버 응답: {lastReason}</span>
+                  </>
+                ) : null}
+              </div>
+            )}
             <button
               className="btn btn-secondary btn-sm"
               onClick={() => abort.current?.abort()}
             >
-              취소
+              그만두기
             </button>
           </div>
         </main>

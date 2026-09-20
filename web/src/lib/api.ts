@@ -11,6 +11,8 @@ export class ApiError extends Error {
   constructor(
     message: string,
     readonly code: string,
+    /** 서버가 Retry-After 를 준 경우, 다시 시도하기까지 기다릴 시간(ms) */
+    readonly retryAfterMs?: number,
   ) {
     super(message);
     this.name = "ApiError";
@@ -73,8 +75,17 @@ export async function analyze(args: AnalyzeArgs): Promise<AnalyzeResult> {
     throw new ApiError("서버 응답을 읽지 못했습니다.", "upstream_error");
   }
 
-  if (!body.ok) throw new ApiError(body.error, body.code);
+  if (!body.ok) throw new ApiError(body.error, body.code, retryAfter(response));
   return { analysis: body.analysis, demo: body.demo };
+}
+
+/** 속도 제한에 걸렸을 때 서버가 알려 주는 대기 시간. 없으면 undefined. */
+function retryAfter(response: Response): number | undefined {
+  const header = response.headers.get("retry-after");
+  if (!header) return undefined;
+  const seconds = Number(header);
+  if (!Number.isFinite(seconds) || seconds <= 0) return undefined;
+  return Math.min(seconds, 120) * 1000;
 }
 
 export interface HealthInfo {
