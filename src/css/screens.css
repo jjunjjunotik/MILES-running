@@ -97,7 +97,7 @@
 
 .locate {
   align-self: flex-end;
-  width: 34px; height: 34px;
+  width: var(--tap); height: var(--tap);
   border-radius: var(--r-pill);
   display: grid; place-items: center;
   background: rgba(8, 11, 16, 0.8);
@@ -292,7 +292,7 @@
 /* Equal columns whatever the count: a two-option row filled two of four and
    left the rest of the bar empty. */
 .seg--block { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; }
-.seg--block button { padding: 9px 4px; font-size: 12px; }
+.seg--block button { padding: 0 4px; font-size: 12px; min-height: var(--tap-group); }
 
 .run-controls { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); padding-bottom: var(--s-4); }
 
@@ -345,7 +345,7 @@
   display: flex; flex-direction: column; gap: 6px;
 }
 .map-btn {
-  width: 34px; height: 34px;
+  width: var(--tap); height: var(--tap);
   display: grid; place-items: center;
   border-radius: 10px;
   border: 1px solid var(--line);
@@ -459,10 +459,22 @@
 .rank-slide[data-state="current"] .rank-letter { color: var(--amber); }
 .rank-slide[data-state="locked"] .rank-letter { color: var(--text-lo); }
 
-.rank-dots { display: flex; justify-content: center; gap: 6px; padding: var(--s-2) 0 var(--s-3); }
-.rank-dots button { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.16); transition: background 0.2s ease, width 0.2s ease; }
+/* The dot you see is 7px; the button you press is a thumb. Drawing the dot as
+   a pseudo-element keeps the pager looking like a pager while giving each rung
+   a real hit area — it used to be 12x7, the smallest control in the app. */
+.rank-dots { display: flex; justify-content: center; gap: 0; padding: 0 0 var(--s-2); }
+.rank-dots button {
+  width: var(--tap-group); height: var(--tap);
+  display: grid; place-items: center; background: none;
+}
+.rank-dots button::before {
+  content: ""; display: block;
+  width: 7px; height: 7px; border-radius: 50%;
+  background: rgba(255,255,255,0.16);
+  transition: background 0.2s ease, width 0.2s ease;
+}
 /* A pager is a control, so it wears the brand like the rest of them. */
-.rank-dots button[aria-current="true"] { width: 22px; border-radius: var(--r-pill); background: var(--flame); }
+.rank-dots button[aria-current="true"]::before { width: 22px; border-radius: var(--r-pill); background: var(--flame); }
 
 .rank-detail {
   padding: var(--s-4);
@@ -532,7 +544,11 @@
 .kpi { padding: var(--s-3); border-radius: var(--r-md); background: rgba(255,255,255,0.04); border: 1px solid var(--line); text-align: center; }
 .kpi .stat-value { font-size: 20px; }
 
-.setting { display: flex; align-items: center; justify-content: space-between; gap: var(--s-3); padding: var(--s-3) 0; border-bottom: 1px solid var(--line); }
+/* Label on the left, control on the right — until the control is wider than
+   the room left over, which the four-option basemap switch is on a 390px
+   phone. Then it takes a line of its own rather than running off the edge. */
+.setting { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--s-3); padding: var(--s-3) 0; border-bottom: 1px solid var(--line); }
+.setting > .seg { margin-left: auto; }
 .setting:last-child { border-bottom: none; }
 
 /* --------------------------------------------------------------------------
@@ -885,7 +901,7 @@
 }
 .swatch[aria-pressed="true"] { border-color: var(--text-hi); }
 
-.map-btn--crews { position: absolute; right: calc(var(--s-3) + 42px); bottom: var(--s-3); font-size: 15px; }
+.map-btn--crews { position: absolute; right: calc(var(--s-3) + var(--tap) + 8px); bottom: var(--s-3); font-size: 15px; }
 .map-btn--crews[aria-pressed="true"] { border-color: rgba(255,196,87,0.6); color: var(--amber-ink); }
 
 /* Crew holdings: one bar per crew, so the map's blocks have a ranking. */
@@ -989,11 +1005,15 @@
   color: var(--text-hi);
 }
 .link {
+  position: relative;
   font-size: var(--t-small);
   font-weight: 800;
   color: var(--flame-ink);
   padding: 4px 0;
 }
+/* A section link sits on the title's baseline, so it cannot grow without
+   pushing the heading around. It gets the reach without the height. */
+.link::after { content: ""; position: absolute; inset: -11px -10px; }
 .eyebrow {
   font-size: var(--t-label);
   font-weight: 800;
@@ -1065,7 +1085,7 @@
 .hero .delta { font-size: var(--t-small); font-weight: 800; }
 
 .seg--sm { background: rgba(8,11,16,0.55); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
-.seg--sm button { font-size: var(--t-micro); padding: 7px 13px; }
+.seg--sm button { font-size: var(--t-micro); padding: 0 13px; }
 
 /* --- Intensity band ------------------------------------------------------- */
 
@@ -1139,7 +1159,8 @@
 .ground-rank {
   position: absolute; left: var(--s-3); top: var(--s-3);
   display: inline-flex; align-items: center; gap: 7px;
-  padding: 8px 13px;
+  min-height: var(--tap);
+  padding: 8px 15px;
   border-radius: var(--r-pill);
   background: rgba(8,11,16,0.8);
   border: 1px solid rgba(168,85,247,0.45);

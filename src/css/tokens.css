@@ -84,6 +84,13 @@
   --s-6: 30px;
   --s-7: 42px;
 
+  /* The smallest a control may be. Standalone controls take the whole 44px;
+     controls in a contiguous group (a segmented bar, a pager) take --tap-group
+     each, because the group as a whole is ≥44px and there is no dead space
+     between members to mis-tap into. */
+  --tap: 44px;
+  --tap-group: 40px;
+
   /* The page's own rhythm. One gutter and one gap between sections, so the
      screen reads as bands of content rather than a stack of equal boxes. */
   --gutter: 20px;

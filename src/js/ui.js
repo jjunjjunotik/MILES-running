@@ -66,8 +66,27 @@
       $$('#tabbar button').forEach((btn) => {
         btn.addEventListener('click', () => this.go(btn.dataset.tab));
       });
-      $('#askSheet').addEventListener('click', (event) => {
-        if (event.target === $('#askSheet') && this._askDismiss) this._askDismiss();
+      /* Every sheet dismisses the same way: a tap on the scrim outside it, or
+         Escape. Binding this per sheet is how #duoSheet and #proSheet ended up
+         trapping the screen — a sheet that cannot be dismissed leaves an
+         invisible scrim swallowing taps meant for the map behind it. One rule
+         here covers every sheet that exists now and every one added later.
+         #askSheet is the exception: it owns a pending promise, so it dismisses
+         through its own resolver rather than by being hidden. */
+      $$('.sheet-scrim').forEach((scrim) => {
+        scrim.addEventListener('click', (event) => {
+          if (event.target !== scrim) return;
+          if (scrim.id === 'askSheet') { if (this._askDismiss) this._askDismiss(); return; }
+          this.closeSheet('#' + scrim.id);
+        });
+      });
+      document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return;
+        const open = $$('.sheet-scrim').filter((s) => !s.hidden);
+        const top = open[open.length - 1];
+        if (!top) return;
+        if (top.id === 'askSheet') { if (this._askDismiss) this._askDismiss(); return; }
+        this.closeSheet('#' + top.id);
       });
 
       $$('[data-goto]').forEach((btn) => {
@@ -265,9 +284,6 @@
           this.closeSheet('#soloSheet');
           this.beginRun({ kind: btn.dataset.kind });
         });
-      });
-      $('#soloSheet').addEventListener('click', (event) => {
-        if (event.target === $('#soloSheet')) this.closeSheet('#soloSheet');
       });
 
       $$('#racePicker button').forEach((btn) => {
@@ -1543,9 +1559,6 @@
 
     bindCrew() {
       $('#createCrewBtn').addEventListener('click', () => this.openCreateCrew());
-      $('#crewSheet').addEventListener('click', (event) => {
-        if (event.target === $('#crewSheet')) this.closeSheet('#crewSheet');
-      });
     },
 
     renderCrew() {

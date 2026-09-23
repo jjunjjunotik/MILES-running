@@ -92,6 +92,28 @@ const { chromium } = require('playwright');
   console.log(`F after tab change from a displaced shell: ${await shell()}`);
   check('F tab change', await shell());
 
+  // G. Every sheet dismisses from outside itself, and with Escape. A sheet
+  //    that cannot be dismissed is worse than a stuck dialog: its scrim is
+  //    invisible, so the screen behind it simply stops responding. That is how
+  //    the race lobby came to swallow drags meant for the territory map.
+  await page.click('#tabbar [data-tab="home"]');
+  await page.waitForTimeout(400);
+  const sheets = await page.evaluate(() =>
+    [...document.querySelectorAll('.sheet-scrim')].map((s) => s.id).filter((id) => id !== 'askSheet'));
+  for (const id of sheets) {
+    for (const how of ['scrim', 'escape']) {
+      await page.evaluate((i) => MILES.UI.openSheet('#' + i), id);
+      await page.waitForTimeout(250);
+      if (how === 'scrim') await page.evaluate((i) => document.getElementById(i).click(), id);
+      else await page.keyboard.press('Escape');
+      await page.waitForTimeout(250);
+      const shut = await page.evaluate((i) => document.getElementById(i).hidden, id);
+      if (!shut) { bad++; console.log(`  G ${id} did not close on ${how}`); }
+      await page.evaluate((i) => MILES.UI.closeSheet('#' + i), id);
+    }
+  }
+  console.log(`G every sheet dismisses: ${sheets.length} sheets x 2 ways`);
+
   console.log(bad === 0 ? 'SHELL NEVER LEFT DISPLACED' : `${bad} FAILURES`);
   await browser.close();
 })().catch((e) => { console.error('FATAL', e.message); process.exit(1); });

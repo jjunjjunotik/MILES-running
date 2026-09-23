@@ -185,7 +185,11 @@ p { margin: 0; }
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: var(--text-lo);
-  padding: 6px 12px;
+  /* A segment is thumb-sized. Its neighbours are flush against it, so there
+     is no gap to mis-tap into and the group as a whole clears 44px. */
+  min-height: var(--tap-group);
+  display: inline-flex; align-items: center; justify-content: center;
+  padding: 0 14px;
   border-radius: var(--r-pill);
   transition: color 0.15s ease, background 0.15s ease;
 }
@@ -206,7 +210,8 @@ p { margin: 0; }
   justify-content: center;
   gap: var(--s-2);
   border-radius: var(--r-pill);
-  padding: 14px 20px;
+  min-height: var(--tap);
+  padding: 12px 20px;
   font-weight: 800;
   font-size: 14px;
   letter-spacing: 0.03em;
@@ -226,6 +231,9 @@ p { margin: 0; }
 .btn--ghost { background: transparent; }
 .btn--danger { background: rgba(255,89,100,0.14); border-color: rgba(255,89,100,0.4); color: #ffb4b9; }
 .btn--block { width: 100%; }
+/* A smaller button reads smaller; it does not become harder to hit. Set as a
+   class rather than inline padding, which is how these shrank to 32px. */
+.btn--sm { padding: 6px 14px; font-size: var(--t-small); }
 
 /* --- Numbers ------------------------------------------------------------- */
 
@@ -469,3 +477,10 @@ select.input option { background: var(--ink-700); color: var(--text-hi); }
   stroke-width: 1.8;
 }
 .ico--sm { width: 0.95em; height: 0.95em; }
+
+/* --- Touch ----------------------------------------------------------------
+   A label and a control can look alike; only the control has to be reachable
+   with a thumb. These rules therefore key off the element being a button,
+   never off the class, so a .chip used as a caption keeps its size. -------- */
+button.chip, a.chip { min-height: var(--tap); padding: 5px 13px; }
+button.avatar { width: var(--tap); height: var(--tap); font-size: 15px; }
