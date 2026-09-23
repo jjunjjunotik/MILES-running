@@ -41,6 +41,7 @@ export function ProfileScreen({
   onChanged,
   onDeleteAll,
   onSignOut,
+  onSignIn,
 }: {
   user: AuthUser | null;
   settings: Settings;
@@ -51,6 +52,7 @@ export function ProfileScreen({
   onChanged: () => Promise<void> | void;
   onDeleteAll: () => Promise<void>;
   onSignOut: () => Promise<void>;
+  onSignIn?: () => void;
 }) {
   const [pending, setPending] = useState<PendingAction>(null);
   const [busy, setBusy] = useState(false);
@@ -95,7 +97,7 @@ export function ProfileScreen({
     setError(null);
     try {
       if (action === "photos") {
-        if (STANDALONE_DEMO) {
+        if (STANDALONE_DEMO || !user) {
           await clearImagesOnly();
         } else {
           // 사진은 기기에서 지우고, 서버에는 "사진 없음"으로 표시만 남긴다.
@@ -109,7 +111,10 @@ export function ProfileScreen({
         await onDeleteAll();
         setDone("모든 기록과 사진을 지웠어요.");
       } else {
-        await deleteAccount(password);
+        // 비밀번호가 없는 소셜 계정은 이메일을 그대로 적어 확인한다.
+        await deleteAccount(
+          user?.hasPassword ? { password } : { confirmEmail: password },
+        );
         await clearScopedImages();
         setPassword("");
         await onSignOut();
@@ -151,6 +156,29 @@ export function ProfileScreen({
             >
               로그아웃
             </button>
+          </div>
+        )}
+
+        {!user && !STANDALONE_DEMO && (
+          <div className="card account-card">
+            <div className="icon-badge">
+              <ProfileIcon size={18} />
+            </div>
+            <div className="flex-1">
+              <div className="label">이 기기에 저장 중</div>
+              <div className="sub">
+                계정을 만들면 다른 기기에서도 기록을 볼 수 있어요
+              </div>
+            </div>
+            {onSignIn && (
+              <button
+                className="btn btn-ghost btn-sm signin-btn"
+                onClick={onSignIn}
+                aria-label="로그인 또는 계정 만들기"
+              >
+                로그인
+              </button>
+            )}
           </div>
         )}
 
@@ -377,12 +405,16 @@ export function ProfileScreen({
           {pending === "account" && (
             <>
               <label className="field-row mt-12">
-                <span>확인을 위해 비밀번호를 입력해 주세요</span>
+                <span>
+                  {user?.hasPassword
+                    ? "확인을 위해 비밀번호를 입력해 주세요"
+                    : `확인을 위해 ${user?.email} 을(를) 그대로 입력해 주세요`}
+                </span>
                 <input
                   className="field"
-                  type="password"
+                  type={user?.hasPassword ? "password" : "email"}
                   value={password}
-                  autoComplete="current-password"
+                  autoComplete={user?.hasPassword ? "current-password" : "off"}
                   onChange={(event) => setPassword(event.target.value)}
                 />
               </label>

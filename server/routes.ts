@@ -4,6 +4,7 @@ import { db, now } from "./db.js";
 import {
   AuthError,
   authenticate,
+  linkSocialAccount,
   checkPassword,
   createAccount,
   deleteAccount,
@@ -14,6 +15,15 @@ import {
   startSession,
 } from "./auth.js";
 import { createRateLimiter } from "./security.js";
+import {
+  APPLE_CLIENT_ID,
+  GOOGLE_CLIENT_ID,
+  OAuthError,
+  appleEnabled,
+  googleEnabled,
+  verifyAppleLogin,
+  verifyGoogleToken,
+} from "./oauth.js";
 import { METRIC_KEYS, type NailAnalysis } from "../shared/analysis.js";
 
 /**
@@ -33,6 +43,11 @@ const authLimiter = createRateLimiter({
 });
 
 function fail(res: Response, err: unknown): void {
+  if (err instanceof OAuthError) {
+    const status = err.code === "not_configured" ? 503 : 401;
+    res.status(status).json({ ok: false, code: err.code, error: err.message });
+    return;
+  }
   if (err instanceof AuthError) {
     res.status(err.status).json({ ok: false, code: err.code, error: err.message });
     return;
@@ -76,6 +91,74 @@ api.post("/auth/login", authLimiter, (req, res) => {
   }
 });
 
+/**
+ * 로그인 화면이 어떤 버튼을 보여 줄지 정하는 데 쓴다.
+ * 설정되지 않은 제공자의 버튼은 아예 그리지 않는다. 눌러도 안 되는 버튼을 두지 않기 위해서다.
+ * 클라이언트 아이디는 공개되는 값이라 내려보내도 된다. 비밀키는 내려가지 않는다.
+ */
+api.get("/auth/providers", (_req, res) => {
+  res.json({
+    ok: true,
+    providers: {
+      password: true,
+      google: googleEnabled() ? { clientId: GOOGLE_CLIENT_ID } : false,
+      apple: appleEnabled() ? { clientId: APPLE_CLIENT_ID } : false,
+    },
+  });
+});
+
+api.post("/auth/google", authLimiter, async (req, res) => {
+  try {
+    const idToken =
+      typeof req.body?.idToken === "string" ? req.body.idToken : "";
+    if (!idToken) {
+      throw new AuthError(400, "bad_request", "로그인 정보가 전달되지 않았습니다.");
+    }
+
+    const verified = await verifyGoogleToken(idToken);
+    const user = linkSocialAccount({
+      provider: "google",
+      sub: verified.sub,
+      email: verified.email,
+      emailVerified: verified.emailVerified,
+      name: verified.name,
+    });
+    startSession(res, user.id);
+    res.json({ ok: true, user });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+api.post("/auth/apple", authLimiter, async (req, res) => {
+  try {
+    const idToken =
+      typeof req.body?.idToken === "string" ? req.body.idToken : undefined;
+    const code = typeof req.body?.code === "string" ? req.body.code : undefined;
+    const nonce =
+      typeof req.body?.nonce === "string" ? req.body.nonce : undefined;
+    if (!idToken && !code) {
+      throw new AuthError(400, "bad_request", "로그인 정보가 전달되지 않았습니다.");
+    }
+
+    const verified = await verifyAppleLogin({ idToken, code, nonce });
+    // 애플은 첫 로그인 때만 이름을 준다. 그때 받은 이름을 함께 넘긴다.
+    const name =
+      typeof req.body?.name === "string" ? req.body.name : verified.name;
+    const user = linkSocialAccount({
+      provider: "apple",
+      sub: verified.sub,
+      email: verified.email,
+      emailVerified: verified.emailVerified,
+      name,
+    });
+    startSession(res, user.id);
+    res.json({ ok: true, user });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
 api.post("/auth/logout", (req, res) => {
   try {
     endSession(req, res);
@@ -91,10 +174,21 @@ api.get("/auth/me", (req, res) => {
 
 api.delete("/auth/account", requireUser, authLimiter, (req, res) => {
   try {
-    // 계정 삭제는 되돌릴 수 없다. 비밀번호를 한 번 더 확인한다.
-    const password =
-      typeof req.body?.password === "string" ? req.body.password : "";
-    authenticate(req.user!.email, password);
+    // 계정 삭제는 되돌릴 수 없다. 한 번 더 본인인지 확인한다.
+    if (req.user!.hasPassword) {
+      const password =
+        typeof req.body?.password === "string" ? req.body.password : "";
+      authenticate(req.user!.email, password);
+    } else {
+      // 소셜 계정은 비밀번호가 없다. 대신 자기 이메일을 정확히 적게 한다.
+      const typed =
+        typeof req.body?.confirmEmail === "string"
+          ? req.body.confirmEmail.trim().toLowerCase()
+          : "";
+      if (typed !== req.user!.email) {
+        throw new AuthError(400, "confirm_mismatch", "이메일이 일치하지 않습니다.");
+      }
+    }
     endAllSessions(req.user!.id);
     deleteAccount(req.user!.id);
     endSession(req, res);

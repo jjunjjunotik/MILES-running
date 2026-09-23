@@ -23,6 +23,10 @@ export interface AuthUser {
   id: string;
   email: string;
   displayName: string;
+  /** 어떻게 만든 계정인지. 화면에서 안내 문구를 고르는 데 쓴다. */
+  provider: "password" | "google" | "apple";
+  /** 비밀번호로도 로그인할 수 있는 계정인지 */
+  hasPassword: boolean;
 }
 
 declare global {
@@ -45,6 +49,27 @@ export class AuthError extends Error {
   }
 }
 
+interface ProfileRow {
+  id: string;
+  email: string;
+  displayName: string;
+  passwordHash: string;
+  authProvider: string;
+}
+
+const PROFILE_COLUMNS = `id, email, display_name AS displayName,
+  password_hash AS passwordHash, auth_provider AS authProvider`;
+
+function toUser(row: ProfileRow): AuthUser {
+  return {
+    id: row.id,
+    email: row.email,
+    displayName: row.displayName,
+    provider: (row.authProvider as AuthUser["provider"]) ?? "password",
+    hasPassword: row.passwordHash.length > 0,
+  };
+}
+
 /* --------------------------------- 비밀번호 -------------------------------- */
 
 function hashPassword(password: string): string {
@@ -58,6 +83,8 @@ function hashPassword(password: string): string {
 }
 
 function verifyPassword(password: string, stored: string): boolean {
+  // 소셜 전용 계정은 해시가 비어 있다. 어떤 비밀번호와도 맞지 않아야 한다.
+  if (!stored) return false;
   const parts = stored.split("$");
   if (parts.length !== 6 || parts[0] !== "scrypt") return false;
   const [, n, r, p, salt, expected] = parts;
@@ -168,13 +195,14 @@ function lookupSession(req: Request): { user: AuthUser; tokenHash: string } | nu
   const tokenHash = hashToken(token);
   const row = db()
     .prepare(
-      `SELECT s.expires_at AS expiresAt, p.id, p.email, p.display_name AS displayName
+      `SELECT s.expires_at AS expiresAt, p.id, p.email, p.display_name AS displayName,
+              p.password_hash AS passwordHash, p.auth_provider AS authProvider
          FROM sessions s
          JOIN profiles p ON p.id = s.user_id
         WHERE s.token_hash = ?`,
     )
-    .get(tokenHash) as
-    | { expiresAt: number; id: string; email: string; displayName: string }
+    .get(tokenHash) as unknown as
+    | ({ expiresAt: number } & ProfileRow)
     | undefined;
 
   if (!row) return null;
@@ -183,10 +211,7 @@ function lookupSession(req: Request): { user: AuthUser; tokenHash: string } | nu
     return null;
   }
 
-  return {
-    tokenHash,
-    user: { id: row.id, email: row.email, displayName: row.displayName },
-  };
+  return { tokenHash, user: toUser(row) };
 }
 
 /**
@@ -260,17 +285,107 @@ export function createAccount(
     throw err;
   }
 
-  return { id, email, displayName: name };
+  return { id, email, displayName: name, provider: "password", hasPassword: true };
+}
+
+/**
+ * 구글 · 애플에서 확인된 사람을 계정에 연결한다.
+ *
+ * 순서가 중요하다.
+ * 1. 같은 제공자 아이디(sub)로 이미 있으면 그 계정이다.
+ * 2. 없으면, 제공자가 **확인한** 이메일과 같은 계정에 연결한다.
+ *    확인되지 않은 이메일로는 절대 연결하지 않는다. 그랬다가는 남의 이메일을 적어 낸
+ *    사람이 그 계정을 가져갈 수 있다.
+ * 3. 그래도 없으면 새로 만든다. 이 계정에는 비밀번호가 없다.
+ */
+export function linkSocialAccount(input: {
+  provider: "google" | "apple";
+  sub: string;
+  email: string | null;
+  emailVerified: boolean;
+  name: string | null;
+}): AuthUser {
+  const column = input.provider === "google" ? "google_sub" : "apple_sub";
+
+  const bySub = db()
+    .prepare(`SELECT ${PROFILE_COLUMNS} FROM profiles WHERE ${column} = ?`)
+    .get(input.sub) as unknown as ProfileRow | undefined;
+  if (bySub) return toUser(bySub);
+
+  const email = input.email?.trim().toLowerCase() ?? "";
+  if (!email) {
+    throw new AuthError(
+      400,
+      "no_email",
+      "로그인 제공자에서 이메일을 받지 못했습니다. 이메일로 가입해 주세요.",
+    );
+  }
+
+  const stamp = now();
+  const byEmail = db()
+    .prepare(`SELECT ${PROFILE_COLUMNS} FROM profiles WHERE email = ?`)
+    .get(email) as unknown as ProfileRow | undefined;
+
+  if (byEmail) {
+    if (!input.emailVerified) {
+      throw new AuthError(
+        409,
+        "email_taken",
+        "이미 가입된 이메일입니다. 기존 방법으로 로그인해 주세요.",
+      );
+    }
+    db()
+      .prepare(`UPDATE profiles SET ${column} = ?, email_verified = 1, updated_at = ? WHERE id = ?`)
+      .run(input.sub, stamp, byEmail.id);
+    return toUser({ ...byEmail, email });
+  }
+
+  const id = crypto.randomUUID();
+  const name = (input.name ?? "").trim().slice(0, 40);
+
+  db().exec("BEGIN");
+  try {
+    db()
+      .prepare(
+        `INSERT INTO profiles
+           (id, email, password_hash, display_name, auth_provider, ${column}, email_verified, created_at, updated_at)
+         VALUES (?, ?, '', ?, ?, ?, ?, ?, ?)`,
+      )
+      .run(
+        id,
+        email,
+        name,
+        input.provider,
+        input.sub,
+        input.emailVerified ? 1 : 0,
+        stamp,
+        stamp,
+      );
+    db()
+      .prepare(
+        `INSERT INTO user_preferences (user_id, nickname, created_at, updated_at)
+         VALUES (?, ?, ?, ?)`,
+      )
+      .run(id, name, stamp, stamp);
+    db().exec("COMMIT");
+  } catch (err) {
+    db().exec("ROLLBACK");
+    throw err;
+  }
+
+  return {
+    id,
+    email,
+    displayName: name,
+    provider: input.provider,
+    hasPassword: false,
+  };
 }
 
 export function authenticate(email: string, password: string): AuthUser {
   const row = db()
-    .prepare(
-      "SELECT id, email, password_hash AS passwordHash, display_name AS displayName FROM profiles WHERE email = ?",
-    )
-    .get(email) as
-    | { id: string; email: string; passwordHash: string; displayName: string }
-    | undefined;
+    .prepare(`SELECT ${PROFILE_COLUMNS} FROM profiles WHERE email = ?`)
+    .get(email) as unknown as ProfileRow | undefined;
 
   // 가입된 이메일인지 알려 주지 않는다. 없는 계정일 때도 같은 일을 하고 같은 답을 준다.
   const stored = row?.passwordHash ?? hashPassword(crypto.randomBytes(16).toString("hex"));
@@ -279,7 +394,7 @@ export function authenticate(email: string, password: string): AuthUser {
   if (!row || !ok) {
     throw new AuthError(401, "invalid_credentials", "이메일 또는 비밀번호가 올바르지 않습니다.");
   }
-  return { id: row.id, email: row.email, displayName: row.displayName };
+  return toUser(row);
 }
 
 export function deleteAccount(userId: string): void {

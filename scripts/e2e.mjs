@@ -4,8 +4,9 @@
  *   npm run build && npm start     # 다른 터미널에서
  *   npm run e2e
  *
- * 온보딩 → 가입 → 스캔 → 결과 → 기록 → 건강 정보 → 프로필 → 로그아웃 → 재로그인까지
- * 확인하고, 마지막에 다른 계정으로 가입해 남의 기록이 보이지 않는 것까지 본다.
+ * 온보딩 → (로그인 없이) 스캔 → 결과 → 기록 → 건강 정보 → 프로필에서 로그인 →
+ * 이 기기 기록 가져오기 → 로그아웃 → 다시 로그인까지 확인하고, 마지막에 다른 계정으로
+ * 가입해 남의 기록이 보이지 않는 것까지 본다.
  * 계정은 지워지지 않으므로 실행마다 새 이메일을 쓴다.
  */
 import { chromium } from "playwright";
@@ -43,17 +44,10 @@ await shot(page, "02-onboarding-privacy");
 await page.click("text=시작하기");
 await page.waitForTimeout(500);
 
-// 2. 가입
-if (!(await has("계정을 만들어요")) && !(await has("다시 오셨네요"))) problems.push("로그인 화면이 안 나옴");
-await page.click("text=계정이 없으신가요? 가입하기");
-await page.waitForTimeout(200);
-await page.fill('input[type="text"]', "준");
-await page.fill('input[type="email"]', EMAIL);
-await page.fill('input[type="password"]', "testpassword1");
-await shot(page, "03-signup");
-await page.click("text=가입하고 시작하기");
+// 2. 로그인 화면 없이 바로 앱으로 들어와야 한다
+if (await has("계정이 없으신가요? 가입하기")) problems.push("로그인 화면이 앞을 막고 있음");
 await page.waitForSelector("text=손톱 스캔 시작하기", { timeout: 20000 });
-await shot(page, "04-home-empty");
+await shot(page, "03-home-guest");
 
 // 3. 스캔
 const bytes = await page.evaluate(async () => {
@@ -105,45 +99,69 @@ await page.waitForTimeout(500);
 if (!(await has("이 글은 일반적인 건강 정보"))) problems.push("글 상세에 비진단 안내가 없음");
 await shot(page, "09-article");
 
-// 6. 프로필
+// 6. 프로필: 로그인하지 않은 상태 안내 → 로그인
 await page.click(".tabbar >> text=프로필");
 await page.waitForTimeout(600);
-if (!(await has(EMAIL))) problems.push("프로필에 계정 정보가 없음");
+if (!(await has("이 기기에 저장 중"))) problems.push("게스트 상태 안내가 없음");
 if (!(await has("NailSense v"))) problems.push("버전 표시가 없음");
-await shot(page, "10-profile");
+await shot(page, "10-profile-guest");
 
-// 7. 로그아웃 후 다시 로그인
-await page.click("text=로그아웃");
-await page.waitForTimeout(800);
-if (!(await has("다시 오셨네요"))) problems.push("로그아웃 후 로그인 화면이 아님");
+await page.click(".signin-btn");
+await page.waitForTimeout(600);
+if (!(await has("다시 오셨네요"))) problems.push("프로필에서 로그인 화면이 열리지 않음");
+await shot(page, "11-auth-optional");
+await page.click("text=계정이 없으신가요? 가입하기");
+await page.waitForTimeout(200);
+await page.fill('input[type="text"]', "준");
 await page.fill('input[type="email"]', EMAIL);
 await page.fill('input[type="password"]', "testpassword1");
-await page.click("text=로그인");
+await page.click("text=가입하고 시작하기");
 await page.waitForSelector(".tabbar", { timeout: 20000 });
-await page.waitForTimeout(800);
-await page.click(".tabbar >> text=기록");
-await page.waitForTimeout(800);
-const rows2 = await page.locator(".history-item").count();
-if (rows2 !== 1) problems.push(`재로그인 후 기록이 안 보임 (${rows2}건)`);
-await shot(page, "11-after-relogin");
+await page.waitForTimeout(1000);
 
-// 8. 다른 계정은 남의 기록을 못 본다
+// 7. 이 기기에 있던 기록을 계정으로 가져온다
+await page.click(".tabbar >> text=프로필");
+await page.waitForTimeout(800);
+if (!(await has("이 기기에 남아 있는 기록"))) problems.push("로컬 기록 가져오기 안내가 없음");
+await page.click("text=계정으로 가져오기");
+await page.waitForTimeout(1200);
+await shot(page, "12-imported");
+await page.click(".tabbar >> text=기록");
+await page.waitForTimeout(900);
+const rows2 = await page.locator(".history-item").count();
+if (rows2 !== 1) problems.push(`가져온 기록이 계정에 없음 (${rows2}건)`);
+
+// 8. 로그아웃하면 로그인 화면이 아니라 앱으로 돌아온다
+await page.click(".tabbar >> text=프로필");
+await page.waitForTimeout(500);
+await page.click("text=로그아웃");
+await page.waitForTimeout(900);
+if (await has("다시 오셨네요")) problems.push("로그아웃 후 로그인 화면에 갇힘");
+if ((await page.locator(".tabbar").count()) === 0) problems.push("로그아웃 후 앱이 사라짐");
+await shot(page, "13-after-signout");
+
+// 9. 다른 계정은 남의 기록을 못 본다
 const ctx2 = await browser.newContext({ viewport: { width: 390, height: 844 } });
 const page2 = await ctx2.newPage();
 await page2.goto(B, { waitUntil: "networkidle" });
 await page2.waitForTimeout(600);
 if (await page2.locator("text=건너뛰기").count()) await page2.click("text=건너뛰기");
+await page2.waitForTimeout(600);
+await page2.click(".tabbar >> text=프로필");
+await page2.waitForTimeout(500);
+await page2.click(".signin-btn");
 await page2.waitForTimeout(400);
 await page2.click("text=계정이 없으신가요? 가입하기");
 await page2.fill('input[type="email"]', OTHER);
 await page2.fill('input[type="password"]', "testpassword2");
 await page2.click("text=가입하고 시작하기");
 await page2.waitForSelector(".tabbar", { timeout: 20000 });
+await page2.waitForTimeout(900);
 await page2.click(".tabbar >> text=기록");
 await page2.waitForTimeout(800);
 const otherRows = await page2.locator(".history-item").count();
 if (otherRows !== 0) problems.push(`다른 계정에 남의 기록이 보임 (${otherRows}건)`);
-await shot(page2, "12-other-user-empty");
+await shot(page2, "14-other-user-empty");
 
 await browser.close();
 if (problems.length) {

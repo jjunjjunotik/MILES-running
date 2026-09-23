@@ -17,7 +17,8 @@
     "smoke:dev": "node scripts/smoke-dev.mjs",
     "check:secrets": "node scripts/check-secrets.mjs",
     "models": "node scripts/models.mjs",
-    "e2e": "node scripts/e2e.mjs"
+    "e2e": "node scripts/e2e.mjs",
+    "check:oauth": "node scripts/check-oauth.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

@@ -73,11 +73,14 @@ export function ScanScreen({
   settings,
   demoMode,
   online = true,
+  signedIn = false,
   onDone,
 }: {
   settings: Settings;
   demoMode: boolean;
   online?: boolean;
+  /** 로그인했으면 결과는 계정에, 아니면 이 기기에 저장한다. */
+  signedIn?: boolean;
   onDone: (view: ResultView) => Promise<void> | void;
 }) {
   const [image, setImage] = useState<PreparedImage | null>(null);
@@ -190,7 +193,8 @@ export function ScanScreen({
       };
 
       try {
-        if (STANDALONE_DEMO) {
+        if (STANDALONE_DEMO || !signedIn) {
+          // 계정이 없으면 결과도 사진도 이 기기에만 남는다.
           await saveRecord(record, settings.keepPhotos ? image.blob : null);
         } else if (settings.keepPhotos) {
           await putImage(recordId, image.blob);

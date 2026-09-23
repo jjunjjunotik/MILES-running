@@ -25,6 +25,14 @@ export interface AuthUser {
   id: string;
   email: string;
   displayName: string;
+  provider: "password" | "google" | "apple";
+  hasPassword: boolean;
+}
+
+export interface Providers {
+  password: boolean;
+  google: { clientId: string } | false;
+  apple: { clientId: string } | false;
 }
 
 export interface ServerPreferences {
@@ -116,6 +124,32 @@ export async function fetchMe(): Promise<AuthUser | null> {
   return body.user;
 }
 
+/** 로그인 화면이 어떤 버튼을 그릴지 서버에 묻는다. 설정되지 않은 제공자는 그리지 않는다. */
+export async function fetchProviders(): Promise<Providers> {
+  const body = await request<{ providers: Providers }>("/auth/providers");
+  return body.providers;
+}
+
+export async function signInWithGoogle(idToken: string): Promise<AuthUser> {
+  const body = await request<{ user: AuthUser }>("/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ idToken }),
+  });
+  return body.user;
+}
+
+export async function signInWithApple(input: {
+  idToken?: string;
+  code?: string;
+  name?: string;
+}): Promise<AuthUser> {
+  const body = await request<{ user: AuthUser }>("/auth/apple", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return body.user;
+}
+
 export async function signup(input: {
   email: string;
   password: string;
@@ -143,10 +177,13 @@ export async function logout(): Promise<void> {
   await request("/auth/logout", { method: "POST" });
 }
 
-export async function deleteAccount(password: string): Promise<void> {
+export async function deleteAccount(input: {
+  password?: string;
+  confirmEmail?: string;
+}): Promise<void> {
   await request("/auth/account", {
     method: "DELETE",
-    body: JSON.stringify({ password }),
+    body: JSON.stringify(input),
   });
 }
 

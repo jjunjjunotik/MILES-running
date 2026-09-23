@@ -20,7 +20,7 @@ import {
   sameOriginOnly,
   securityHeaders,
 } from "./security.js";
-import { attachUser, requireUser } from "./auth.js";
+import { attachUser } from "./auth.js";
 import { api, saveFailedScan, saveScan } from "./routes.js";
 import { DB_PATH, db } from "./db.js";
 import { seedArticles } from "./seed-articles.js";
@@ -84,7 +84,7 @@ app.get("/api/health", (req, res) => {
 // 계정 · 기록 · 설정 · 건강 정보
 app.use("/api", api);
 
-app.post("/api/analyze", sameOriginOnly, requireUser, analyzeLimiter, async (req, res) => {
+app.post("/api/analyze", sameOriginOnly, analyzeLimiter, async (req, res) => {
   const send = (status: number, body: AnalyzeResponse) =>
     res.status(status).json(body);
 
@@ -122,14 +122,19 @@ app.post("/api/analyze", sameOriginOnly, requireUser, analyzeLimiter, async (req
     note: typeof note === "string" ? note.slice(0, 300) : "",
   };
 
-  // 기록에 남길 값들. 사진 자체는 서버에 저장하지 않는다.
-  const record = {
-    userId: req.user!.id,
-    hand: hand === "left" ? "left" : "right",
-    finger: typeof fingerKey === "string" ? fingerKey : "index",
-    note: input.note,
-    capturedAt: Date.now(),
-  };
+  /**
+   * 기록에 남길 값들. 사진 자체는 서버에 저장하지 않는다.
+   * 로그인하지 않았으면 서버에는 아무것도 남기지 않는다. 그때 기록은 기기 안에만 쌓인다.
+   */
+  const record = req.user
+    ? {
+        userId: req.user.id,
+        hand: hand === "left" ? "left" : "right",
+        finger: typeof fingerKey === "string" ? fingerKey : "index",
+        note: input.note,
+        capturedAt: Date.now(),
+      }
+    : null;
 
   if (!hasCredentials()) {
     if (!ALLOW_DEMO) {
@@ -141,6 +146,9 @@ app.post("/api/analyze", sameOriginOnly, requireUser, analyzeLimiter, async (req
       });
     }
     const analysis = buildDemoAnalysis(image.length % 13);
+    if (!record) {
+      return send(200, { ok: true, demo: true, model: "demo", analysis });
+    }
     const scanId = saveScan({
       ...record,
       imageRef: null,
@@ -161,7 +169,7 @@ app.post("/api/analyze", sameOriginOnly, requireUser, analyzeLimiter, async (req
     if (!analysis.isNailPhoto) {
       const message =
         "사진에서 손톱을 찾지 못했습니다. 손톱이 화면을 채우도록 다시 촬영해 주세요.";
-      saveFailedScan({ ...record, code: "not_a_nail_photo", message });
+      if (record) saveFailedScan({ ...record, code: "not_a_nail_photo", message });
       return send(422, { ok: false, code: "not_a_nail_photo", error: message });
     }
     if (!analysis.imageQuality.usable) {
@@ -169,11 +177,16 @@ app.post("/api/analyze", sameOriginOnly, requireUser, analyzeLimiter, async (req
         analysis.imageQuality.issues.length > 0
           ? `사진을 살펴보기 어려웠습니다: ${analysis.imageQuality.issues.join(", ")}`
           : "사진이 흐려 관찰이 어려웠습니다. 밝은 곳에서 다시 촬영해 주세요.";
-      saveFailedScan({ ...record, code: "unusable_image", message });
+      if (record) saveFailedScan({ ...record, code: "unusable_image", message });
       return send(422, { ok: false, code: "unusable_image", error: message });
     }
 
     const provider = activeProvider();
+    if (!record) {
+      // 로그인하지 않은 사람의 분석은 서버에 흔적을 남기지 않는다.
+      return send(200, { ok: true, demo: false, model: provider.model, analysis });
+    }
+
     const scanId = saveScan({
       ...record,
       imageRef: null,
@@ -196,7 +209,7 @@ app.post("/api/analyze", sameOriginOnly, requireUser, analyzeLimiter, async (req
     if (err instanceof AnalyzeError) {
       // 오류 메시지만 남기고 이미지나 요청 본문은 남기지 않는다.
       console.error(redact(`analyze failed: ${err.code}`));
-      saveFailedScan({ ...record, code: err.code, message: err.message });
+      if (record) saveFailedScan({ ...record, code: err.code, message: err.message });
       const status =
         err.code === "rate_limited" ? 429 : err.code === "declined" ? 422 : 502;
       return send(status, { ok: false, code: err.code, error: err.message });

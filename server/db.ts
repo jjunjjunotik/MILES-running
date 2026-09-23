@@ -138,6 +138,24 @@ const MIGRATIONS: Migration[] = [
       CREATE INDEX IF NOT EXISTS idx_articles_category ON health_articles(category);
     `,
   },
+  {
+    version: 2,
+    name: "구글 · 애플 로그인 연결",
+    sql: `
+      -- 소셜 계정은 비밀번호가 없다. password_hash 에는 빈 문자열이 들어가고,
+      -- 빈 해시는 어떤 비밀번호와도 맞지 않으므로 비밀번호로는 로그인되지 않는다.
+      ALTER TABLE profiles ADD COLUMN google_sub TEXT;
+      ALTER TABLE profiles ADD COLUMN apple_sub TEXT;
+      ALTER TABLE profiles ADD COLUMN auth_provider TEXT NOT NULL DEFAULT 'password';
+      ALTER TABLE profiles ADD COLUMN email_verified INTEGER NOT NULL DEFAULT 0;
+
+      -- 같은 소셜 계정이 두 프로필에 붙지 않게 한다. NULL 은 여럿이어도 된다.
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_google
+        ON profiles(google_sub) WHERE google_sub IS NOT NULL;
+      CREATE UNIQUE INDEX IF NOT EXISTS idx_profiles_apple
+        ON profiles(apple_sub) WHERE apple_sub IS NOT NULL;
+    `,
+  },
 ];
 
 function migrate(database: DatabaseSync): void {
