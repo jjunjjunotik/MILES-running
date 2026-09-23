@@ -76,112 +76,114 @@
     <div class="screens">
 
       <!-- ================= HOME ================= -->
-      <section class="screen" id="screen-home" data-active="true">
-        <header class="topbar">
-          <div class="row">
-            <span class="wordmark">MILES</span>
-          </div>
-          <div class="row">
+      <section class="screen screen--home" id="screen-home" data-active="true">
+        <header class="topbar topbar--home">
+          <span class="wordmark">MILES</span>
+          <div class="row" style="gap:10px">
             <span class="chip chip--icon" id="streakChip"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-flame"/></svg><b id="streakValue">0</b></span>
             <button class="avatar" type="button" id="homeAvatar" aria-label="Open your profile">YU</button>
           </div>
         </header>
 
-        <!-- Weekly / monthly volume, with the unit switch -->
-        <section class="volume">
-          <div class="volume-controls">
-            <div class="seg" role="group" aria-label="Time range">
-              <button type="button" data-range="week" aria-pressed="true">Weekly</button>
-              <button type="button" data-range="month" aria-pressed="false">Monthly</button>
-            </div>
-            <div class="seg" role="group" aria-label="Distance unit">
-              <button type="button" data-unit="km" aria-pressed="true">KM</button>
-              <button type="button" data-unit="mi" aria-pressed="false">MI</button>
-            </div>
-          </div>
-
-          <div class="volume-readout">
-            <span class="stat-value" id="volumeValue">0.00</span>
-            <span class="volume-unit" id="volumeUnit">km</span>
-          </div>
-
-          <div class="volume-meta">
-            <div class="stack" style="gap:4px">
-              <span class="stat-label" id="volumeLabel">This week</span>
-              <span class="delta delta--up" id="volumeDelta">—</span>
-            </div>
-            <div class="spark grow" id="volumeSpark" aria-hidden="true"></div>
-          </div>
-
-          <div class="tier">
-            <div class="stack grow" style="gap:6px">
-              <div class="row row--between">
-                <span class="tier-name" id="tierName">Blaze</span>
-                <span class="tiny" id="tierNext">—</span>
+        <!-- The hero: the week's distance, over the hour you ran it in and
+             the route you ran. The picture is drawn, not fetched. -->
+        <section class="hero" id="homeHero">
+          <canvas class="hero-canvas" id="heroCanvas" aria-hidden="true"></canvas>
+          <div class="hero-veil" aria-hidden="true"></div>
+          <div class="hero-body">
+            <div class="hero-top">
+              <div class="seg seg--sm" role="group" aria-label="Time range">
+                <button type="button" data-range="week" aria-pressed="true">Week</button>
+                <button type="button" data-range="month" aria-pressed="false">Month</button>
               </div>
-              <span class="tiny" id="tierCaption">Intensity · last 7 days</span>
-              <div class="bar"><i id="tierBar" style="width:0%"></i></div>
+              <div class="seg seg--sm" role="group" aria-label="Distance unit">
+                <button type="button" data-unit="km" aria-pressed="true">KM</button>
+                <button type="button" data-unit="mi" aria-pressed="false">MI</button>
+              </div>
+            </div>
+
+            <div class="hero-readout">
+              <span class="eyebrow" id="volumeLabel">This week</span>
+              <div class="hero-number">
+                <span id="volumeValue">0.00</span>
+                <span class="hero-unit" id="volumeUnit">km</span>
+              </div>
+              <div class="hero-meta">
+                <span class="delta chip--icon" id="volumeDelta">—</span>
+                <div class="spark" id="volumeSpark" aria-hidden="true"></div>
+              </div>
             </div>
           </div>
         </section>
 
-        <!-- Map with my location, plus the territory and quest rail -->
-        <div class="field">
-          <div class="map-frame">
-            <canvas id="homeMap"></canvas>
-            <div class="map-overlay">
-              <span class="geo-note" id="geoNote">Simulated location</span>
-              <button class="locate" id="locateBtn" type="button" aria-label="Center on my location">
-                <svg viewBox="0 0 24 24"><use href="#i-crosshair"/></svg>
-              </button>
-            </div>
+        <!-- Intensity: no box, just the band and its reading. -->
+        <section class="band-row">
+          <div class="row row--between">
+            <span class="tier-name" id="tierName">Blaze</span>
+            <span class="label-sm" id="tierNext">—</span>
           </div>
+          <div class="bar bar--lg"><i id="tierBar" style="width:0%"></i></div>
+          <span class="label-sm" id="tierCaption">Intensity · last 7 days</span>
+        </section>
 
-          <div class="rail">
-            <button class="rail-tile rail-tile--territory" type="button" data-goto="territory">
-              <svg class="rail-icon" viewBox="0 0 24 24"><use href="#i-flag"/></svg>
-              <div>
-                <div class="stat-value" id="railArea">0.00</div>
-                <div class="stat-label" id="railAreaUnit">km²</div>
-              </div>
-              <div class="stat-label" style="color:var(--text-mid)">Territory</div>
-            </button>
-
-            <button class="rail-tile rail-tile--quest" type="button" data-goto="quests">
-              <svg class="rail-icon" viewBox="0 0 24 24"><use href="#i-target"/></svg>
-              <div>
-                <div class="stat-value" id="railQuest">0/9</div>
-                <div class="stat-label" id="railRank">Rookie</div>
-              </div>
-              <div class="stat-label" style="color:var(--text-mid)">Quests</div>
-            </button>
-          </div>
-        </div>
-
-        <!-- The two ways to start -->
-        <div class="starts">
+        <!-- The two ways to start, as the screen's main event. -->
+        <section class="starts">
           <button class="start start--solo" type="button" id="startSolo">
-            <svg class="start-icon" viewBox="0 0 24 24"><use href="#i-runner"/></svg>
-            <span class="start-name">Solo</span>
-            <span class="start-sub">Free run,<br />or take ground</span>
-            <span class="start-arrow"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+            <canvas class="start-canvas" aria-hidden="true"></canvas>
+            <span class="start-body">
+              <svg class="start-icon" viewBox="0 0 24 24"><use href="#i-runner"/></svg>
+              <span class="start-name">Solo</span>
+              <span class="start-sub">Free run, or take ground</span>
+            </span>
           </button>
 
           <button class="start start--duo" type="button" id="startDuo">
-            <svg class="start-icon" viewBox="0 0 24 24"><use href="#i-duo"/></svg>
-            <span class="start-name">Race</span>
-            <span class="start-sub">Line up,<br />first home wins</span>
-            <span class="start-arrow"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-arrow"/></svg></span>
+            <canvas class="start-canvas" aria-hidden="true"></canvas>
+            <span class="start-body">
+              <svg class="start-icon" viewBox="0 0 24 24"><use href="#i-duo"/></svg>
+              <span class="start-name">Race</span>
+              <span class="start-sub">Line up, first home wins</span>
+            </span>
           </button>
-        </div>
+        </section>
 
-        <div class="stack" style="margin-top:var(--s-4)">
-          <div class="row row--between">
-            <span class="card-title">Friends this week</span>
-            <button class="tiny" type="button" data-goto="feed" style="color:var(--accent)">See feed</button>
+        <!-- Your ground: the map is the feature, the numbers sit on it. -->
+        <section class="section">
+          <div class="section-head">
+            <h2 class="section-title">Your ground</h2>
+            <button class="link" type="button" data-goto="territory">Open map</button>
           </div>
-          <div class="card card--tight stack" id="friendBoard"></div>
-        </div>
+          <div class="ground" id="homeGround">
+            <canvas id="homeMap"></canvas>
+            <div class="ground-veil" aria-hidden="true"></div>
+            <div class="ground-stats">
+              <div class="ground-stat">
+                <span class="ground-value" id="railArea">0.00</span>
+                <span class="label-sm" id="railAreaUnit">km² held</span>
+              </div>
+              <div class="ground-stat">
+                <span class="ground-value" id="railQuest">0/9</span>
+                <span class="label-sm">quests done</span>
+              </div>
+            </div>
+            <span class="geo-note" id="geoNote">Simulated location</span>
+            <button class="locate" id="locateBtn" type="button" aria-label="Center on my location">
+              <svg viewBox="0 0 24 24"><use href="#i-crosshair"/></svg>
+            </button>
+            <button class="ground-rank" type="button" data-goto="quests">
+              <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-target"/></svg>
+              <span id="railRank">Rookie</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-head">
+            <h2 class="section-title">Friends this week</h2>
+            <button class="link" type="button" data-goto="feed">See feed</button>
+          </div>
+          <div class="stack" id="friendBoard"></div>
+        </section>
       </section>
 
       <!-- ================= RUN ================= -->
@@ -628,6 +630,7 @@
   <script src="src/js/land.js"></script>
   <script src="src/js/state.js"></script>
   <script src="src/js/crew.js"></script>
+  <script src="src/js/visual.js"></script>
   <script src="src/js/pro.js"></script>
   <script src="src/js/tiles.js"></script>
   <script src="src/js/map.js"></script>

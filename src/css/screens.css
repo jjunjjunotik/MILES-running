@@ -960,3 +960,199 @@
   .celebrate, .celebrate-ring .fill, .celebrate-letter { animation: none; }
   .celebrate-ring .fill { stroke-dashoffset: 0; }
 }
+
+/* ==========================================================================
+   HOME — redesigned
+   The screen stops being a stack of equal boxes. Three things carry it: a
+   picture with the week's distance on it, two start cards big enough to be
+   the point of the screen, and the map as a feature rather than a tile.
+   Everything else sits on the page with nothing around it.
+   ========================================================================== */
+
+.screen--home { padding: 0 var(--gutter) var(--s-4); gap: var(--band); }
+
+.topbar--home {
+  padding: var(--s-5) 0 var(--s-4);
+  display: flex; align-items: center; justify-content: space-between;
+}
+
+/* --- Shared primitives the other screens will inherit --------------------- */
+
+.section { display: flex; flex-direction: column; gap: var(--s-3); flex: none; }
+.section-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
+.section-title {
+  font-size: var(--t-title);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  margin: 0;
+  color: var(--text-hi);
+}
+.link {
+  font-size: var(--t-small);
+  font-weight: 800;
+  color: var(--flame-ink);
+  padding: 4px 0;
+}
+.eyebrow {
+  font-size: var(--t-label);
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-mid);
+}
+.label-sm {
+  font-size: var(--t-micro);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-lo);
+}
+
+/* A picture, however it was made: same crop, same corners, same fallback. */
+.visual-canvas, .visual-photo {
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* --- Hero ----------------------------------------------------------------- */
+
+.hero {
+  position: relative;
+  flex: none;
+  aspect-ratio: 4 / 5;
+  max-height: 58vh;
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  background: var(--ink-800);
+  box-shadow: var(--shadow-2);
+}
+.hero-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+/* Text over a picture needs its own ground, not more opacity. */
+.hero-veil {
+  position: absolute; inset: 0;
+  background:
+    linear-gradient(to top, rgba(5,7,10,0.94) 6%, rgba(5,7,10,0.55) 38%, rgba(5,7,10,0.12) 62%, rgba(5,7,10,0.45) 100%);
+}
+.hero-body {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; justify-content: space-between;
+  padding: var(--s-4);
+}
+.hero-top { display: flex; align-items: center; justify-content: space-between; gap: var(--s-2); }
+.hero-readout { display: flex; flex-direction: column; gap: 2px; }
+.hero-number {
+  display: flex; align-items: baseline; gap: 8px;
+  font-family: var(--font-num);
+  font-size: var(--t-hero);
+  font-weight: 800;
+  letter-spacing: -0.05em;
+  line-height: 0.88;
+  color: #fff;
+  text-shadow: 0 2px 30px rgba(0,0,0,0.5);
+}
+.hero-unit {
+  font-family: var(--font-ui);
+  font-size: var(--t-title);
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: var(--text-mid);
+}
+.hero-meta { display: flex; align-items: center; gap: var(--s-3); margin-top: 10px; }
+.hero-meta .spark { flex: 1; height: 34px; }
+.hero .delta { font-size: var(--t-small); font-weight: 800; }
+
+.seg--sm { background: rgba(8,11,16,0.55); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); }
+.seg--sm button { font-size: var(--t-micro); padding: 7px 13px; }
+
+/* --- Intensity band ------------------------------------------------------- */
+
+.band-row { display: flex; flex-direction: column; gap: 9px; flex: none; }
+.band-row .tier-name { font-size: var(--t-lead); }
+.bar--lg { height: 10px; border-radius: 999px; }
+
+/* --- Start cards ---------------------------------------------------------- */
+
+.starts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); flex: none; }
+.start {
+  position: relative;
+  display: block;
+  aspect-ratio: 1 / 1.16;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  background: var(--ink-800);
+  text-align: left;
+  cursor: pointer;
+  box-shadow: var(--shadow-2);
+  transition: transform 0.15s ease;
+}
+.start:active { transform: scale(0.975); }
+.start-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.start-body {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  gap: 4px;
+  padding: var(--s-4);
+  background: linear-gradient(to top, rgba(5,7,10,0.9) 12%, rgba(5,7,10,0.25) 58%, rgba(5,7,10,0) 100%);
+}
+.start-icon {
+  width: 34px; height: 34px;
+  stroke: #fff; fill: none; stroke-width: 1.8;
+  margin-bottom: auto;
+  filter: drop-shadow(0 2px 8px rgba(0,0,0,0.6));
+}
+.start-name {
+  font-size: 26px; font-weight: 800; letter-spacing: -0.03em; line-height: 1;
+  color: #fff;
+}
+.start-sub { font-size: var(--t-small); font-weight: 700; color: rgba(255,255,255,0.78); line-height: 1.35; }
+
+/* --- Your ground ---------------------------------------------------------- */
+
+.ground {
+  position: relative;
+  flex: none;
+  aspect-ratio: 5 / 4;
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  border: 1px solid var(--hairline);
+  background: var(--ink-800);
+}
+.ground canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.ground-veil {
+  position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(to top, rgba(5,7,10,0.88) 2%, rgba(5,7,10,0) 42%);
+}
+.ground-stats {
+  position: absolute; left: var(--s-4); right: var(--s-4); bottom: var(--s-4);
+  display: flex; gap: var(--s-6);
+  pointer-events: none;
+}
+.ground-stat { display: flex; flex-direction: column; gap: 2px; }
+.ground-value {
+  font-family: var(--font-num);
+  font-size: 30px; font-weight: 800; letter-spacing: -0.04em; line-height: 1;
+  color: #fff;
+}
+.ground-rank {
+  position: absolute; left: var(--s-3); top: var(--s-3);
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 8px 13px;
+  border-radius: var(--r-pill);
+  background: rgba(8,11,16,0.8);
+  border: 1px solid rgba(168,85,247,0.45);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  color: var(--violet-ink);
+  font-size: var(--t-small); font-weight: 800;
+  cursor: pointer;
+}
+.ground-rank .ico { width: 16px; height: 16px; }
+.ground .geo-note { position: absolute; right: var(--s-3); top: var(--s-3); }
+.ground .locate { position: absolute; right: var(--s-3); bottom: var(--s-3); }
+
+/* A phone shorter than a modern one: the hero gives up height first. */
+@media (max-height: 760px) {
+  .hero { aspect-ratio: 1 / 1; }
+  .screen--home { gap: var(--s-5); }
+}

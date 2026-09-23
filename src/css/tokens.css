@@ -23,7 +23,22 @@
   --text-mid: #bcc8d5;
   --text-lo:  #97a4b4;
 
-  /* --- Brand ------------------------------------------------------------ */
+  /* --- Brand ------------------------------------------------------------
+     Three colours with three jobs, and they never swap:
+
+       flame   the brand, and every primary action. Fixed.
+       violet  territory and the game around it.
+       lime    you — your route, your land, your name in a field of rivals.
+
+     `--accent` below is a fourth thing and not a brand colour: it is the
+     intensity ramp, which moves from ember to apex with weekly volume. It
+     drives atmosphere (glow, aurora, the tier bar) and must never be used for
+     a button, or the primary action would change colour as you trained. */
+  --flame:    #ff6a1f;
+  --flame-2:  #ffa23a;
+  --flame-dim:#c14a0f;
+  --flame-ink:#ffab6b;   /* flame, legible as small type */
+
   --lime:    #c8ff2e;   /* MILES signature — you, your pace, your land     */
   --lime-dim:#8fbb15;
   --cyan:    #2fe0ff;   /* data, telemetry, live signal                    */
@@ -55,10 +70,10 @@
   --energy-lift: calc(1px + 5px * var(--energy));
 
   /* --- Radius & spacing -------------------------------------------------- */
-  --r-sm: 10px;
-  --r-md: 16px;
-  --r-lg: 22px;
-  --r-xl: 30px;
+  --r-sm: 12px;
+  --r-md: 18px;
+  --r-lg: 24px;
+  --r-xl: 32px;
   --r-pill: 999px;
 
   --s-1: 4px;
@@ -69,9 +84,34 @@
   --s-6: 30px;
   --s-7: 42px;
 
-  /* --- Type -------------------------------------------------------------- */
+  /* The page's own rhythm. One gutter and one gap between sections, so the
+     screen reads as bands of content rather than a stack of equal boxes. */
+  --gutter: 20px;
+  --band: 30px;
+
+  /* --- Type --------------------------------------------------------------
+     A real ladder rather than a cluster: the difference between a screen
+     title and a caption should be obvious at arm's length, which it is not
+     when everything sits between 11 and 19px. ---------------------------- */
   --font-ui: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-num: "SF Mono", "JetBrains Mono", "Roboto Mono", ui-monospace, monospace;
+
+  --t-hero:    clamp(62px, 19vw, 86px);   /* the one number a screen is about */
+  --t-display: 30px;                      /* screen titles                    */
+  --t-title:   21px;                      /* card titles                      */
+  --t-lead:    17px;                      /* the line under a title           */
+  --t-body:    15px;                      /* body copy                        */
+  --t-small:   13px;
+  --t-label:   12px;                      /* uppercase, tracked               */
+  --t-micro:   11.5px;
+
+  /* --- Surfaces ----------------------------------------------------------
+     Not everything is a box. Level 0 is the page itself and most content
+     lives there with nothing around it; level 1 is a card that earns its
+     edges; level 2 is a hero that carries a picture. ---------------------- */
+  --surface-1: linear-gradient(168deg, rgba(255,255,255,0.055), rgba(255,255,255,0.022));
+  --surface-2: rgba(255, 255, 255, 0.03);
+  --hairline:  rgba(255, 255, 255, 0.07);
 
   /* --- Elevation --------------------------------------------------------- */
   --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);

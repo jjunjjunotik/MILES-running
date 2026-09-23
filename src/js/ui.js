@@ -289,6 +289,30 @@
       });
     },
 
+    /**
+     * The home screen's imagery. Drawn from what the runner actually did —
+     * the hour of their last run sets the sky, their route is laid into the
+     * ground — so the picture is theirs rather than a stock one.
+     */
+    paintHome() {
+      const s = State.data;
+      const last = s.activities[0];
+      const hero = $('#heroCanvas');
+      if (hero) {
+        M.Visual.scene(hero, {
+          at: last ? last.startedAt : Date.now(),
+          route: last ? last.route : null,
+          seed: 4021,
+          stroke: '#c8ff2e',                 // lime: the route is yours
+        });
+      }
+      // The two start cards: flame for the solo run, magenta for the race.
+      const solo = $('.start--solo .start-canvas');
+      const duo = $('.start--duo .start-canvas');
+      if (solo) M.Visual.band(solo, { seed: 31, from: '#ff6a1f', to: '#a855f7' });
+      if (duo) M.Visual.band(duo, { seed: 77, from: '#ff3d8b', to: '#2fe0ff' });
+    },
+
     renderHome() {
       const s = State.data;
       const weekly = Stats.weekly(s);
@@ -313,6 +337,8 @@
       deltaNode.appendChild(el('span', {
         text: `${Units.distText(Math.abs(diff))} ${Units.distLabel()} vs last ${isWeek ? 'week' : 'month'} · ${current.runs} ${current.runs === 1 ? 'run' : 'runs'}`,
       }));
+
+      this.paintHome();
 
       // Sparkline
       const buckets = isWeek ? Stats.weekDays(s) : Stats.monthBuckets(s);

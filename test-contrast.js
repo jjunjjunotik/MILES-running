@@ -126,7 +126,14 @@ const AUDIT = `(() => {
     await page.waitForTimeout(450);
     (await page.evaluate(AUDIT)).forEach((r) => {
       const k = `${r.cls}|${r.size}|${r.weight}`;
-      const bucket = GRADIENT.test(r.cls || '') ? onGradient : seen;
+      // An element whose backdrop really is a gradient goes to the gradient
+      // pass whether or not anybody remembered to list it. "Really is" means
+      // opaque: a gradient of rgba(...,0.14) is a tint over the surface below,
+      // and the composited measurement already handles that correctly —
+      // measuring against its raw stops would be measuring a colour that is
+      // never actually on screen.
+      const solidGradient = r.stops && r.stops.length && r.stops.every((c) => c.a >= 0.9);
+      const bucket = solidGradient || GRADIENT.test(r.cls || '') ? onGradient : seen;
       if (!bucket.has(k) || bucket.get(k).ratio > r.ratio) bucket.set(k, r);
     });
   }
