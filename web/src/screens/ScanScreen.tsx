@@ -228,7 +228,8 @@ export function ScanScreen({
       <>
         <TopBar title="분석 중" />
         <main className="screen">
-          <div className="analyzing">
+          {/* 진행 상황을 화면 낭독기에도 알린다. */}
+          <div className="analyzing" role="status" aria-live="polite">
             <div className="pulse-ring" />
             <div>
               <div style={{ fontWeight: 600, marginBottom: 4 }}>
