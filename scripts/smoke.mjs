@@ -34,6 +34,19 @@ page.on("console", (message) => {
 page.on("pageerror", (error) => problems.push(`pageerror: ${error.message}`));
 
 await page.goto(BASE, { waitUntil: "networkidle" });
+await page.waitForTimeout(600);
+
+// 온보딩을 건너뛰고 새 계정으로 들어간다. 계정마다 기록이 분리되므로 매번 새로 만든다.
+if ((await page.locator("text=건너뛰기").count()) > 0) {
+  await page.click("text=건너뛰기");
+  await page.waitForTimeout(400);
+}
+await page.click("text=계정이 없으신가요? 가입하기");
+await page.waitForTimeout(200);
+await page.fill('input[type="email"]', `smoke-${Date.now()}@example.com`);
+await page.fill('input[type="password"]', "smoketest123");
+await page.click("text=가입하고 시작하기");
+await page.waitForSelector("text=손톱 스캔 시작하기", { timeout: 30000 });
 await shot(page, "01-home.png");
 
 await page.click("text=손톱 스캔 시작하기");

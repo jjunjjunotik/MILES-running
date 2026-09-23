@@ -15,8 +15,8 @@ const TABS: {
 }[] = [
   { key: "home", label: "홈", Icon: HomeIcon },
   { key: "scan", label: "스캔", Icon: ScanIcon },
-  { key: "result", label: "결과", Icon: ResultIcon },
   { key: "history", label: "기록", Icon: HistoryIcon },
+  { key: "library", label: "정보", Icon: ResultIcon },
   { key: "profile", label: "프로필", Icon: ProfileIcon },
 ];
 

@@ -27,6 +27,20 @@ page.on("response", (response) => {
 });
 
 await page.goto(BASE, { waitUntil: "networkidle" });
+await page.waitForTimeout(600);
+
+// 분석은 로그인한 사용자만 할 수 있다. 실행마다 새 계정으로 들어간다.
+if ((await page.locator("text=건너뛰기").count()) > 0) {
+  await page.click("text=건너뛰기");
+  await page.waitForTimeout(400);
+}
+await page.click("text=계정이 없으신가요? 가입하기");
+await page.waitForTimeout(200);
+await page.fill('input[type="email"]', `smoke-dev-${Date.now()}@example.com`);
+await page.fill('input[type="password"]', "smoketest123");
+await page.click("text=가입하고 시작하기");
+await page.waitForSelector("text=손톱 스캔 시작하기", { timeout: 30000 });
+
 await page.click("text=손톱 스캔 시작하기");
 await page.waitForTimeout(400);
 

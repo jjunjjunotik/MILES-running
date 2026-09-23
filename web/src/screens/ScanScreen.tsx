@@ -7,7 +7,8 @@ import {
 import type { ResultView } from "../App";
 import { analyze, ApiError } from "../lib/api";
 import { ImageError, prepareImage, type PreparedImage } from "../lib/image";
-import { saveRecord, type Settings } from "../lib/storage";
+import { putImage, saveRecord, type Settings } from "../lib/storage";
+import { STANDALONE_DEMO } from "../lib/api";
 import {
   CameraIcon,
   CheckIcon,
@@ -34,6 +35,7 @@ const STEPS = [
  * 이건 실패가 아니라 "다시 찍어 주세요"라는 결과이므로 바로 알려 주는 편이 맞다.
  */
 const STOP_CODES = new Set([
+  "unauthorized",
   "not_a_nail_photo",
   "unusable_image",
   "bad_request",
@@ -70,10 +72,12 @@ function wait(ms: number, signal: AbortSignal): Promise<void> {
 export function ScanScreen({
   settings,
   demoMode,
+  online = true,
   onDone,
 }: {
   settings: Settings;
   demoMode: boolean;
+  online?: boolean;
   onDone: (view: ResultView) => Promise<void> | void;
 }) {
   const [image, setImage] = useState<PreparedImage | null>(null);
@@ -154,7 +158,9 @@ export function ScanScreen({
             mediaType: image.mediaType,
             hand,
             finger: FINGER_LABELS[finger],
+            fingerKey: finger,
             note,
+            keepPhoto: settings.keepPhotos,
             signal,
           });
         } catch (err) {
@@ -169,10 +175,12 @@ export function ScanScreen({
         }
       }
 
-      const { analysis, demo } = result;
+      const { analysis, demo, scanId } = result;
 
+      // 로그인 상태에서는 서버가 기록 아이디를 정한다. 사진은 그 아이디로 기기에 저장한다.
+      const recordId = scanId ?? crypto.randomUUID();
       const record = {
-        id: crypto.randomUUID(),
+        id: recordId,
         createdAt: Date.now(),
         hand,
         finger,
@@ -182,7 +190,11 @@ export function ScanScreen({
       };
 
       try {
-        await saveRecord(record, settings.keepPhotos ? image.blob : null);
+        if (STANDALONE_DEMO) {
+          await saveRecord(record, settings.keepPhotos ? image.blob : null);
+        } else if (settings.keepPhotos) {
+          await putImage(recordId, image.blob);
+        }
       } catch {
         // 저장소를 못 쓰더라도 결과는 보여 준다.
       }
@@ -336,6 +348,18 @@ export function ScanScreen({
           </div>
         )}
 
+        {image && image.quality.level === "warn" && (
+          <div className="mt-12">
+            <Notice tone="strong" icon={<InfoIcon size={15} />}>
+              <strong>{image.quality.issues.join(" · ")}</strong>
+              <br />
+              {image.quality.hint}
+              <br />
+              이대로도 분석할 수 있지만, 볼 수 있는 항목이 줄어들 수 있어요.
+            </Notice>
+          </div>
+        )}
+
         <div className="section-title">어느 손톱인가요?</div>
         <div className="card">
           <div className="chip-row">
@@ -404,18 +428,22 @@ export function ScanScreen({
 
         <button
           className="btn btn-primary mt-16"
-          disabled={!image}
+          disabled={!image || !online}
           onClick={() => void run()}
         >
           <SparkIcon size={18} />
           분석 시작
         </button>
 
-        {!image && (
+        {!online ? (
+          <div className="small muted center mt-8">
+            <InfoIcon size={13} /> 네트워크가 연결되면 분석할 수 있어요
+          </div>
+        ) : !image ? (
           <div className="small muted center mt-8">
             <InfoIcon size={13} /> 먼저 사진을 선택해 주세요
           </div>
-        )}
+        ) : null}
       </main>
     </>
   );

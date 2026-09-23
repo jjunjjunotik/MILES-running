@@ -1,8 +1,11 @@
 import type { NailRecord } from "../../../shared/analysis";
 
 /**
- * 모든 기록은 이 기기의 브라우저 안(IndexedDB)에만 저장된다.
- * 서버는 분석 요청을 중계할 뿐 어떤 것도 보관하지 않는다.
+ * 사진은 언제나 이 기기의 브라우저 안(IndexedDB)에만 저장된다. 서버로 보내지 않는다.
+ *
+ * 로그인하면 분석 결과는 계정(서버)에 저장되고, 사진만 여기에 남는다.
+ * 같은 기기를 여러 사람이 쓸 수 있으므로 사진 키에 사용자 아이디를 붙여 나눠 둔다.
+ * 로그아웃하면 범위가 바뀌어 남의 사진에 손이 닿지 않는다.
  */
 const DB_NAME = "nailsense";
 const DB_VERSION = 1;
@@ -10,6 +13,17 @@ const STORE_RECORDS = "records";
 const STORE_IMAGES = "images";
 
 let dbPromise: Promise<IDBDatabase> | null = null;
+
+/** 사진 키 앞에 붙는 범위. 로그인하면 사용자 아이디로 바뀐다. */
+let imageScope = "local";
+
+export function setStorageScope(scope: string | null): void {
+  imageScope = scope ?? "local";
+}
+
+function imageKey(id: string): string {
+  return `${imageScope}:${id}`;
+}
 
 function openDb(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
@@ -89,7 +103,7 @@ export async function saveRecord(
     async () => {
       await tx([STORE_RECORDS, STORE_IMAGES], "readwrite", (t) => {
         t.objectStore(STORE_RECORDS).put(record);
-        if (image) t.objectStore(STORE_IMAGES).put(image, record.id);
+        if (image) t.objectStore(STORE_IMAGES).put(image, imageKey(record.id));
       });
     },
     () => {
@@ -114,9 +128,61 @@ export async function getImage(id: string): Promise<Blob | undefined> {
   return await withDb(
     async () =>
       await tx<Blob>([STORE_IMAGES], "readonly", (t) =>
-        t.objectStore(STORE_IMAGES).get(id),
+        t.objectStore(STORE_IMAGES).get(imageKey(id)),
       ),
-    () => memoryImages.get(id),
+    () => memoryImages.get(imageKey(id)),
+  );
+}
+
+export async function putImage(id: string, image: Blob): Promise<void> {
+  await withDb(
+    async () => {
+      await tx([STORE_IMAGES], "readwrite", (t) =>
+        void t.objectStore(STORE_IMAGES).put(image, imageKey(id)),
+      );
+    },
+    () => {
+      memoryImages.set(imageKey(id), image);
+    },
+  );
+}
+
+export async function deleteImage(id: string): Promise<void> {
+  await withDb(
+    async () => {
+      await tx([STORE_IMAGES], "readwrite", (t) =>
+        void t.objectStore(STORE_IMAGES).delete(imageKey(id)),
+      );
+    },
+    () => {
+      memoryImages.delete(imageKey(id));
+    },
+  );
+}
+
+/** 지금 범위(= 로그인한 사용자)의 사진만 지운다. 다른 사용자 사진은 건드리지 않는다. */
+export async function clearScopedImages(): Promise<void> {
+  const prefix = `${imageScope}:`;
+  await withDb(
+    async () => {
+      const keys =
+        (await tx<IDBValidKey[]>([STORE_IMAGES], "readonly", (t) =>
+          t.objectStore(STORE_IMAGES).getAllKeys(),
+        )) ?? [];
+      const mine = keys.filter(
+        (key) => typeof key === "string" && key.startsWith(prefix),
+      );
+      if (mine.length === 0) return;
+      await tx([STORE_IMAGES], "readwrite", (t) => {
+        const store = t.objectStore(STORE_IMAGES);
+        for (const key of mine) store.delete(key);
+      });
+    },
+    () => {
+      for (const key of [...memoryImages.keys()]) {
+        if (key.startsWith(prefix)) memoryImages.delete(key);
+      }
+    },
   );
 }
 
@@ -125,12 +191,12 @@ export async function deleteRecord(id: string): Promise<void> {
     async () => {
       await tx([STORE_RECORDS, STORE_IMAGES], "readwrite", (t) => {
         t.objectStore(STORE_RECORDS).delete(id);
-        t.objectStore(STORE_IMAGES).delete(id);
+        t.objectStore(STORE_IMAGES).delete(imageKey(id));
       });
     },
     () => {
       memoryRecords.delete(id);
-      memoryImages.delete(id);
+      memoryImages.delete(imageKey(id));
     },
   );
 }
@@ -149,13 +215,13 @@ export async function clearAll(): Promise<void> {
   );
 }
 
-/** 사진만 지우고 분석 기록은 남긴다. */
+/** 사진만 지우고 분석 기록은 남긴다. (서버 없이 도는 데모용) */
 export async function clearImagesOnly(): Promise<void> {
   const records = await listRecords();
+  await clearScopedImages();
   await withDb(
     async () => {
-      await tx([STORE_RECORDS, STORE_IMAGES], "readwrite", (t) => {
-        t.objectStore(STORE_IMAGES).clear();
+      await tx([STORE_RECORDS], "readwrite", (t) => {
         const store = t.objectStore(STORE_RECORDS);
         for (const record of records) {
           if (record.hasImage) store.put({ ...record, hasImage: false });
@@ -163,7 +229,6 @@ export async function clearImagesOnly(): Promise<void> {
       });
     },
     () => {
-      memoryImages.clear();
       for (const record of records) {
         if (record.hasImage) {
           memoryRecords.set(record.id, { ...record, hasImage: false });

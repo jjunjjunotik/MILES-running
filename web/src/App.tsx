@@ -9,19 +9,41 @@ import { HomeScreen } from "./screens/HomeScreen";
 import { ScanScreen } from "./screens/ScanScreen";
 import { ResultScreen } from "./screens/ResultScreen";
 import { HistoryScreen } from "./screens/HistoryScreen";
+import { LibraryScreen } from "./screens/LibraryScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
+import { OnboardingScreen } from "./screens/OnboardingScreen";
+import { AuthScreen } from "./screens/AuthScreen";
 import {
   DEFAULT_SETTINGS,
+  clearAll,
+  deleteImage,
+  deleteRecord as deleteLocalRecord,
   getImage,
   listRecords,
   loadSettings,
   saveSettings,
+  setStorageScope,
   type Settings,
 } from "./lib/storage";
 import { health, STANDALONE_DEMO } from "./lib/api";
+import {
+  deleteAllScans,
+  deleteScan,
+  fetchMe,
+  fetchPreferences,
+  listScans,
+  logout as serverLogout,
+  savePreferences,
+  toRecord,
+  type AuthUser,
+  type ServerScan,
+} from "./lib/server";
 import { seedExampleRecords } from "./lib/seed";
 
-export type Tab = "home" | "scan" | "result" | "history" | "profile";
+export type Tab = "home" | "scan" | "library" | "history" | "profile";
+
+/** 앱이 지금 어느 단계에 있는지. 로그인 상태가 정해지기 전에는 아무것도 보여 주지 않는다. */
+type Phase = "loading" | "onboarding" | "auth" | "ready";
 
 export interface ResultView {
   recordId: string;
@@ -35,54 +57,163 @@ export interface ResultView {
   demo: boolean;
 }
 
+const ONBOARDED_KEY = "nailsense.onboarded.v1";
+
 export function App() {
+  const [phase, setPhase] = useState<Phase>("loading");
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [tab, setTab] = useState<Tab>("home");
   const [records, setRecords] = useState<NailRecord[]>([]);
+  const [failedScans, setFailedScans] = useState<ServerScan[]>([]);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [result, setResult] = useState<ResultView | null>(null);
   const [demoMode, setDemoMode] = useState(false);
   const [provider, setProvider] = useState<string | null>(null);
+  const [online, setOnline] = useState(
+    typeof navigator === "undefined" ? true : navigator.onLine,
+  );
 
   // 이전 결과의 blob URL 을 확실히 해제하기 위해 ref 로 들고 있는다.
   const currentUrl = useRef<string | null>(null);
 
+  /** 기록을 다시 읽는다. 로그인 상태면 서버에서, 데모 빌드면 이 기기에서. */
   const refreshRecords = useCallback(async () => {
+    if (STANDALONE_DEMO) {
+      try {
+        setRecords(await listRecords());
+      } catch {
+        setRecords([]);
+      }
+      return;
+    }
+
     try {
-      setRecords(await listRecords());
+      const scans = await listScans();
+      setRecords(
+        scans
+          .map(toRecord)
+          .filter((record): record is NailRecord => record !== null),
+      );
+      setFailedScans(scans.filter((scan) => scan.status === "failed"));
     } catch {
-      setRecords([]);
+      // 네트워크가 끊겼을 때 이미 보고 있던 목록을 지우지 않는다.
     }
   }, []);
 
+  /** 로그인 직후, 그리고 새로고침 후 세션이 살아 있을 때 하는 일. */
+  const enterApp = useCallback(
+    async (signedIn: AuthUser) => {
+      setUser(signedIn);
+      // 사진은 기기 안에 사용자별로 나뉘어 저장된다.
+      setStorageScope(signedIn.id);
+
+      try {
+        const prefs = await fetchPreferences();
+        setSettings({
+          nickname: prefs.nickname || signedIn.displayName,
+          keepPhotos: prefs.keepPhotos,
+          expandByDefault: prefs.expandByDefault,
+        });
+      } catch {
+        setSettings(loadSettings());
+      }
+
+      await refreshRecords();
+      setPhase("ready");
+    },
+    [refreshRecords],
+  );
+
   useEffect(() => {
-    setSettings(loadSettings());
-    void health().then((info) => {
-      if (!info) return;
-      setDemoMode(!info.configured && info.demoAvailable);
-      setProvider(info.configured ? (info.provider ?? null) : null);
-    });
-    // 데모 빌드는 예시 기록을 먼저 심고 목록을 읽는다.
+    let cancelled = false;
+
     void (async () => {
+      const seenOnboarding = localStorage.getItem(ONBOARDED_KEY) === "1";
+
+      void health().then((info) => {
+        if (!info || cancelled) return;
+        setDemoMode(!info.configured && info.demoAvailable);
+        setProvider(info.configured ? (info.provider ?? null) : null);
+      });
+
+      // 서버 없이 도는 단일 HTML 데모: 계정 없이 바로 쓴다.
       if (STANDALONE_DEMO) {
+        setSettings(loadSettings());
         try {
           await seedExampleRecords();
         } catch {
           // 저장소를 못 써도 앱은 그대로 동작한다.
         }
+        await refreshRecords();
+        if (!cancelled) setPhase(seenOnboarding ? "ready" : "onboarding");
+        return;
       }
-      await refreshRecords();
+
+      let me: AuthUser | null = null;
+      try {
+        me = await fetchMe();
+      } catch {
+        me = null;
+      }
+      if (cancelled) return;
+
+      if (me) {
+        await enterApp(me);
+        return;
+      }
+      setPhase(seenOnboarding ? "auth" : "onboarding");
     })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [enterApp, refreshRecords]);
+
+  // 네트워크가 끊기고 돌아오는 것을 화면 위쪽 띠로 알린다.
+  useEffect(() => {
+    const goOnline = () => {
+      setOnline(true);
+      void refreshRecords();
+    };
+    const goOffline = () => setOnline(false);
+    window.addEventListener("online", goOnline);
+    window.addEventListener("offline", goOffline);
+    return () => {
+      window.removeEventListener("online", goOnline);
+      window.removeEventListener("offline", goOffline);
+    };
   }, [refreshRecords]);
 
+  // 앱을 다른 데 갔다 돌아왔을 때 목록을 새로 맞춘다.
   useEffect(() => {
-    // 탭이 바뀌면 화면 위로 올린다.
-    window.scrollTo({ top: 0 });
-  }, [tab]);
+    const onVisible = () => {
+      if (document.visibilityState === "visible" && phase === "ready") {
+        void refreshRecords();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => document.removeEventListener("visibilitychange", onVisible);
+  }, [phase, refreshRecords]);
 
-  const updateSettings = useCallback((next: Settings) => {
-    setSettings(next);
-    saveSettings(next);
-  }, []);
+  useEffect(() => {
+    window.scrollTo({ top: 0 });
+  }, [tab, result]);
+
+  const updateSettings = useCallback(
+    (next: Settings) => {
+      setSettings(next);
+      saveSettings(next);
+      if (!STANDALONE_DEMO && user) {
+        // 설정은 계정에도 남겨 다른 기기에서 이어진다.
+        void savePreferences({
+          nickname: next.nickname,
+          keepPhotos: next.keepPhotos,
+          expandByDefault: next.expandByDefault,
+        }).catch(() => undefined);
+      }
+    },
+    [user],
+  );
 
   const showResult = useCallback((view: ResultView) => {
     if (currentUrl.current && currentUrl.current !== view.imageUrl) {
@@ -90,7 +221,6 @@ export function App() {
     }
     currentUrl.current = view.imageUrl;
     setResult(view);
-    setTab("result");
   }, []);
 
   const openRecord = useCallback(
@@ -118,68 +248,173 @@ export function App() {
     [showResult],
   );
 
-  useEffect(
-    () => () => {
-      if (currentUrl.current) URL.revokeObjectURL(currentUrl.current);
+  const removeRecord = useCallback(
+    async (id: string) => {
+      if (STANDALONE_DEMO) {
+        await deleteLocalRecord(id);
+      } else {
+        await deleteScan(id);
+        // 서버에서 지웠으면 이 기기의 사진도 같이 지운다.
+        await deleteImage(id).catch(() => undefined);
+      }
+      await refreshRecords();
     },
-    [],
+    [refreshRecords],
   );
+
+  const removeAllRecords = useCallback(async () => {
+    if (STANDALONE_DEMO) {
+      await clearAll();
+    } else {
+      await deleteAllScans();
+    }
+    await refreshRecords();
+  }, [refreshRecords]);
+
+  const signOut = useCallback(async () => {
+    try {
+      await serverLogout();
+    } catch {
+      // 서버에 닿지 못해도 이 기기에서는 나간다.
+    }
+    setStorageScope(null);
+    setUser(null);
+    setRecords([]);
+    setFailedScans([]);
+    setResult(null);
+    setSettings(DEFAULT_SETTINGS);
+    setTab("home");
+    setPhase("auth");
+  }, []);
+
+  const finishOnboarding = useCallback(() => {
+    try {
+      localStorage.setItem(ONBOARDED_KEY, "1");
+    } catch {
+      // 저장소를 못 써도 흐름은 이어진다.
+    }
+    setPhase(STANDALONE_DEMO ? "ready" : "auth");
+  }, []);
+
+  if (phase === "loading") {
+    return (
+      <div className="app">
+        <main className="screen boot" aria-busy="true">
+          <div className="pulse-ring" />
+          <div className="small muted">불러오는 중…</div>
+        </main>
+      </div>
+    );
+  }
+
+  if (phase === "onboarding") {
+    return (
+      <div className="app">
+        <OnboardingScreen onDone={finishOnboarding} />
+      </div>
+    );
+  }
+
+  if (phase === "auth") {
+    return (
+      <div className="app">
+        <AuthScreen
+          onSignedIn={(signedIn) => {
+            setPhase("loading");
+            void enterApp(signedIn);
+          }}
+          onBack={() => setPhase("onboarding")}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="app">
-      {tab === "home" && (
-        <HomeScreen
-          records={records}
-          settings={settings}
-          demoMode={demoMode}
-          onStartScan={() => setTab("scan")}
-          onOpenRecord={openRecord}
-          onGoHistory={() => setTab("history")}
-        />
+      {!online && (
+        <div className="offline-bar" role="status">
+          네트워크가 끊겼어요. 저장된 기록은 계속 볼 수 있어요.
+        </div>
       )}
 
-      {tab === "scan" && (
-        <ScanScreen
-          settings={settings}
-          demoMode={demoMode}
-          onDone={async (view) => {
-            await refreshRecords();
-            showResult(view);
-          }}
-        />
-      )}
-
-      {tab === "result" && (
+      {result ? (
         <ResultScreen
           result={result}
           settings={settings}
-          onStartScan={() => setTab("scan")}
-          onGoHistory={() => setTab("history")}
           records={records}
+          onStartScan={() => {
+            setResult(null);
+            setTab("scan");
+          }}
+          onGoHistory={() => {
+            setResult(null);
+            setTab("history");
+          }}
+          onClose={() => setResult(null)}
         />
+      ) : (
+        <>
+          {tab === "home" && (
+            <HomeScreen
+              records={records}
+              settings={settings}
+              demoMode={demoMode}
+              onStartScan={() => setTab("scan")}
+              onOpenRecord={openRecord}
+              onGoHistory={() => setTab("history")}
+              onGoLibrary={() => setTab("library")}
+            />
+          )}
+
+          {tab === "scan" && (
+            <ScanScreen
+              settings={settings}
+              demoMode={demoMode}
+              online={online}
+              onDone={async (view) => {
+                await refreshRecords();
+                showResult(view);
+              }}
+            />
+          )}
+
+          {tab === "library" && <LibraryScreen />}
+
+          {tab === "history" && (
+            <HistoryScreen
+              records={records}
+              failedScans={failedScans}
+              onOpenRecord={openRecord}
+              onStartScan={() => setTab("scan")}
+              onDelete={removeRecord}
+              onChanged={refreshRecords}
+            />
+          )}
+
+          {tab === "profile" && (
+            <ProfileScreen
+              user={user}
+              settings={settings}
+              records={records}
+              onChangeSettings={updateSettings}
+              onChanged={refreshRecords}
+              onDeleteAll={removeAllRecords}
+              onSignOut={signOut}
+              demoMode={demoMode}
+              provider={provider}
+            />
+          )}
+        </>
       )}
 
-      {tab === "history" && (
-        <HistoryScreen
-          records={records}
-          onOpenRecord={openRecord}
-          onStartScan={() => setTab("scan")}
-          onChanged={refreshRecords}
-        />
-      )}
-
-      {tab === "profile" && (
-        <ProfileScreen
-          settings={settings}
-          records={records}
-          onChangeSettings={updateSettings}
-          onChanged={refreshRecords}
-          demoMode={demoMode}
-          provider={provider}
-        />
-      )}
-
-      <TabBar active={tab} onChange={setTab} />
+      {/* 결과를 보는 중에도 탭은 그대로 둔다. 어디에 있든 빠져나갈 길이 있어야 한다. */}
+      <TabBar
+        active={tab}
+        onChange={(next) => {
+          setResult(null);
+          setTab(next);
+        }}
+      />
     </div>
   );
 }

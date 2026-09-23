@@ -7,7 +7,8 @@ import {
   type FingerKey,
   type NailRecord,
 } from "../../../shared/analysis";
-import { deleteRecord, getImage } from "../lib/storage";
+import { getImage } from "../lib/storage";
+import type { ServerScan } from "../lib/server";
 import { TrendChart } from "../components/TrendChart";
 import { DeltaBadge } from "./ResultScreen";
 import {
@@ -29,13 +30,18 @@ type Filter = "all" | FingerKey;
 
 export function HistoryScreen({
   records,
+  failedScans = [],
   onOpenRecord,
   onStartScan,
+  onDelete,
   onChanged,
 }: {
   records: NailRecord[];
+  /** 분석까지 가지 못한 시도. 왜 안 됐는지 남겨 둔다. */
+  failedScans?: ServerScan[];
   onOpenRecord: (record: NailRecord) => void;
   onStartScan: () => void;
+  onDelete: (id: string) => Promise<void>;
   onChanged: () => Promise<void> | void;
 }) {
   const [filter, setFilter] = useState<Filter>("all");
@@ -187,6 +193,32 @@ export function HistoryScreen({
           })}
         </div>
 
+        {failedScans.length > 0 && (
+          <>
+            <div className="section-title">분석되지 않은 시도</div>
+            <div className="card">
+              {failedScans.slice(0, 5).map((scan) => (
+                <div className="row" key={scan.id}>
+                  <div className="flex-1">
+                    <div className="label" style={{ fontSize: 13.5 }}>
+                      {formatRelative(scan.capturedAt)} ·{" "}
+                      {scan.hand === "left" ? "왼손" : "오른손"}{" "}
+                      {FINGER_LABELS[scan.finger as FingerKey] ?? ""}
+                    </div>
+                    <div className="sub">
+                      {scan.errorMessage ?? "분석이 완료되지 않았습니다."}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="small muted mt-8">
+              사진이 흐리거나 손톱이 보이지 않으면 결과를 만들지 않습니다. 다시
+              촬영하면 새 기록으로 쌓입니다.
+            </div>
+          </>
+        )}
+
         <div className="mt-16">
           <Notice>
             관찰 지표는 사진끼리 비교하기 위한 참고 수치입니다. 조명과 각도에
@@ -201,7 +233,7 @@ export function HistoryScreen({
           record={records.find((r) => r.id === pendingDelete)}
           onCancel={() => setPendingDelete(null)}
           onConfirm={async () => {
-            await deleteRecord(pendingDelete);
+            await onDelete(pendingDelete);
             setPendingDelete(null);
             await onChanged();
           }}

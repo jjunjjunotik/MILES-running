@@ -1,15 +1,25 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   DISCLAIMER_LONG,
   type NailRecord,
 } from "../../../shared/analysis";
 import {
-  clearAll,
   clearImagesOnly,
+  clearScopedImages,
+  listRecords,
   type Settings,
 } from "../lib/storage";
+import { STANDALONE_DEMO } from "../lib/api";
+import {
+  ServerError,
+  clearServerImages,
+  deleteAccount,
+  importScans,
+  type AuthUser,
+} from "../lib/server";
 import {
   InfoIcon,
+  ProfileIcon,
   ShieldIcon,
   SparkIcon,
   StethoscopeIcon,
@@ -17,45 +27,108 @@ import {
 } from "../components/Icons";
 import { Notice, Sheet, TopBar } from "../components/ui";
 
-type PendingAction = "photos" | "all" | null;
+type PendingAction = "photos" | "all" | "account" | null;
+
+export const APP_VERSION = "1.0.0";
 
 export function ProfileScreen({
+  user,
   settings,
   records,
   demoMode,
   provider,
   onChangeSettings,
   onChanged,
+  onDeleteAll,
+  onSignOut,
 }: {
+  user: AuthUser | null;
   settings: Settings;
   records: NailRecord[];
   demoMode: boolean;
   provider: string | null;
   onChangeSettings: (settings: Settings) => void;
   onChanged: () => Promise<void> | void;
+  onDeleteAll: () => Promise<void>;
+  onSignOut: () => Promise<void>;
 }) {
   const [pending, setPending] = useState<PendingAction>(null);
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<string | null>(null);
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  /** 계정을 만들기 전에 이 기기에 쌓여 있던 기록. 있으면 가져올 수 있게 안내한다. */
+  const [localCount, setLocalCount] = useState(0);
 
   const photoCount = records.filter((record) => record.hasImage).length;
 
-  async function run(action: Exclude<PendingAction, null>) {
+  useEffect(() => {
+    if (STANDALONE_DEMO || !user) return;
+    void listRecords()
+      .then((found) => setLocalCount(found.length))
+      .catch(() => setLocalCount(0));
+  }, [user]);
+
+  async function importLocal() {
     setBusy(true);
     try {
-      if (action === "photos") {
-        await clearImagesOnly();
-        setDone("저장된 사진을 모두 지웠어요. 분석 기록은 그대로 있어요.");
-      } else {
-        await clearAll();
-        setDone("모든 기록과 사진을 지웠어요.");
-      }
+      const found = await listRecords();
+      const imported = await importScans(found);
+      setDone(
+        imported > 0
+          ? `이 기기에 있던 기록 ${imported}건을 계정으로 가져왔어요.`
+          : "가져올 새 기록이 없었어요.",
+      );
+      setLocalCount(0);
       await onChanged();
-    } catch {
+    } catch (err) {
+      setDone(
+        err instanceof ServerError ? err.message : "기록을 가져오지 못했어요.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function run(action: Exclude<PendingAction, null>) {
+    setBusy(true);
+    setError(null);
+    try {
+      if (action === "photos") {
+        if (STANDALONE_DEMO) {
+          await clearImagesOnly();
+        } else {
+          // 사진은 기기에서 지우고, 서버에는 "사진 없음"으로 표시만 남긴다.
+          await clearScopedImages();
+          await clearServerImages();
+        }
+        setDone("저장된 사진을 모두 지웠어요. 분석 기록은 그대로 있어요.");
+        await onChanged();
+      } else if (action === "all") {
+        await clearScopedImages();
+        await onDeleteAll();
+        setDone("모든 기록과 사진을 지웠어요.");
+      } else {
+        await deleteAccount(password);
+        await clearScopedImages();
+        setPassword("");
+        await onSignOut();
+        return;
+      }
+    } catch (err) {
+      if (action === "account") {
+        setError(
+          err instanceof ServerError
+            ? err.message
+            : "계정을 삭제하지 못했어요.",
+        );
+        setBusy(false);
+        return;
+      }
       setDone("삭제하지 못했어요. 잠시 후 다시 시도해 주세요.");
     } finally {
       setBusy(false);
-      setPending(null);
+      if (action !== "account") setPending(null);
     }
   }
 
@@ -63,6 +136,41 @@ export function ProfileScreen({
     <>
       <TopBar title="프로필" />
       <main className="screen stagger">
+        {user && (
+          <div className="card account-card">
+            <div className="icon-badge">
+              <ProfileIcon size={18} />
+            </div>
+            <div className="flex-1">
+              <div className="label">{user.displayName || "이름 없음"}</div>
+              <div className="sub">{user.email}</div>
+            </div>
+            <button
+              className="btn btn-secondary btn-sm"
+              onClick={() => void onSignOut()}
+            >
+              로그아웃
+            </button>
+          </div>
+        )}
+
+        {localCount > 0 && (
+          <div className="card mt-12">
+            <div className="label">이 기기에 남아 있는 기록 {localCount}건</div>
+            <div className="sub mt-8">
+              계정을 만들기 전에 저장한 기록이에요. 계정으로 가져오면 다른 기기에서도
+              볼 수 있어요.
+            </div>
+            <button
+              className="btn btn-ghost btn-sm mt-12"
+              onClick={() => void importLocal()}
+              disabled={busy}
+            >
+              계정으로 가져오기
+            </button>
+          </div>
+        )}
+
         <div className="card">
           <label
             className="small muted"
@@ -82,7 +190,8 @@ export function ProfileScreen({
             }
           />
           <div className="small muted mt-8">
-            이 이름은 기기에만 저장되고 서버로 보내지 않습니다.
+            결과 화면과 공유 카드에 표시됩니다. 계정에 저장되어 다른 기기에서도
+            이어집니다.
           </div>
         </div>
 
@@ -168,8 +277,13 @@ export function ProfileScreen({
         <div className="card">
           <InfoRow
             icon={<ShieldIcon size={17} />}
-            title="계정도, 서버 저장도 없습니다"
-            body="로그인이 없고, 분석 기록과 사진은 이 브라우저 저장소에만 남습니다. 서버는 분석 요청을 중계할 뿐 사진을 보관하거나 기록하지 않습니다."
+            title="사진은 이 기기에만 남습니다"
+            body="손톱 사진은 분석할 때만 서버를 거치고 저장되지 않습니다. 사진은 이 브라우저 저장소에 사용자별로 나뉘어 보관되고, 분석 결과만 계정에 저장됩니다."
+          />
+          <InfoRow
+            icon={<ShieldIcon size={17} />}
+            title="내 기록은 나만 봅니다"
+            body="기록을 읽고 지우는 모든 요청은 로그인한 사용자의 것인지 서버에서 먼저 확인합니다. 남의 기록은 아이디를 알아도 열리지 않습니다."
           />
           <InfoRow
             icon={<ShieldIcon size={17} />}
@@ -206,25 +320,87 @@ export function ProfileScreen({
           />
         </div>
 
-        <div className="small muted center mt-24">NailSense · 참고용 도구</div>
+        {user && (
+          <>
+            <div className="section-title">계정</div>
+            <div className="card">
+              <button className="row" onClick={() => setPending("account")}>
+                <div
+                  className="icon-badge"
+                  style={{
+                    background: "var(--alert-soft)",
+                    color: "var(--alert)",
+                  }}
+                >
+                  <TrashIcon size={16} />
+                </div>
+                <div className="flex-1">
+                  <div className="label">계정 삭제</div>
+                  <div className="sub">
+                    계정과 모든 분석 기록이 지워집니다. 되돌릴 수 없어요.
+                  </div>
+                </div>
+              </button>
+            </div>
+          </>
+        )}
+
+        <div className="small muted center mt-24">
+          NailSense v{APP_VERSION} · 참고용 도구
+        </div>
       </main>
 
       {pending && (
-        <Sheet onClose={() => !busy && setPending(null)}>
+        <Sheet
+          onClose={() => {
+            if (busy) return;
+            setPending(null);
+            setPassword("");
+            setError(null);
+          }}
+        >
           <h3 style={{ margin: "0 0 6px", fontSize: 17 }}>
             {pending === "photos"
               ? "저장된 사진을 모두 지울까요?"
-              : "모든 기록을 지울까요?"}
+              : pending === "all"
+                ? "모든 기록을 지울까요?"
+                : "계정을 삭제할까요?"}
           </h3>
           <p className="small muted" style={{ marginTop: 0 }}>
             {pending === "photos"
               ? `이 기기에 저장된 사진 ${photoCount}장이 삭제됩니다. 분석 결과는 그대로 남습니다.`
-              : `분석 기록 ${records.length}건과 사진이 모두 삭제됩니다. 되돌릴 수 없어요.`}
+              : pending === "all"
+                ? `분석 기록 ${records.length}건과 사진이 모두 삭제됩니다. 되돌릴 수 없어요.`
+                : "계정과 모든 분석 기록, 이 기기의 사진이 함께 삭제됩니다. 되돌릴 수 없어요."}
           </p>
+
+          {pending === "account" && (
+            <>
+              <label className="field-row mt-12">
+                <span>확인을 위해 비밀번호를 입력해 주세요</span>
+                <input
+                  className="field"
+                  type="password"
+                  value={password}
+                  autoComplete="current-password"
+                  onChange={(event) => setPassword(event.target.value)}
+                />
+              </label>
+              {error && (
+                <div className="auth-error" role="alert">
+                  {error}
+                </div>
+              )}
+            </>
+          )}
           <div className="btn-row mt-16">
             <button
               className="btn btn-secondary"
-              onClick={() => setPending(null)}
+              onClick={() => {
+                setPending(null);
+                setPassword("");
+                setError(null);
+              }}
               disabled={busy}
             >
               취소

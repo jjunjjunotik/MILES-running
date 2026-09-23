@@ -1313,3 +1313,259 @@ select {
   color: var(--ink-soft);
   margin-top: 5px;
 }
+
+/* --------------------------- 온보딩 · 로그인 --------------------------- */
+.onboarding,
+.auth {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  padding-bottom: calc(28px + env(safe-area-inset-bottom));
+}
+
+.onboarding-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 0 8px;
+}
+
+.brandmark {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--accent-ink);
+  letter-spacing: 0.02em;
+}
+
+.link-btn {
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--muted);
+  padding: 8px 4px;
+}
+
+.link-btn:active {
+  color: var(--accent);
+}
+
+.onboarding-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 8px 0 24px;
+}
+
+.onboarding-icon {
+  width: 62px;
+  height: 62px;
+  border-radius: 20px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  margin-bottom: 20px;
+}
+
+.onboarding-icon.caution {
+  background: var(--consult-soft);
+  color: var(--consult);
+}
+
+.onboarding-body h2 {
+  margin: 0 0 10px;
+  font-size: 25px;
+  line-height: 1.35;
+  letter-spacing: -0.03em;
+}
+
+.onboarding-body .lead {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.65;
+  color: var(--ink-soft);
+}
+
+.onboarding-points {
+  list-style: none;
+  margin: 22px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 11px;
+}
+
+.onboarding-points li {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  font-size: 13.5px;
+  line-height: 1.55;
+  color: var(--ink-soft);
+}
+
+.onboarding-points .mark {
+  width: 20px;
+  height: 20px;
+  border-radius: 7px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  display: grid;
+  place-items: center;
+  flex: none;
+  margin-top: 1px;
+}
+
+.onboarding-foot .dots {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.onboarding-foot .dots span {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line-strong);
+  transition: width 0.24s var(--ease), background 0.24s var(--ease);
+}
+
+.onboarding-foot .dots span.on {
+  width: 20px;
+  background: var(--accent);
+}
+
+.auth {
+  justify-content: center;
+  padding-top: 40px;
+}
+
+.auth-title {
+  margin: 22px 0 6px;
+  font-size: 24px;
+  text-align: center;
+  letter-spacing: -0.03em;
+}
+
+.field-row {
+  display: block;
+  margin-bottom: 12px;
+}
+
+.field-row > span {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.field-row .field {
+  width: 100%;
+}
+
+.auth-error {
+  margin-top: 12px;
+  padding: 11px 13px;
+  border-radius: var(--radius-sm);
+  background: var(--consult-soft);
+  color: var(--consult);
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 600;
+}
+
+/* --------------------------- 건강 정보 라이브러리 --------------------------- */
+.article-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+}
+
+.article-card + .article-card {
+  margin-top: 10px;
+}
+
+.article-card .t {
+  font-weight: 700;
+  font-size: 15px;
+  margin: 3px 0 4px;
+  letter-spacing: -0.02em;
+}
+
+.article-card .s {
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+
+.article-head {
+  padding: 6px 0 4px;
+}
+
+.article-head h2 {
+  margin: 10px 0 6px;
+  font-size: 22px;
+  line-height: 1.35;
+  letter-spacing: -0.03em;
+}
+
+.article-body .para {
+  margin: 0 0 14px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: var(--ink-soft);
+}
+
+.article-body .para:last-child {
+  margin-bottom: 0;
+}
+
+.article-body strong {
+  color: var(--ink);
+}
+
+/* ------------------------------ 상태 표시 띠 ------------------------------ */
+.boot {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  gap: 14px;
+  align-content: center;
+}
+
+.offline-bar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  padding: 9px 16px;
+  background: var(--watch-soft);
+  color: var(--watch);
+  font-size: 12.5px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.account-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.account-card .label {
+  font-weight: 700;
+  font-size: 15px;
+}
+
+.account-card .sub {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

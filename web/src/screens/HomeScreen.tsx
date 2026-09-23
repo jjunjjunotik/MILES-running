@@ -9,6 +9,7 @@ import type { Settings } from "../lib/storage";
 import {
   CameraIcon,
   ChevronIcon,
+  ResultIcon,
   HistoryIcon,
   ShieldIcon,
   SparkIcon,
@@ -24,6 +25,7 @@ export function HomeScreen({
   onStartScan,
   onOpenRecord,
   onGoHistory,
+  onGoLibrary,
 }: {
   records: NailRecord[];
   settings: Settings;
@@ -31,6 +33,7 @@ export function HomeScreen({
   onStartScan: () => void;
   onOpenRecord: (record: NailRecord) => void;
   onGoHistory: () => void;
+  onGoLibrary: () => void;
 }) {
   const latest = records[0];
   const latestFindings = latest?.analysis.findings ?? [];
@@ -158,6 +161,26 @@ export function HomeScreen({
             </div>
           </>
         )}
+
+        <div className="section-title">손톱 건강 정보</div>
+        <button
+          className="card article-card"
+          onClick={onGoLibrary}
+          style={{ width: "100%" }}
+        >
+          <div className="icon-badge">
+            <ResultIcon size={18} />
+          </div>
+          <div className="flex-1">
+            <div className="t" style={{ marginTop: 0 }}>
+              무엇을 보고, 언제 진료를 생각할까
+            </div>
+            <div className="s">
+              손톱 관리, 흔한 변화, 상담이 필요한 신호를 일반 정보로 정리했어요.
+            </div>
+          </div>
+          <ChevronIcon size={16} />
+        </button>
 
         <div className="section-title">사진은 이렇게 다뤄요</div>
         <div className="card">

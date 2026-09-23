@@ -260,10 +260,18 @@ export interface NailAnalysis {
 
 /** 서버 -> 클라이언트 응답 */
 export type AnalyzeResponse =
-  | { ok: true; analysis: NailAnalysis; demo: boolean; model: string }
+  | {
+      ok: true;
+      analysis: NailAnalysis;
+      demo: boolean;
+      model: string;
+      /** 서버에 남은 기록의 아이디. 사진은 이 아이디로 기기 안에 저장한다. */
+      scanId?: string;
+    }
   | { ok: false; error: string; code: AnalyzeErrorCode };
 
 export type AnalyzeErrorCode =
+  | "unauthorized"
   | "bad_request"
   | "not_a_nail_photo"
   | "unusable_image"

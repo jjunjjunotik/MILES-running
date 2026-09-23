@@ -18,6 +18,7 @@ import {
   ArrowDownIcon,
   ArrowUpIcon,
   CameraIcon,
+  ChevronIcon,
   DownloadIcon,
   FocusIcon,
   MinusIcon,
@@ -41,12 +42,14 @@ export function ResultScreen({
   records,
   onStartScan,
   onGoHistory,
+  onClose,
 }: {
   result: ResultView | null;
   settings: Settings;
   records: NailRecord[];
   onStartScan: () => void;
   onGoHistory: () => void;
+  onClose?: () => void;
 }) {
   const [sharing, setSharing] = useState(false);
   const [shareMessage, setShareMessage] = useState<string | null>(null);
@@ -157,7 +160,18 @@ export function ResultScreen({
 
   return (
     <>
-      <TopBar title="분석 결과" />
+      <TopBar
+        title="분석 결과"
+        left={
+          onClose ? (
+            <button className="icon-btn" onClick={onClose} aria-label="닫기">
+              <span style={{ transform: "rotate(180deg)", display: "grid" }}>
+                <ChevronIcon size={18} />
+              </span>
+            </button>
+          ) : undefined
+        }
+      />
       <main className="screen stagger">
         {result.demo && (
           <Notice tone="strong" icon={<SparkIcon size={15} />}>
