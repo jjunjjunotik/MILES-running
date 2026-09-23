@@ -246,15 +246,25 @@
       </section>
 
       <!-- ================= TERRITORY ================= -->
-      <section class="screen" id="screen-territory">
-        <header class="topbar">
-          <h1 style="font-size:22px">Territory</h1>
+      <section class="screen screen--std" id="screen-territory">
+        <header class="screen-head">
+          <div>
+            <h1 class="screen-title">Territory</h1>
+            <p class="screen-sub">Close the loop back at your start.</p>
+          </div>
           <span class="chip" id="territoryRankChip">—</span>
         </header>
 
-        <p class="muted" style="margin-bottom:var(--s-3)">
-          Close the loop back at your start. Everything inside becomes yours.
-        </p>
+        <div class="readout">
+          <div class="readout-main">
+            <span class="readout-value readout-value--violet" id="terrTotal">0.00</span>
+            <span class="label-sm" id="terrTotalUnit">km² held</span>
+          </div>
+          <div class="readout-side">
+            <span class="readout-value" id="terrCount">0</span>
+            <span class="label-sm">plots</span>
+          </div>
+        </div>
 
         <div class="territory-map">
           <canvas id="terrMap"></canvas>
@@ -272,7 +282,7 @@
         <!-- Time machine: the map as it stood, week by week. Pro. -->
         <div class="timemachine" id="timeMachine">
           <div class="row row--between">
-            <span class="card-title">Time machine</span>
+            <h2 class="section-title" style="font-size:var(--t-lead)">Time machine</h2>
             <span class="chip chip--pro" id="tmChip" hidden>PRO</span>
           </div>
           <div id="tmLocked" class="lock-row">
@@ -295,23 +305,10 @@
           </div>
         </div>
 
-        <div class="card stack" style="margin-top:var(--s-3)">
-          <div class="row row--between">
-            <div>
-              <div class="stat-value" id="terrTotal" style="font-size:30px">0.00</div>
-              <div class="stat-label" id="terrTotalUnit">km² held</div>
-            </div>
-            <div style="text-align:right">
-              <div class="stat-value" id="terrCount" style="font-size:30px">0</div>
-              <div class="stat-label">Plots</div>
-            </div>
-          </div>
-        </div>
-
         <!-- Who has cut into your claims, and by how much. Pro. -->
         <div class="card stack" style="margin-top:var(--s-3)">
           <div class="row row--between">
-            <span class="card-title">Who took your land</span>
+            <h2 class="section-title" style="font-size:var(--t-lead)">Who took your land</h2>
             <span class="chip chip--pro" id="raidChip" hidden>PRO</span>
           </div>
           <div id="raidLocked" class="lock-row">
@@ -324,15 +321,21 @@
           <div id="raidList" class="stack" hidden></div>
         </div>
 
-        <div class="stack" style="margin-top:var(--s-3)">
-          <span class="card-title">Your plots</span>
+        <section class="section">
+          <h2 class="section-title">Your plots</h2>
           <div class="stack" id="terrList"></div>
-        </div>
+        </section>
       </section>
 
       <!-- ================= QUESTS ================= -->
-      <section class="screen" id="screen-quests">
-        <header class="topbar"><h1 style="font-size:22px">Quests</h1></header>
+      <section class="screen screen--std" id="screen-quests">
+        <header class="screen-head">
+          <div>
+            <h1 class="screen-title">Quests</h1>
+            <p class="screen-sub">Clear them to climb. Swipe the ladder.</p>
+          </div>
+          <span class="chip chip--pro" id="questXp">0 XP</span>
+        </header>
 
         <!-- Swipe sideways to walk the ladder: each rank is a disc whose ring
              is the XP earned inside that rank's band. -->
@@ -343,46 +346,51 @@
         <div class="rank-dots" id="rankDots"></div>
         <div class="rank-detail" id="rankDetail"></div>
 
-        <div class="stack" style="margin-top:var(--s-4)">
-          <span class="card-title">Active quests</span>
-          <div class="stack" id="questList"></div>
-        </div>
+        <section class="section">
+          <h2 class="section-title">Active quests</h2>
+          <div class="stack" style="gap:0" id="questList"></div>
+        </section>
       </section>
 
       <!-- ================= CREW ================= -->
-      <section class="screen" id="screen-crew">
-        <header class="topbar">
-          <h1 style="font-size:22px">Crew</h1>
-          <button class="chip" type="button" id="createCrewBtn">+ Start a crew</button>
+      <section class="screen screen--std" id="screen-crew">
+        <header class="screen-head">
+          <div>
+            <h1 class="screen-title">Crew</h1>
+            <p class="screen-sub">Run it together, or find one nearby.</p>
+          </div>
+          <button class="chip" type="button" id="createCrewBtn">+ Start</button>
         </header>
 
         <div id="myCrew"></div>
 
-        <div class="stack" style="margin-top:var(--s-5)">
-          <div class="row row--between">
-            <span class="card-title">Crews near you</span>
-            <span class="tiny" id="nearbyCount">—</span>
+        <section class="section">
+          <div class="section-head">
+            <h2 class="section-title">Crews near you</h2>
+            <span class="label-sm" id="nearbyCount">—</span>
           </div>
-          <p class="tiny">Sorted by how far their home turf is from yours.</p>
           <div class="stack" id="nearbyCrews"></div>
-        </div>
+        </section>
       </section>
 
       <!-- ================= FEED ================= -->
-      <section class="screen" id="screen-feed">
-        <header class="topbar"><h1 style="font-size:22px">Feed</h1></header>
+      <section class="screen screen--std" id="screen-feed">
+        <header class="screen-head">
+          <div>
+            <h1 class="screen-title">Feed</h1>
+            <p class="screen-sub">Every card your friends earned this week.</p>
+          </div>
+        </header>
         <div class="stack" id="feedList"></div>
       </section>
 
       <!-- ================= PROFILE ================= -->
-      <section class="screen" id="screen-profile">
-        <header class="topbar"><h1 style="font-size:22px">Profile</h1></header>
-
-        <div class="profile-head">
+      <section class="screen screen--std" id="screen-profile">
+        <div class="profile-head row">
           <div class="profile-avatar" id="profileAvatar">YU</div>
-          <div class="stack" style="gap:4px">
-            <span style="font-size:20px;font-weight:800" id="profileName">You</span>
-            <span class="muted" id="profileHandle">@you</span>
+          <div class="stack" style="gap:6px">
+            <span class="profile-name" id="profileName">You</span>
+            <span class="label-sm" id="profileHandle">@you</span>
             <span class="chip" id="profileRank" style="align-self:flex-start">Rookie</span>
           </div>
         </div>

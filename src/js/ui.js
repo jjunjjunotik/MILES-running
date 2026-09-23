@@ -1643,7 +1643,12 @@
       const leader = M.Crew.paceLeader(crew);
       const pacesetters = M.Crew.pacesetters(crew);
 
+      const heroCanvas = el('canvas', { class: 'crew-hero-canvas', 'aria-hidden': 'true' });
+      requestAnimationFrame(() => M.Visual.band(heroCanvas, {
+        seed: crew.id ? crew.id.length * 17 + 5 : 9, from: crew.color, to: '#ff6a1f',
+      }));
       return el('div', { class: 'crew-hero' }, [
+        heroCanvas,
         el('div', { class: 'row' }, [
           this.crewBadge(crew),
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
@@ -2366,6 +2371,8 @@
     /* --- Quests ------------------------------------------------------------- */
 
     renderQuests() {
+      const xpChip = $('#questXp');
+      if (xpChip) xpChip.textContent = `${Stats.xp(State.data)} XP`;
       const s = State.data;
       this.renderRankLadder();
 

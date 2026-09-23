@@ -461,7 +461,8 @@
 
 .rank-dots { display: flex; justify-content: center; gap: 6px; padding: var(--s-2) 0 var(--s-3); }
 .rank-dots button { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.16); transition: background 0.2s ease, width 0.2s ease; }
-.rank-dots button[aria-current="true"] { width: 20px; border-radius: var(--r-pill); background: var(--accent); }
+/* A pager is a control, so it wears the brand like the rest of them. */
+.rank-dots button[aria-current="true"] { width: 22px; border-radius: var(--r-pill); background: var(--flame); }
 
 .rank-detail {
   padding: var(--s-4);
@@ -1156,3 +1157,126 @@
   .hero { aspect-ratio: 1 / 1; }
   .screen--home { gap: var(--s-5); }
 }
+
+/* ==========================================================================
+   THE OTHER SCREENS — same system as Home
+   One header pattern, one type ladder, and the same rule about boxes: a card
+   has to earn its edges. Each screen leads with the one number or picture it
+   is actually about.
+   ========================================================================== */
+
+.screen--std { padding: 0 var(--gutter) var(--s-4); gap: var(--band); }
+
+/* Title and its line on the left, one action on the right. The text block
+   has to be allowed to grow and wrap; the action must not shrink, or a long
+   subtitle pushes into it and they overlap. */
+.screen-head {
+  flex: none;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: var(--s-4);
+  padding: var(--s-5) 0 0;
+}
+.screen-head > :first-child { flex: 1; min-width: 0; }
+.screen-head > :last-child:not(:first-child) { flex: none; white-space: nowrap; margin-top: 4px; }
+.screen-title {
+  font-size: var(--t-display);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1;
+  margin: 0;
+  color: var(--text-hi);
+}
+.screen-sub { font-size: var(--t-body); font-weight: 700; color: var(--text-mid); line-height: 1.45; margin: 6px 0 0; }
+
+/* The one number a screen is about, sitting on the page with nothing round it. */
+.readout { display: flex; align-items: flex-end; gap: var(--s-5); flex: none; }
+.readout-main { display: flex; flex-direction: column; gap: 2px; }
+.readout-value {
+  font-family: var(--font-num);
+  font-size: 52px; font-weight: 800; letter-spacing: -0.05em; line-height: 0.9;
+  color: var(--text-hi);
+}
+.readout-value--violet { color: #d9bcff; }
+.readout-side { display: flex; flex-direction: column; gap: 2px; padding-bottom: 5px; }
+.readout-side .readout-value { font-size: 30px; color: var(--text-mid); }
+
+/* --- Territory ------------------------------------------------------------ */
+
+.territory-map {
+  height: clamp(340px, 52vh, 500px);
+  border-radius: var(--r-xl);
+}
+.legend { padding: 0; }
+
+/* --- Quests --------------------------------------------------------------- */
+
+.rank-detail { border-radius: var(--r-xl); padding: var(--s-5); }
+.rank-detail h3 { font-size: 26px; letter-spacing: -0.03em; }
+
+.quest {
+  gap: var(--s-4);
+  padding: var(--s-4) 0;
+  border-radius: 0;
+  border: 0;
+  border-bottom: 1px solid var(--hairline);
+  background: none;
+}
+.quest:last-child { border-bottom: 0; }
+.quest-icon { width: 46px; height: 46px; border-radius: 15px; padding: 10px; }
+.quest-icon.ico { width: 46px; height: 46px; }
+.quest-name { font-size: var(--t-lead); font-weight: 800; letter-spacing: -0.01em; }
+.quest-xp { font-size: var(--t-small); }
+
+/* --- Crew ----------------------------------------------------------------- */
+
+.crew-hero {
+  position: relative;
+  border-radius: var(--r-xl);
+  overflow: hidden;
+  padding: var(--s-5);
+}
+.crew-hero-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0.5; }
+/* Everything except the picture itself, which has to stay behind. */
+.crew-hero > *:not(.crew-hero-canvas) { position: relative; }
+.crew-name { font-size: 26px; letter-spacing: -0.03em; }
+.crew-badge { width: 60px; height: 60px; border-radius: 20px; font-size: 20px; }
+.crew-badge--small { width: 46px; height: 46px; border-radius: 15px; font-size: 15px; }
+
+.crew-card {
+  position: relative;
+  border-radius: var(--r-lg);
+  padding: var(--s-4);
+  overflow: hidden;
+}
+.crew-card-canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: 0.4; }
+.crew-card > *:not(.crew-card-canvas) { position: relative; }
+
+/* --- You ------------------------------------------------------------------ */
+
+.profile-head { align-items: center; gap: var(--s-4); padding: var(--s-5) 0 0; }
+.profile-avatar { width: 84px; height: 84px; border-radius: 28px; font-size: 28px; }
+.profile-name { font-size: var(--t-display); font-weight: 800; letter-spacing: -0.035em; line-height: 1; }
+
+/* KPIs lose their boxes: three numbers on the page, separated by rules. */
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; flex: none; }
+.kpi {
+  padding: 0 var(--s-3);
+  border: 0; background: none; border-radius: 0;
+  border-left: 1px solid var(--hairline);
+  text-align: left;
+}
+.kpi:first-child { border-left: 0; padding-left: 0; }
+.kpi .stat-value { font-size: 28px; letter-spacing: -0.04em; }
+
+/* --- Feed ----------------------------------------------------------------- */
+
+.feed-card { border-radius: var(--r-lg); padding: var(--s-4); }
+.feed-card canvas { border-radius: var(--r-md); }
+
+/* The band gap between sections is the screen's job now; anything still
+   carrying its own top margin ends up with two gaps stacked. */
+.screen--std > .pro-card,
+.screen--std > .stack[style*="margin-top"],
+.screen--std > .card[style*="margin-top"],
+.screen--std > .timemachine,
+.screen--std > .section { margin-top: 0 !important; }
+.screen--std .profile-head { padding-top: var(--s-5); }

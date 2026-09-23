@@ -358,6 +358,48 @@ doing any work.
 
 ---
 
+## The design system
+
+Four colour roles that never swap jobs:
+
+| | |
+|---|---|
+| **flame** `#ff6a1f` | the brand, and every action — buttons, selected controls, tabs |
+| **violet** `#a855f7` | territory and the game around it |
+| **lime** `#c8ff2e` | you — your route, your land, your name among rivals |
+| `--accent` | **not a brand colour.** The intensity ramp, ember → apex with weekly volume. Atmosphere only: glow, aurora, the tier bar. |
+
+That last row is the reason the split exists. `--accent` was painting every
+primary button as well as driving the ramp, so the button you pressed changed
+colour as you trained. Actions are fixed now; only the atmosphere moves.
+
+A type ladder rather than a cluster — `--t-hero` (62–86px) through `--t-display`
+30, `--t-title` 21, `--t-lead` 17, `--t-body` 15, down to `--t-micro` 11.5 —
+and one gutter (`--gutter`) with one gap between sections (`--band`).
+
+**Surfaces come in three levels and the first is "no box".** Most content sits
+on the page with nothing around it; a card has to earn its edges. Every screen
+uses the same header (`.screen-head`, `.screen-title`, `.screen-sub`), the same
+section pattern (`.section`, `.section-title`, `.link`), and leads with the one
+number or picture it is actually about.
+
+### Imagery
+
+Drawn, not fetched — `src/js/visual.js` says why. A stock photograph of
+somebody else's run is the same picture in every app that bought it, needs a
+licence to ship, can fail to load, and knows nothing about the person looking
+at it. These are made from the runner's own week instead: the sky is the hour
+of their last run, the skyline is the city the map draws, and the route through
+the ground is the route they actually ran. No request, no 404, no licence, and
+different for every runner.
+
+`Visual.photo(host, src, fallback)` is the seam for real photography. Pass a
+`src` and it is used, with a drawn band showing underneath while it loads and
+staying if it fails. With no `src` it goes straight to the drawn version —
+nothing here invents a URL.
+
+---
+
 ## Icons
 
 Every mark in the app is a sprite from one set in `index.html` — 41 line icons
