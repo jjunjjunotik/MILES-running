@@ -303,6 +303,8 @@ node test-territory.js    a loop is the only way a territory run ends
 node test-contrast.js     text against WCAG AA, and a weight floor  :8765
 node test-sheets.js       sheets never leave the shell scrolled     :8765
 node test-dialogs.js      confirms and prompts where modals are blocked :8765
+node test-touch.js        every control is big enough to hit with a thumb
+node test-type.js         nothing renders below the legibility floor
 ```
 
 `test-tiles.js` serves its own tiles from a throwaway HTTP server, so it needs

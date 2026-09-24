@@ -181,7 +181,14 @@ function startTiles() {
   ok('choosing Drawn stops imagery', await p.evaluate(() => !MILES.Tiles.usable() && MILES.State.data.mapStyle === 'drawn'));
   await p.reload(); await p.waitForTimeout(700);
   ok('the choice survives a reload', await p.evaluate(() => MILES.State.data.mapStyle === 'drawn' && MILES.Tiles.source.key === 'drawn'));
-  ok('the setting says which map is showing',
+  // Choosing Drawn needs no caption: the Drawn button is lit. The note exists
+  // for the case where the two disagree — you asked for imagery and the app is
+  // showing you the drawn city because it could not reach any.
+  ok('choosing Drawn is not captioned',
+    (await p.evaluate(() => document.querySelector('#mapStyleNote').textContent)).trim() === '');
+  await p.evaluate(() => MILES.UI.setMapStyle('dark'));
+  await p.waitForTimeout(400);
+  ok('a map that could not load says so',
     /drawn city/i.test(await p.evaluate(() => document.querySelector('#mapStyleNote').textContent)));
 
   const real = errs.filter((e) => !/Failed to load resource/.test(e));

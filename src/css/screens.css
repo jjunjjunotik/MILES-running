@@ -357,20 +357,8 @@
 }
 .map-btn:active { transform: scale(0.94); }
 
-.map-hint {
-  position: absolute; left: var(--s-3); top: var(--s-3);
-  padding: 6px 10px; border-radius: 8px;
-  background: rgba(8, 11, 16, 0.82);
-  border: 1px solid var(--line);
-  font-size: 11px; font-weight: 700; color: var(--text-mid);
-  pointer-events: none;
-  transition: opacity 0.4s ease;
-}
-.map-hint[hidden] { display: none; }
-.map-hint[data-gone="true"] { opacity: 0; }
-
 .legend { display: flex; flex-wrap: wrap; gap: var(--s-2); padding: var(--s-3) 0 0; }
-.legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: 11.5px; font-weight: 700; color: var(--text-mid); }
+.legend-item { display: inline-flex; align-items: center; gap: 6px; font-size: var(--t-micro); font-weight: 700; color: var(--text-mid); }
 .legend-item[data-me="true"] { color: var(--text-hi); font-weight: 800; }
 .legend-swatch { width: 11px; height: 11px; border-radius: 3px; border: 1px solid rgba(255,255,255,0.25); flex: none; }
 
@@ -1301,3 +1289,94 @@
 .screen--std > .timemachine,
 .screen--std > .section { margin-top: 0 !important; }
 .screen--std .profile-head { padding-top: var(--s-5); }
+
+/* --------------------------------------------------------------------------
+   WHAT THE SCREEN IS ABOUT
+
+   A pass that cut the explanatory copy — the screen subtitles, the lines that
+   restated the label above them, the quest note on a quest already finished —
+   and gave the room back to the text that carries the meaning. Names and
+   numbers grew; labels stayed quiet, because a label that shouts competes
+   with the thing it is labelling.
+   -------------------------------------------------------------------------- */
+
+/* A card title was a 11.5px all-caps label, which put the name of a section
+   below the content inside it in the reading order your eye actually uses. */
+.card-title {
+  font-size: var(--t-title);
+  letter-spacing: -0.02em;
+  text-transform: none;
+  color: var(--text-hi);
+}
+
+/* Names. Each one is the thing you are looking for in a list. */
+.crew-name   { font-size: var(--t-lead); font-weight: 800; letter-spacing: -0.02em; }
+.feed-who    { font-size: var(--t-body); font-weight: 800; letter-spacing: -0.01em; }
+.setting-name{ font-size: var(--t-body); font-weight: 800; letter-spacing: -0.01em; }
+.lock-title  { font-size: var(--t-lead); letter-spacing: -0.02em; line-height: 1.25; }
+.plot-name   { font-size: var(--t-lead); letter-spacing: -0.02em; }
+.rank-slide-name { font-size: var(--t-body); }
+.tier-name   { font-size: var(--t-title); }
+.start-name  { font-size: 30px; }
+
+/* The quest note is the quest: "Loop Hunter" does not tell you what to run. */
+.quest-note  { font-size: var(--t-small); font-weight: 700; color: var(--text-mid); line-height: 1.4; }
+.quest-xp    { font-size: var(--t-body); }
+
+/* Numbers you scan down a column. The history badge was 8px. */
+.history-badge { font-size: 11px; }
+.history-value { font-size: var(--t-lead); }
+.stat-value--feed { font-size: var(--t-lead); }
+.label-sm { font-size: var(--t-small); }
+
+/* With the subtitles gone the title sits alone, so it takes the whole line. */
+.screen-head { align-items: center; }
+
+/* The hero lost its "This week" eyebrow to the copy cut, so the picture was
+   left carrying the same height with less on it — and it pushed Solo and Race,
+   the whole point of the screen, off the bottom. */
+.hero { aspect-ratio: 1 / 1; max-height: 46vh; }
+
+/* The rank card is now two lines: which rank, and the one number that moves
+   you off it. Both deserve to be read from arm's length. */
+.rank-detail p { font-size: var(--t-lead); color: var(--text-hi); }
+
+/* The lock title carries the offer now that its explainer is gone, so it can
+   be two lines on a narrow phone without shouldering the button off the row. */
+.lock-row { align-items: flex-start; }
+.lock-row .btn { flex: none; margin-top: 2px; }
+
+/* The feed's numbers, as one line. They are separated by a rule rather than a
+   middot so the row still reads as measurements rather than a sentence. */
+.feed-stats {
+  /* A grid, not a wrapping row: a separator between siblings cannot know it
+     has landed at the start of a line, and every wrap left one hanging. */
+  display: grid; grid-template-columns: 1fr 1fr;
+  gap: 6px var(--s-3); align-content: center;
+}
+.feed-stat {
+  font-family: var(--font-num);
+  font-size: var(--t-lead); font-weight: 800; letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-hi);
+  white-space: nowrap;
+}
+.feed-stat--land { color: var(--violet-ink); }
+
+/* A card title beside a four-option filter: let the filter drop to its own
+   line rather than squeezing the title into two. */
+.card-title + .seg { margin-left: auto; }
+.row--between:has(> .card-title + .seg) { flex-wrap: wrap; row-gap: var(--s-3); }
+
+/* Names in the friends board, and the honesty note on the home map. Neither
+   was chosen small on purpose; both were left behind at 13 and 10px. */
+.board-name { font-size: var(--t-body); letter-spacing: -0.01em; }
+.geo-note { font-size: var(--t-micro); }
+.chip { font-size: var(--t-micro); }
+.rank-pct, .rank-slide-xp { font-size: var(--t-micro); }
+
+/* Two kinds of line sit in a locked row, and they are not the same thing.
+   .lock-title is your own data — how much ground you have actually lost — and
+   is the reason to look. .lock-note describes a feature the section title has
+   already named, so it stays a caption and does not compete with it. */
+.lock-note { font-size: var(--t-body); font-weight: 700; color: var(--text-mid); line-height: 1.35; }

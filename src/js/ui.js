@@ -342,7 +342,6 @@
 
       $('#volumeValue').textContent = Units.distText(current.distance);
       $('#volumeUnit').textContent = Units.distLabel();
-      $('#volumeLabel').textContent = isWeek ? 'This week' : 'This month';
 
       const diff = current.distance - previous.distance;
       const deltaNode = $('#volumeDelta');
@@ -350,8 +349,10 @@
       deltaNode.className = 'delta chip--icon ' + (up ? 'delta--up' : 'delta--down');
       deltaNode.innerHTML = '';
       deltaNode.appendChild(this.icon(up ? 'i-rise' : 'i-fall'));
+      // The arrow says "vs last". Spelling it out again, plus the word "runs",
+      // made the line under the hero number longer than the number itself.
       deltaNode.appendChild(el('span', {
-        text: `${Units.distText(Math.abs(diff))} ${Units.distLabel()} vs last ${isWeek ? 'week' : 'month'} · ${current.runs} ${current.runs === 1 ? 'run' : 'runs'}`,
+        text: `${Units.distText(Math.abs(diff))} ${Units.distLabel()} · ${current.runs} ${current.runs === 1 ? 'run' : 'runs'}`,
       }));
 
       this.paintHome();
@@ -371,7 +372,6 @@
       // Intensity tier
       const t = Stats.tier(s);
       $('#tierName').textContent = t.tier.name;
-      $('#tierCaption').textContent = `Intensity · ${Units.distText(t.week)} ${Units.distLabel()} in the last 7 days`;
       $('#tierNext').textContent = t.next
         ? `${Units.distText(Math.max(0, t.next.from - t.week))} ${Units.distLabel()} to ${t.next.name}`
         : 'Maximum intensity';
@@ -407,7 +407,7 @@
           el('span', { class: 'owner-swatch', style: `background:${r.color};width:8px;height:24px;border-radius:4px` }),
           el('div', { class: 'stack grow', style: 'gap:5px' }, [
             el('div', { class: 'row row--between' }, [
-              el('span', { style: `font-size:13px;font-weight:${r.me ? 900 : 700};color:${r.me ? 'var(--accent)' : 'var(--text-hi)'}`, text: r.name }),
+              el('span', { class: 'board-name', style: `font-weight:${r.me ? 900 : 700};color:${r.me ? 'var(--accent)' : 'var(--text-hi)'}`, text: r.name }),
               el('span', { class: 'tiny', text: `${Units.distText(r.weekly)} ${Units.distLabel()}` }),
             ]),
             el('div', { class: 'bar' }, [el('i', { style: `width:${clamp((r.weekly / top) * 100, 3, 100)}%;background:${r.color}` })]),
@@ -746,11 +746,11 @@
     renderMapStyle() {
       const style = M.Tiles.SOURCES[State.data.mapStyle] ? State.data.mapStyle : 'dark';
       $$('#mapStyleSeg button').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.tiles === style)));
-      $('#mapStyleNote').textContent = style === 'drawn'
-        ? 'The drawn city — works with no network'
-        : M.Tiles.blocked()
-          ? 'Imagery unreachable — showing the drawn city'
-          : M.Tiles.attribution() || 'Real imagery';
+      // A line here only when there is something to report. "Real imagery, or
+      // the drawn city" only restated the four buttons beside it.
+      $('#mapStyleNote').textContent = style === 'drawn' ? ''
+        : M.Tiles.blocked() ? 'Unreachable — drawn city instead'
+        : M.Tiles.attribution() || '';
     },
 
     /**
@@ -1045,7 +1045,7 @@
             el('span', { class: 'tiny', text: [
               t.name ? `${Units.areaText(t.area)} ${Units.areaLabel()}` : null,
               relTime(t.claimedAt),
-              lost(t) ? `${Units.areaText(lost(t))} ${Units.areaLabel()} taken since` : null,
+              lost(t) ? `${Units.areaText(lost(t))} ${Units.areaLabel()} lost` : null,
             ].filter(Boolean).join(' · ') }),
           ]),
           el('span', { class: 'chip', text: (t.pieces || []).length > 1 ? `${t.pieces.length} parts` : 'Held' }),
@@ -1106,14 +1106,17 @@
           text: crews ? 'No crew ground in view' : this.nearestLandHint() }));
         return;
       }
-      owners.slice(0, 7).forEach((o) => {
+      // Four names and a count. Seven ran to two lines of legend under a map
+      // whose own labels already name every owner on it.
+      const SHOWN = 4;
+      owners.slice(0, SHOWN).forEach((o) => {
         legend.appendChild(el('span', { class: 'legend-item', 'data-me': String(o.me) }, [
           el('span', { class: 'legend-swatch', style: `background:${o.color}` }),
           el('span', { text: o.name }),
         ]));
       });
-      if (owners.length > 7) {
-        legend.appendChild(el('span', { class: 'legend-item', text: `+${owners.length - 7} more` }));
+      if (owners.length > SHOWN) {
+        legend.appendChild(el('span', { class: 'legend-item', text: `+${owners.length - SHOWN}` }));
       }
     },
 
@@ -1348,7 +1351,7 @@
       chip.textContent = v.tier === 'supporter' ? 'SUPPORTER' : 'PRO';
       $('#proCardTitle').textContent = v.tier === 'free' ? 'Know your ground' : 'Your plan';
       $('#proCardNote').textContent = v.tier === 'free'
-        ? 'Time machine, raiders, and seven more'
+        ? 'Nine features'
         : v.trial ? `Trial · ${Math.max(0, Math.ceil((v.until - Date.now()) / 864e5))} days left`
           : `${v.plan.name} · ${v.plan.label}`;
 
@@ -1435,8 +1438,7 @@
         contributors,
         on ? null : el('div', { class: 'lock-row', style: 'margin-top:var(--s-3)' }, [
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
-            el('span', { class: 'lock-title', text: 'See the map by crew' }),
-            el('span', { class: 'tiny', text: 'Every crew\u2019s ground in its own colour' }),
+            el('span', { class: 'lock-note', text: 'Every crew in its own colour' }),
           ]),
           el('button', {
             class: 'btn btn--pro', type: 'button',
@@ -1530,17 +1532,10 @@
 
     bindTerritoryMap() {
       const map = this.maps.territory;
-      const hint = $('#terrHint');
-      // The hint has done its job the moment the map is touched.
-      const dismiss = () => {
-        if (!hint || hint.dataset.gone === 'true') return;
-        hint.dataset.gone = 'true';
-        setTimeout(() => { hint.hidden = true; }, 500);
-      };
-      ['pointerdown', 'wheel'].forEach((e) => $('#terrMap').addEventListener(e, dismiss, { passive: true }));
-
-      $('#terrZoomIn').addEventListener('click', () => { map.zoomAt(1.6); dismiss(); });
-      $('#terrZoomOut').addEventListener('click', () => { map.zoomAt(1 / 1.6); dismiss(); });
+      // "Drag to explore · pinch to zoom" was a caption telling you a map is a
+      // map, sitting over the part of it you most want to see.
+      $('#terrZoomIn').addEventListener('click', () => map.zoomAt(1.6));
+      $('#terrZoomOut').addEventListener('click', () => map.zoomAt(1 / 1.6));
       $('#terrRecentre').addEventListener('click', () => {
         map.moved = false;
         this.renderTerritory();
@@ -1593,12 +1588,8 @@
         const pending = M.Crew.all(state).find((c) => c.pendingMe);
         host.appendChild(el('div', { class: 'card stack' }, [
           el('span', { class: 'card-title', text: pending ? 'Waiting on a captain' : 'No crew yet' }),
-          el('p', {
-            class: 'muted',
-            text: pending
-              ? `${pending.name} reviews every request. You will get in when their captain says so.`
-              : 'Join a crew near you, or start your own.',
-          }),
+          // Only when there is something the button below does not already say.
+          pending ? el('p', { class: 'muted', text: `${pending.name} lets their captain decide.` }) : null,
           el('button', {
             class: 'btn btn--primary btn--block', type: 'button',
             text: M.Pro.can('crewCreate') ? 'Start a crew' : 'Start a crew · Pro',
@@ -1609,19 +1600,19 @@
       }
 
       const nearby = M.Crew.nearby(state);
-      $('#nearbyCount').textContent = `${nearby.length} within 5 ${Units.distLabel()}`;
+      $('#nearbyCount').textContent = '';
       const list = $('#nearbyCrews');
       list.innerHTML = '';
       nearby.forEach((crew) => {
         const card = el('button', { class: 'crew-card', type: 'button' }, [
           this.crewBadge(crew, 'small'),
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
-            el('span', { style: 'font-weight:800;font-size:14px', text: crew.name }),
-            el('span', { class: 'tiny truncate', text: crew.tagline }),
-            el('span', { class: 'tiny', style: `color:${crew.color}`, text: `Tier ${M.Crew.level(crew).tier.index} ${M.Crew.level(crew).tier.name} · ${M.Crew.memberCount(crew)} runners · ${Units.distText(M.Crew.weeklyVolume(crew))} ${Units.distLabel()}` }),
+            el('span', { class: 'crew-name', text: crew.name }),
+            el('span', { class: 'tiny', style: `color:${crew.color}`, text: `${M.Crew.level(crew).tier.name} · ${M.Crew.memberCount(crew)} runners` }),
           ]),
           el('div', { class: 'stack', style: 'gap:4px;align-items:flex-end;flex:none' }, [
-            el('span', { class: 'stat-value', style: 'font-size:14px', text: Units.distText(crew.distance) }),
+            // The number was 14px over a 12px label, which is not a hierarchy.
+            el('span', { class: 'stat-value stat-value--feed', text: Units.distText(crew.distance) }),
             el('span', { class: 'stat-label', text: Units.distLabel() + ' away' }),
           ]),
         ]);
@@ -2408,8 +2399,11 @@
               el('span', { class: 'quest-name', text: v.quest.name }),
               el('span', { class: 'quest-xp', text: v.complete ? `+${v.quest.xp} XP` : `${v.quest.xp} XP` }),
             ]),
-            el('span', { class: 'tiny', text: v.quest.note }),
-            el('div', { class: 'bar' }, [el('i', { style: `width:${clamp(v.ratio * 100, 2, 100)}%` })]),
+            // The note is the quest — "Loop Hunter" alone does not say what to
+            // do. Once it is done it is history, and the row keeps only its
+            // name and the XP it paid.
+            v.complete ? null : el('span', { class: 'quest-note', text: v.quest.note }),
+            v.complete ? null : el('div', { class: 'bar' }, [el('i', { style: `width:${clamp(v.ratio * 100, 2, 100)}%` })]),
             el('span', { class: 'tiny', text: v.complete ? 'Completed' : shown }),
           ]),
         ]));
@@ -2577,37 +2571,25 @@
       box.setAttribute('data-state', entry.state);
       box.innerHTML = '';
 
-      const eyebrow = entry.state === 'done' ? 'Behind you'
-        : entry.state === 'current' ? 'Where you are' : 'Ahead of you';
-
       let body;
+      // The sentence these used to be said the same thing three ways. What a
+      // runner reads off this card is one number: how far to the next rung.
       if (entry.state === 'done') {
-        body = `You passed ${entry.rank.name} at ${entry.rank.xp} XP. It is yours for good — rank never drops.`;
+        body = `Passed at ${entry.rank.xp} XP`;
       } else if (entry.state === 'current' && entry.next) {
-        const left = entry.next.xp - entry.xp;
-        body = `${entry.earned} of ${entry.band} XP earned in this band. ${left} XP more and you are a ${entry.next.name}.`;
+        body = `${entry.next.xp - entry.xp} XP to ${entry.next.name}`;
       } else if (entry.state === 'current') {
-        body = `Top of the ladder, on ${entry.xp} XP. There is nothing above this one.`;
+        body = 'Top of the ladder';
       } else {
-        body = `${entry.rank.xp} XP unlocks ${entry.rank.name} — ${entry.rank.xp - entry.xp} XP from where you are now.`;
+        body = `${entry.rank.xp - entry.xp} XP away`;
       }
 
-      box.appendChild(el('span', { class: 'stat-label', text: eyebrow }));
+      // The ring above already says whether this rank is behind, current or
+      // ahead — it is drawn as filled, lit or locked. The eyebrow said it a
+      // second time in words.
       box.appendChild(el('h3', { text: entry.rank.name }));
       box.appendChild(el('p', { text: body }));
 
-      if (entry.state !== 'done') {
-        const next = M.QUESTS
-          .map((q) => M.questView(State.data, q))
-          .filter((v) => !v.complete)
-          .sort((a, b) => b.ratio - a.ratio)[0];
-        if (next) {
-          box.appendChild(el('span', {
-            class: 'tiny',
-            text: `Closest quest: ${next.quest.name} — ${Math.round(next.ratio * 100)}% done, worth ${next.quest.xp} XP.`,
-          }));
-        }
-      }
     },
 
     /* --- Feed ---------------------------------------------------------------- */
@@ -2635,18 +2617,22 @@
           el('div', { class: 'feed-head' }, [
             el('span', { class: 'friend-avatar', style: `background:${item.color}`, text: item.initials }),
             el('div', { class: 'stack grow', style: 'gap:2px' }, [
-              el('span', { style: 'font-weight:800;font-size:14px', text: item.who }),
+              el('span', { class: 'feed-who', text: item.who }),
               el('span', { class: 'tiny', text: `${a.title} · ${relTime(a.startedAt)}` }),
             ]),
             kindChip(a),
           ]),
           el('div', { class: 'feed-body' }, [
             canvas,
+            // Four labelled cells became one line. Each of these reads as what
+            // it is from its own format — km, a clock, a pace, an area — so
+            // DISTANCE / TIME / PACE / LAND under them was the same four words
+            // repeated down every card in the feed.
             el('div', { class: 'feed-stats' }, [
-              stat(`${Units.distText(a.distance)} ${Units.distLabel()}`, 'Distance'),
-              stat(clock(a.duration), 'Time'),
-              stat(`${Units.paceText(a.duration / Math.max(1, a.distance))}`, 'Pace ' + Units.paceLabel()),
-              stat(a.claimedArea ? `${Units.areaText(a.claimedArea)} ${Units.areaLabel()}` : '—', 'Territory'),
+              stat(`${Units.distText(a.distance)} ${Units.distLabel()}`),
+              stat(clock(a.duration)),
+              stat(`${Units.paceText(a.duration / Math.max(1, a.distance))} ${Units.paceLabel()}`),
+              a.claimedArea ? stat(`${Units.areaText(a.claimedArea)} ${Units.areaLabel()}`, true) : null,
             ]),
           ]),
           el('div', { class: 'feed-foot' }, [
@@ -2678,11 +2664,9 @@
         });
       }
 
-      function stat(value, label) {
-        return el('div', { class: 'stack', style: 'gap:2px' }, [
-          el('span', { class: 'stat-value', style: 'font-size:16px', text: value }),
-          el('span', { class: 'stat-label', text: label }),
-        ]);
+      /** @param {boolean} [land] colours the one number that is territory. */
+      function stat(value, land) {
+        return el('span', { class: 'feed-stat' + (land ? ' feed-stat--land' : ''), text: value });
       }
     },
 
@@ -2874,7 +2858,7 @@
           el('span', { class: 'friend-avatar', style: `background:${f.color}`, text: f.initials }),
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
             el('span', { style: 'font-weight:800;font-size:14px', text: f.name }),
-            el('span', { class: 'tiny', text: `${Units.paceText(f.pace / 1000)} ${Units.paceLabel()} race pace` }),
+            el('span', { class: 'tiny', text: `${Units.paceText(f.pace / 1000)} ${Units.paceLabel()}` }),
           ]),
           el('button', {
             class: 'chip', type: 'button', text: 'Remove',

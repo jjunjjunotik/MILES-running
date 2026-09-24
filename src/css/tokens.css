@@ -104,13 +104,13 @@
   --font-num: "SF Mono", "JetBrains Mono", "Roboto Mono", ui-monospace, monospace;
 
   --t-hero:    clamp(62px, 19vw, 86px);   /* the one number a screen is about */
-  --t-display: 30px;                      /* screen titles                    */
-  --t-title:   21px;                      /* card titles                      */
-  --t-lead:    17px;                      /* the line under a title           */
-  --t-body:    15px;                      /* body copy                        */
-  --t-small:   13px;
+  --t-display: 32px;                      /* screen titles                    */
+  --t-title:   22px;                      /* card and section titles          */
+  --t-lead:    19px;                      /* names: a quest, a crew, a plot   */
+  --t-body:    16px;                      /* body copy                        */
+  --t-small:   14px;
   --t-label:   12px;                      /* uppercase, tracked               */
-  --t-micro:   11.5px;
+  --t-micro:   12px;
 
   /* --- Surfaces ----------------------------------------------------------
      Not everything is a box. Level 0 is the page itself and most content
