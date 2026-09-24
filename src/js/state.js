@@ -573,6 +573,7 @@
           profile: { name: 'You', handle: '@you', initials: 'YU', home },
           units: 'km',
           mapStyle: 'dark',
+          heroBg: 0,
           rankSeen: RANKS[0].key,
           pro: { plan: null, trialEndsAt: null },
           rangeMode: 'week',
@@ -627,6 +628,8 @@
       if (!this.data.rivalLand) this.data.rivalLand = [];
       // Saved before the map could show real imagery.
       if (!this.data.mapStyle) this.data.mapStyle = 'dark';
+      // Saved before the home picture could be swiped.
+      if (typeof this.data.heroBg !== 'number') this.data.heroBg = 0;
       // Saved before there was anything to buy.
       if (!this.data.pro) this.data.pro = { plan: null, trialEndsAt: null };
       // Saved before rank-ups were announced. Start from where they already

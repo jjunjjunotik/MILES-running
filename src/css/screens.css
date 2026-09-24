@@ -1392,3 +1392,38 @@
 .rank-mark--big.ico { width: 76px; height: 76px; }
 .celebrate-letter { font-size: 0; }
 .ground-rank .rank-mark--chip.ico { width: 17px; height: 17px; }
+
+/* --- The home picture, swiped -----------------------------------------------
+   The strip of pictures moves; the veil, the number and the switches above it
+   do not. pan-y hands vertical drags to the page, so the screen still scrolls
+   from here, and sideways drags come to the swipe. */
+/* No text selection here: a mouse swipe across the number selected it, and the
+   next swipe then started dragging that selection instead — the browser
+   cancels the pointer and the picture stops moving. */
+.hero { touch-action: pan-y; outline: none; -webkit-user-select: none; user-select: none; }
+.hero img { -webkit-user-drag: none; }
+.hero:focus-visible { box-shadow: var(--shadow-2), 0 0 0 2px var(--flame-ink); }
+.hero-track {
+  position: absolute; inset: 0;
+  display: flex;
+  transition: transform 0.38s cubic-bezier(0.2, 0.9, 0.3, 1);
+  will-change: transform;
+}
+.hero-slide { position: relative; flex: 0 0 100%; height: 100%; overflow: hidden; }
+.hero-slide > canvas, .hero-slide > img {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  object-fit: cover; display: block;
+}
+/* Where you are in the strip. An indicator, not a control — the swipe is. */
+.hero-dots {
+  position: absolute; left: 0; right: 0; bottom: 7px;
+  display: flex; justify-content: center; gap: 6px;
+  pointer-events: none;
+}
+.hero-dots i {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: rgba(255, 255, 255, 0.32);
+  transition: width 0.25s ease, background 0.25s ease;
+}
+.hero-dots i[data-on] { width: 18px; border-radius: var(--r-pill); background: var(--flame); }
+@media (prefers-reduced-motion: reduce) { .hero-track { transition: none; } }

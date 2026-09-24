@@ -25,6 +25,7 @@
       this.buildMaps();
       this.bindChrome();
       this.bindHome();
+      this.bindHero();
       this.bindRun();
       this.bindFinish();
       this.bindProfile();
@@ -267,6 +268,104 @@
     },
 
     /* --- Home ------------------------------------------------------------- */
+
+    /* --- The home picture ----------------------------------------------------
+       Five backgrounds behind the week's distance, swiped sideways. Only the
+       picture moves: the number and the two switches stay put, so a swipe
+       never costs you your place. The choice is remembered.
+
+       Written with pointer events rather than a scrolling strip, because the
+       hero's own controls sit on top of the picture — a scroller underneath
+       them would never see the swipe. A gesture only becomes a swipe once it
+       is clearly sideways, so a vertical flick still scrolls the page and a
+       tap still reaches the button under it. */
+
+    bindHero() {
+      const hero = $('#homeHero');
+      const track = $('#heroTrack');
+      const slides = $$('.hero-slide', track);
+      const dots = $('#heroDots');
+      if (!hero || !track || !slides.length) return;
+
+      dots.innerHTML = '';
+      slides.forEach(() => dots.appendChild(el('i')));
+
+      // Photographs load once, each behind a drawn picture that stays if the
+      // file is missing or fails — never a broken image.
+      slides.forEach((slide, i) => {
+        if (!slide.dataset.photo) return;
+        M.Visual.photo(slide, slide.dataset.photo,
+          { seed: 90 + i, from: '#ff6a1f', to: '#a855f7' });
+      });
+
+      const count = slides.length;
+      const show = (i, animate) => {
+        const n = ((i % count) + count) % count;
+        this.heroIndex = n;
+        track.style.transition = animate === false ? 'none' : '';
+        track.style.transform = `translateX(${-n * 100}%)`;
+        $$('i', dots).forEach((d, k) => d.toggleAttribute('data-on', k === n));
+        hero.setAttribute('aria-label', `Background picture ${n + 1} of ${count}. Swipe or use the arrow keys to change it.`);
+      };
+      const choose = (i) => {
+        show(i);
+        if (State.data.heroBg !== this.heroIndex) { State.data.heroBg = this.heroIndex; State.save(); }
+      };
+
+      show(Math.min(count - 1, Math.max(0, State.data.heroBg || 0)), false);
+
+      let start = null;      // { x, y, id }
+      let dragging = false;
+      let swallowClick = false;
+
+      hero.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'mouse' && e.button !== 0) return;
+        start = { x: e.clientX, y: e.clientY, id: e.pointerId };
+        dragging = false;
+      });
+      hero.addEventListener('pointermove', (e) => {
+        if (!start || e.pointerId !== start.id) return;
+        const dx = e.clientX - start.x, dy = e.clientY - start.y;
+        if (!dragging) {
+          if (Math.abs(dy) > 10 && Math.abs(dy) > Math.abs(dx)) { start = null; return; }  // a scroll
+          if (Math.abs(dx) < 10) return;
+          dragging = true;
+          hero.setPointerCapture(e.pointerId);
+          track.style.transition = 'none';
+        }
+        const w = hero.clientWidth || 1;
+        // Past either end the picture resists rather than running off.
+        const edge = (this.heroIndex === 0 && dx > 0) || (this.heroIndex === count - 1 && dx < 0);
+        const off = edge ? dx * 0.3 : dx;
+        track.style.transform = `translateX(calc(${-this.heroIndex * 100}% + ${off}px))`;
+      });
+      const end = (e) => {
+        if (!start || e.pointerId !== start.id) { start = null; return; }
+        const dx = e.clientX - start.x;
+        if (dragging) {
+          swallowClick = true;
+          const w = hero.clientWidth || 1;
+          const step = Math.abs(dx) > w * 0.18 ? (dx < 0 ? 1 : -1) : 0;
+          const next = Math.min(count - 1, Math.max(0, this.heroIndex + step));
+          choose(next);
+        }
+        start = null; dragging = false;
+      };
+      hero.addEventListener('pointerup', end);
+      hero.addEventListener('pointercancel', (e) => { if (dragging) show(this.heroIndex); start = null; dragging = false; });
+      // A swipe that ends over a button must not also press it.
+      hero.addEventListener('click', (e) => {
+        if (swallowClick) { e.stopPropagation(); e.preventDefault(); swallowClick = false; }
+      }, true);
+
+      hero.addEventListener('dragstart', (e) => e.preventDefault());
+
+      hero.addEventListener('keydown', (e) => {
+        if (e.target !== hero) return;
+        if (e.key === 'ArrowRight') { e.preventDefault(); choose(Math.min(count - 1, this.heroIndex + 1)); }
+        if (e.key === 'ArrowLeft') { e.preventDefault(); choose(Math.max(0, this.heroIndex - 1)); }
+      });
+    },
 
     bindHome() {
       $$('[data-range]').forEach((btn) => {
