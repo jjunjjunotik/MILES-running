@@ -16,17 +16,17 @@
   /* `line` is what the app says when you reach the rank — the one moment it
      gets to talk about the running rather than the numbers. */
   const RANKS = [
-    { key: 'rookie',   name: 'Rookie',   badge: 'R', xp: 0,
+    { key: 'rookie', icon: 'i-rank-rookie',   name: 'Rookie',   badge: 'R', xp: 0,
       line: 'Everyone starts here. The first loop is the hard one.' },
-    { key: 'pacer',    name: 'Pacer',    badge: 'P', xp: 300,
+    { key: 'pacer', icon: 'i-rank-pacer',    name: 'Pacer',    badge: 'P', xp: 300,
       line: 'You are turning up. That is most of it.' },
-    { key: 'strider',  name: 'Strider',  badge: 'S', xp: 800,
+    { key: 'strider', icon: 'i-rank-strider',  name: 'Strider',  badge: 'S', xp: 800,
       line: 'The distance stopped being the point. Now it is the map.' },
-    { key: 'ranger',   name: 'Ranger',   badge: 'G', xp: 1600,
+    { key: 'ranger', icon: 'i-rank-ranger',   name: 'Ranger',   badge: 'G', xp: 1600,
       line: 'You hold ground people have to run around.' },
-    { key: 'vanguard', name: 'Vanguard', badge: 'V', xp: 2800,
+    { key: 'vanguard', icon: 'i-rank-vanguard', name: 'Vanguard', badge: 'V', xp: 2800,
       line: 'Your neighbourhood is shaped by where you run.' },
-    { key: 'apex',     name: 'Apex',     badge: 'A', xp: 4500,
+    { key: 'apex', icon: 'i-rank-apex',     name: 'Apex',     badge: 'A', xp: 4500,
       line: 'Nothing above this one. Everything below it is yours.' },
   ];
 

@@ -91,9 +91,13 @@ const PICTOGRAPH = '[\\u{1F000}-\\u{1FAFF}\\u{2190}-\\u{21FF}\\u{2300}-\\u{23FF}
       shapes: g.children.length,
       // A stroke icon must not rely on fills, or it cannot take its colour
       // from the text it sits with.
+      // A sprite must not carry a colour of its own, or it stops matching the
+      // text it sits beside. currentColor is not a colour of its own: it is
+      // whatever the sprite is placed in, which is the whole point. The rank
+      // emblems fill with it so they can read as reached, current or locked.
       filled: [...g.children].some((c) => {
         const f = c.getAttribute('fill');
-        return f && f !== 'none';
+        return f && f !== 'none' && f !== 'currentColor';
       }),
       sized: [...g.children].every((c) => {
         const d = c.getAttribute('d') || '';

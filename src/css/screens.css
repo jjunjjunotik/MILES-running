@@ -423,8 +423,8 @@
 .rank-slide[data-focused="true"] { opacity: 1; transform: none; }
 
 .rank-ring { position: relative; width: 100%; aspect-ratio: 1; }
-.rank-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-.rank-ring circle { fill: none; stroke-linecap: round; }
+.rank-ring > svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.rank-ring > svg circle { fill: none; stroke-linecap: round; }
 .rank-ring .track { stroke: rgba(255, 255, 255, 0.09); }
 .rank-ring .fill { transition: stroke-dashoffset 0.7s cubic-bezier(0.2, 1, 0.3, 1); }
 
@@ -437,15 +437,17 @@
   justify-content: center;
   gap: 2px;
 }
-.rank-letter { font-size: 34px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
+/* The emblem that replaced the rank letter. It keeps the letter's optical
+   size, so the ring around it did not have to move. */
+.rank-mark.ico { width: 46px; height: 46px; }
 .rank-pct { font-family: var(--font-num); font-size: 11px; font-weight: 800; color: var(--text-lo); }
 
 .rank-slide-name { font-size: 14px; font-weight: 800; letter-spacing: -0.01em; }
 .rank-slide-xp { font-family: var(--font-num); font-size: 11px; font-weight: 800; color: var(--text-lo); }
 
-.rank-slide[data-state="done"] .rank-letter { color: var(--ok); }
-.rank-slide[data-state="current"] .rank-letter { color: var(--amber); }
-.rank-slide[data-state="locked"] .rank-letter { color: var(--text-lo); }
+.rank-slide[data-state="done"] .rank-mark { color: var(--ok); }
+.rank-slide[data-state="current"] .rank-mark { color: var(--amber); }
+.rank-slide[data-state="locked"] .rank-mark { color: var(--text-lo); }
 
 /* The dot you see is 7px; the button you press is a thumb. Drawing the dot as
    a pseudo-element keeps the pager looking like a pager while giving each rung
@@ -929,8 +931,8 @@
 }
 
 .celebrate-ring { position: relative; width: 148px; height: 148px; }
-.celebrate-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
-.celebrate-ring circle { fill: none; stroke-linecap: round; }
+.celebrate-ring > svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+.celebrate-ring > svg circle { fill: none; stroke-linecap: round; }
 .celebrate-ring .track { stroke: rgba(255, 255, 255, 0.08); }
 .celebrate-ring .fill {
   stroke: var(--amber);
@@ -1380,3 +1382,13 @@
    is the reason to look. .lock-note describes a feature the section title has
    already named, so it stays a caption and does not compete with it. */
 .lock-note { font-size: var(--t-body); font-weight: 700; color: var(--text-mid); line-height: 1.35; }
+
+/* --- Rank emblems ----------------------------------------------------------
+   Each rank is a picture now. One mark, three places: the ladder's ring, the
+   chips that name your rank, and the screen that hands you a new one. Colour
+   comes from whatever it sits in, so a rank reads as reached, current or
+   locked without a second drawing. */
+.rank-mark--chip.ico { width: 15px; height: 15px; }
+.rank-mark--big.ico { width: 76px; height: 76px; }
+.celebrate-letter { font-size: 0; }
+.ground-rank .rank-mark--chip.ico { width: 17px; height: 17px; }

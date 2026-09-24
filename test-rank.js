@@ -74,7 +74,15 @@ const path = require('path');
     name: document.querySelector('#rankUpName').textContent,
     from: document.querySelector('#rankUpFrom').textContent,
     line: document.querySelector('#rankUpLine').textContent,
-    letter: document.querySelector('#rankUpLetter').textContent,
+    // The celebration used to show the rank's letter. It shows the rank's
+    // emblem now, so what has to be true is that the emblem belongs to the
+    // rank just reached rather than being whatever was drawn last. Both sides
+    // are read off the page: the mark on screen, and the icon the rank data
+    // says that rank should carry.
+    mark: (document.querySelector('#rankUpLetter use') || {}).getAttribute
+      ? document.querySelector('#rankUpLetter use').getAttribute('href') : '',
+    wantMark: (MILES.RANKS.find((r) =>
+      r.name === document.querySelector('#rankUpName').textContent) || {}).icon || '',
     behind: (document.querySelector('.screen[data-active="true"]') || {}).id,
   }));
   ok('a real run carried the XP over the line', after.xp > before.xp && after.xp >= before.next,
@@ -83,7 +91,9 @@ const path = require('path');
   ok('it names the rank just reached', after.name === after.rank, `${after.name} vs ${after.rank}`);
   ok('it names where you came from', after.from === before.rank, `${after.from} vs ${before.rank}`);
   ok('it says something about the running', after.line.length > 10, after.line);
-  ok('it carries the rank badge', after.letter.length === 1, after.letter);
+  ok('it carries the emblem of the rank just reached',
+    !!after.wantMark && after.mark === '#' + after.wantMark,
+    `${after.mark} for ${after.name}, expected #${after.wantMark}`);
   ok('it lands on the card that earned it', after.behind === 'screen-finish', after.behind);
   ok('and is recorded as already told', after.seen === after.rankKey,
     `${after.seen} vs ${after.rankKey}`);

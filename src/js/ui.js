@@ -140,6 +140,13 @@
       return svg;
     },
 
+    /** A chip that names a rank wears the rank's emblem beside the name. */
+    rankChip(node, rank) {
+      node.innerHTML = '';
+      node.appendChild(this.icon(rank.icon, 'rank-mark--chip'));
+      node.appendChild(el('span', { text: rank.name }));
+    },
+
     openSheet(id) {
       $(id).hidden = false;
       this.pinShell();
@@ -387,7 +394,9 @@
       $('#railAreaUnit').textContent = Units.areaLabel();
       const done = M.QUESTS.filter((q) => M.questView(s, q).complete).length;
       $('#railQuest').textContent = `${done}/${M.QUESTS.length}`;
-      $('#railRank').textContent = Stats.rank(s).current.name;
+      const rank = Stats.rank(s).current;
+      $('#railRank').textContent = rank.name;
+      $('#railRankUse').setAttribute('href', '#' + rank.icon);
 
       this.renderFriendBoard();
       this.renderHomeMap();
@@ -647,7 +656,9 @@
       if (!rankUp) return;
       this.notifyRank(rankUp);
 
-      $('#rankUpLetter').textContent = rankUp.to.badge;
+      const mark = $('#rankUpLetter');
+      mark.innerHTML = '';
+      mark.appendChild(this.icon(rankUp.to.icon, 'rank-mark rank-mark--big'));
       $('#rankUpName').textContent = rankUp.to.name;
       $('#rankUpLine').textContent = rankUp.to.line || '';
       $('#rankUpFrom').textContent = rankUp.from.name;
@@ -995,7 +1006,7 @@
       $('#terrTotal').textContent = Units.areaText(total);
       $('#terrTotalUnit').textContent = Units.areaLabel() + ' held';
       $('#terrCount').textContent = String(s.territories.length);
-      $('#territoryRankChip').textContent = Stats.rank(s).current.name;
+      this.rankChip($('#territoryRankChip'), Stats.rank(s).current);
 
       // Map: my land plus the neighbours' claims.
       const rivalLand = this.rivalTerritories();
@@ -2467,7 +2478,7 @@
           </svg>` });
 
         ring.appendChild(el('div', { class: 'rank-face' }, [
-          el('span', { class: 'rank-letter', text: entry.rank.badge }),
+          this.icon(entry.rank.icon, 'rank-mark'),
           el('span', { class: 'rank-pct', text: entry.state === 'locked' ? 'Locked' : `${pct}%` }),
         ]));
 
@@ -2827,7 +2838,7 @@
       $('#profileAvatar').textContent = s.profile.initials;
       $('#profileName').textContent = s.profile.name;
       $('#profileHandle').textContent = s.profile.handle;
-      $('#profileRank').textContent = Stats.rank(s).current.name;
+      this.rankChip($('#profileRank'), Stats.rank(s).current);
       $('#nameBtn').textContent = s.profile.name;
       $('#kpiDistance').textContent = Units.distText(all.distance, 0);
       $('#kpiDistanceUnit').textContent = Units.distLabel() + ' total';

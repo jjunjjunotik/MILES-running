@@ -65,6 +65,15 @@
       <g id="i-open"><path d="M6.8 17.2 17.2 6.8"/><path d="M9.4 6.8h7.8v7.8"/></g>
 
       <g id="i-crew"><circle cx="12" cy="6.4" r="2.8"/><path d="M6.8 19.2a5.2 5.2 0 0 1 10.4 0"/><circle cx="4.4" cy="10.4" r="2"/><circle cx="19.6" cy="10.4" r="2"/><path d="M1.6 17a3.4 3.4 0 0 1 3.6-2.6M22.4 17a3.4 3.4 0 0 0-3.6-2.6"/></g>
+      <!-- Rank emblems. Each rank is a picture, not a letter: the ladder is
+           what the game is for, and R / P / S said nothing about it.
+           Drawn bolder than the UI set, so each carries its own weight. -->
+      <g id="i-rank-rookie"><path d="M6.4 4.8v6.4a5.6 5.6 0 0 0 11.2 0V4.8" stroke-width="4.4" /></g>
+      <g id="i-rank-pacer"><path stroke-width="2.6" d="M12 3.6L20.56 9.82L17.29 19.88L6.71 19.88L3.44 9.82Z" /></g>
+      <g id="i-rank-strider"><path d="M12 3.6L20.56 9.82L17.29 19.88L6.71 19.88L3.44 9.82ZM13.7 6.2 8.6 13.4h3.2l-1.5 5.4 5.1-7.2h-3.2Z" fill="currentColor" fill-rule="evenodd" stroke="none"/></g>
+      <g id="i-rank-ranger"><path d="M10 5L17.04 10.11L14.35 18.39L5.65 18.39L2.96 10.11Z" fill="currentColor" stroke="none"/> <path stroke-width="2.6" d="M17.2 4.6a10 10 0 0 1 0 15.6" /></g>
+      <g id="i-rank-vanguard"><path stroke-width="2.6" d="M15.1 7.5L13.55 10.18L10.45 10.18L8.9 7.5L10.45 4.82L13.55 4.82Z" fill="currentColor"/> <path stroke-width="2.6" d="M7.53 11.87L5.98 14.56L2.88 14.56L1.33 11.87L2.87 9.19L5.98 9.19Z" /> <path stroke-width="2.6" d="M22.68 11.87L21.13 14.56L18.02 14.56L16.47 11.87L18.02 9.19L21.13 9.19Z" /> <path stroke-width="2.6" d="M15.1 16.25L13.55 18.93L10.45 18.93L8.9 16.25L10.45 13.56L13.55 13.56Z" fill="currentColor"/></g>
+      <g id="i-rank-apex"><path stroke-width="2.6" d="M6.1 9.4h11.8v5.3c0 3.9-3 6.4-5.9 7.4-2.9-1-5.9-3.5-5.9-7.4Z"/><path d="M4.5 7.6 6.3 2.3l3.1 3.1L12 1.2l2.6 4.2 3.1-3.1 1.8 5.3Z" fill="currentColor" stroke="none"/></g>
     </defs>
   </svg>
 
@@ -167,7 +176,7 @@
               <svg viewBox="0 0 24 24"><use href="#i-crosshair"/></svg>
             </button>
             <button class="ground-rank" type="button" data-goto="quests">
-              <svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-target"/></svg>
+              <svg class="ico rank-mark--chip" viewBox="0 0 24 24" aria-hidden="true"><use href="#i-rank-rookie" id="railRankUse"/></svg>
               <span id="railRank">Rookie</span>
             </button>
           </div>
@@ -247,7 +256,7 @@
           <div>
             <h1 class="screen-title">Territory</h1>
           </div>
-          <span class="chip" id="territoryRankChip">—</span>
+          <span class="chip chip--icon" id="territoryRankChip">—</span>
         </header>
 
         <div class="readout">
@@ -380,7 +389,7 @@
           <div class="stack" style="gap:6px">
             <span class="profile-name" id="profileName">You</span>
             <span class="label-sm" id="profileHandle">@you</span>
-            <span class="chip" id="profileRank" style="align-self:flex-start">Rookie</span>
+            <span class="chip chip--icon" id="profileRank" style="align-self:flex-start">Rookie</span>
           </div>
         </div>
 
@@ -510,7 +519,7 @@
             <circle class="track" cx="60" cy="60" r="52" stroke-width="7"></circle>
             <circle class="fill" cx="60" cy="60" r="52" stroke-width="7"></circle>
           </svg>
-          <span class="celebrate-letter" id="rankUpLetter">P</span>
+          <span class="celebrate-letter" id="rankUpLetter"></span>
         </div>
         <span class="stat-label" id="rankUpEyebrow">Rank up</span>
         <h2 class="celebrate-name" id="rankUpName">Pacer</h2>
