@@ -280,6 +280,26 @@
        is clearly sideways, so a vertical flick still scrolls the page and a
        tap still reaches the button under it. */
 
+    /**
+     * The week's distance is set as large as the picture allows. A six-figure
+     * month ("125.50") at that size would run past the edge on a 360px
+     * phone, so the number is measured after it changes and scaled down just
+     * enough to fit — never up past the size the design sets.
+     */
+    fitHeroNumber() {
+      const box = $('.hero-number');
+      if (!box) return;
+      box.style.fontSize = '';
+      if (!box.clientWidth) return;
+      // The unit and the gap beside the number do not scale with it, so one
+      // proportional step undershoots. Step down until it fits.
+      let size = parseFloat(getComputedStyle(box).fontSize);
+      for (let i = 0; i < 16 && box.scrollWidth > box.clientWidth; i++) {
+        size = Math.floor(size * Math.max(0.8, Math.min(0.97, box.clientWidth / box.scrollWidth)));
+        box.style.fontSize = `${size}px`;
+      }
+    },
+
     bindHero() {
       const hero = $('#homeHero');
       const track = $('#heroTrack');
@@ -299,6 +319,7 @@
       });
 
       const count = slides.length;
+      const HOLD = 3000;                 // how long each picture stays
       const show = (i, animate) => {
         const n = ((i % count) + count) % count;
         this.heroIndex = n;
@@ -310,7 +331,36 @@
       const choose = (i) => {
         show(i);
         if (State.data.heroBg !== this.heroIndex) { State.data.heroBg = this.heroIndex; State.save(); }
+        restart();               // the next automatic step is a full 3s after yours
       };
+
+      /* Every three seconds the picture moves on by itself, and after the
+         last it comes round to the first. The wrap is a quick fade rather
+         than a slide: sliding back from the last to the first would drag all
+         five pictures past in a blur, which reads as rewinding.
+         It holds while you are touching it, while Home is not the screen on
+         show, and while the tab is hidden — nothing runs that nobody sees.
+         Automatic steps are not saved; the picture you last chose yourself
+         is still where it starts next time. */
+      let timer = null;
+      const advance = () => {
+        if (this.tab !== 'home' || document.hidden || start) return;
+        const next = this.heroIndex + 1;
+        if (next < count) { show(next); return; }
+        track.style.opacity = '0';
+        setTimeout(() => {
+          show(0, false);
+          void track.offsetWidth;          // commit the jump before fading back
+          track.style.transition = '';
+          track.style.opacity = '1';
+        }, 260);
+      };
+      const restart = () => {
+        clearInterval(timer);
+        timer = this.heroAutoplayOn === false ? null : setInterval(advance, HOLD);
+      };
+      /** Tests turn it off to hold the picture still; nothing in the app does. */
+      this.heroAutoplay = (on) => { this.heroAutoplayOn = on; restart(); };
 
       show(Math.min(count - 1, Math.max(0, State.data.heroBg || 0)), false);
 
@@ -359,6 +409,8 @@
       }, true);
 
       hero.addEventListener('dragstart', (e) => e.preventDefault());
+      window.addEventListener('resize', () => this.fitHeroNumber());
+      restart();
 
       hero.addEventListener('keydown', (e) => {
         if (e.target !== hero) return;
@@ -475,14 +527,10 @@
         spark.appendChild(bar);
       });
 
-      // Intensity tier
-      const t = Stats.tier(s);
-      $('#tierName').textContent = t.tier.name;
-      $('#tierNext').textContent = t.next
-        ? `${Units.distText(Math.max(0, t.next.from - t.week))} ${Units.distLabel()} to ${t.next.name}`
-        : 'Maximum intensity';
-      const span = t.next ? t.next.from - t.tier.from : 1;
-      $('#tierBar').style.width = `${clamp(((t.week - t.tier.from) / span) * 100, 3, 100)}%`;
+      // The intensity tier is no longer read out on Home — it still colours
+      // the whole app through data-tier (applyEnergy), which is where it
+      // earns its keep. The band under the picture repeated it in words.
+      this.fitHeroNumber();
 
       // Streak & identity
       $('#streakValue').textContent = String(Stats.streak(s));

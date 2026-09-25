@@ -54,13 +54,6 @@
   padding-top: var(--s-3);
   border-top: 1px solid var(--line);
 }
-.tier-name {
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
 
 /* --------------------------------------------------------------------------
    HOME · map + side rail
@@ -1079,8 +1072,6 @@
 
 /* --- Intensity band ------------------------------------------------------- */
 
-.band-row { display: flex; flex-direction: column; gap: 9px; flex: none; }
-.band-row .tier-name { font-size: var(--t-lead); }
 .bar--lg { height: 10px; border-radius: 999px; }
 
 /* --- Start cards ---------------------------------------------------------- */
@@ -1318,7 +1309,6 @@
 .lock-title  { font-size: var(--t-lead); letter-spacing: -0.02em; line-height: 1.25; }
 .plot-name   { font-size: var(--t-lead); letter-spacing: -0.02em; }
 .rank-slide-name { font-size: var(--t-body); }
-.tier-name   { font-size: var(--t-title); }
 .start-name  { font-size: 30px; }
 
 /* The quest note is the quest: "Loop Hunter" does not tell you what to run. */
@@ -1406,7 +1396,7 @@
 .hero-track {
   position: absolute; inset: 0;
   display: flex;
-  transition: transform 0.38s cubic-bezier(0.2, 0.9, 0.3, 1);
+  transition: transform 0.38s cubic-bezier(0.2, 0.9, 0.3, 1), opacity 0.26s ease;
   will-change: transform;
 }
 .hero-slide { position: relative; flex: 0 0 100%; height: 100%; overflow: hidden; }
@@ -1427,3 +1417,20 @@
 }
 .hero-dots i[data-on] { width: 18px; border-radius: var(--r-pill); background: var(--flame); }
 @media (prefers-reduced-motion: reduce) { .hero-track { transition: none; } }
+
+/* --- A bigger picture, a bigger number ---------------------------------------
+   The intensity band that sat under the picture is gone, and the picture takes
+   the room: 4:5 instead of square. The number grows with it — this is the one
+   figure the screen is about. fitHeroNumber() scales it back only when a long
+   month would otherwise run off the edge. */
+.hero { aspect-ratio: 4 / 5; max-height: 62vh; }
+.hero-number { font-size: clamp(78px, 25vw, 112px); gap: 10px; }
+.hero-unit { font-size: 28px; }
+.hero .delta { font-size: var(--t-body); }
+.hero-meta { margin-top: 14px; }
+.hero-meta .spark { height: 40px; }
+/* A short phone still gives up height first. */
+@media (max-height: 760px) { .hero { aspect-ratio: 1 / 1.08; } }
+/* The dots sat hard against the bars of the week above them. */
+.hero-body { padding-bottom: 30px; }
+.hero-dots { bottom: 11px; }
