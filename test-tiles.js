@@ -187,9 +187,13 @@ function startTiles() {
   ok('choosing Drawn is not captioned',
     (await p.evaluate(() => document.querySelector('#mapStyleNote').textContent)).trim() === '');
   await p.evaluate(() => MILES.UI.setMapStyle('dark'));
-  await p.waitForTimeout(400);
+  // The note changes when the source is given up on, and that happens when its
+  // tiles have failed — on the network's clock, not ours. A fixed 400ms wait
+  // passed or failed depending on how fast the proxy refused them, so wait for
+  // the verdict itself, and fail only if it never comes.
   ok('a map that could not load says so',
-    /drawn city/i.test(await p.evaluate(() => document.querySelector('#mapStyleNote').textContent)));
+    await p.waitForFunction(() => /drawn city/i.test(document.querySelector('#mapStyleNote').textContent),
+      null, { timeout: 10000 }).then(() => true, () => false));
 
   const real = errs.filter((e) => !/Failed to load resource/.test(e));
   console.log('tile fetch failures (expected — CDN is blocked here):', errs.length - real.length);
