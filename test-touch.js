@@ -67,6 +67,24 @@ const measure = `(() => {
   return out;
 })()`;
 
+// A captain's crew with a roster to manage, a mission running and a notice up:
+// the state the crew screens are busiest in, and the one they were cramped in.
+// Returns the crew's id, founding it the first time it is asked for.
+const CAPTAIN = `(() => {
+  const { State, Pro, Crew } = MILES;
+  if (!Crew.mine(State.data)) {
+    Pro.startTrial(State.data);
+    const r = State.crewAction((st) => Crew.create(st, {
+      name: 'Han River Pacers', tagline: 'Early loops, long talks, no one left behind.',
+      days: ['Tue', 'Thu', 'Sat'], time: '06:30', spot: 'Yeouido Park gate 2', openJoin: false,
+    }));
+    r.crew.requests.slice(0, 2).forEach((q) => State.crewAction((st) => Crew.approve(st, r.crew.id, q.id)));
+    State.crewAction((st) => Crew.setMission(st, r.crew.id, Crew.missionOptions(Crew.mine(State.data))[0].key));
+    State.crewAction((st) => Crew.postNotice(st, r.crew.id, 'Saturday long run moves to 7:00 — meet at gate 2.'));
+  }
+  return Crew.mine(State.data).id;
+})()`;
+
 const STOPS = [
   ['home', `MILES.UI.go('home')`],
   ['crew', `MILES.UI.go('crew')`],
@@ -77,6 +95,15 @@ const STOPS = [
   ['soloSheet', `MILES.UI.openSheet('#soloSheet')`],
   ['duoSheet', `MILES.UI.openRaceLobby()`],
   ['proSheet', `MILES.UI.openPro()`],
+  // The captain's side of the crew. Founding one comes first: after it, there
+  // is a crew and the form is no longer offered.
+  ['crewCreate', `MILES.Pro.startTrial(MILES.State.data); MILES.UI.openCreateCrew()`],
+  ['crewCaptain', `${CAPTAIN}; MILES.UI.go('crew')`],
+  ['crewSheet', `MILES.UI.openCrewSheet(${CAPTAIN})`],
+  ['crewMission', `MILES.UI.openMissionPicker(${CAPTAIN})`],
+  ['crewMember', `(() => { const id = ${CAPTAIN}; MILES.UI.openCrewSheet(id); MILES.UI.manageMember(id, MILES.Crew.mine(MILES.State.data).members.find((m) => m.id !== 'me').id); })()`],
+  ['crewEdit', `(() => { const id = ${CAPTAIN}; MILES.UI.openCrewSheet(id); MILES.UI.editCrew(id); })()`],
+  ['crewHandOver', `(() => { const id = ${CAPTAIN}; MILES.UI.openCrewSheet(id); MILES.UI.chooseSuccessor(id); })()`],
 ];
 
 (async () => {
@@ -95,7 +122,7 @@ const STOPS = [
       await page.waitForTimeout(450);
       for (const r of await page.evaluate(measure)) {
         bad++;
-        console.log(`  TOO SMALL ${size.width}px ${name.padEnd(10)} ${r.w}x${r.h} (needs ${r.need}${r.group ? ', grouped' : ''}${r.groupOk ? '' : ', GROUP UNDER 44'})  .${r.cls}  "${r.txt}"`);
+        console.log(`  TOO SMALL ${size.width}px ${name.padEnd(12)} ${r.w}x${r.h} (needs ${r.need}${r.group ? ', grouped' : ''}${r.groupOk ? '' : ', GROUP UNDER 44'})  .${r.cls}  "${r.txt}"`);
       }
       checked++;
     }

@@ -237,7 +237,12 @@
     },
 
     toast(html, kind) {
-      const node = el('div', { class: 'toast' + (kind ? ' toast--' + kind : ''), html });
+      // The message is one flex item. Passed straight to a flex container,
+      // every text run and every <b> became its own column — "Mission cleared
+      // —" | "Han River Pacers" | "+280 crew XP", side by side and wrapping.
+      const node = el('div', { class: 'toast' + (kind ? ' toast--' + kind : '') }, [
+        el('span', { class: 'toast-text', html }),
+      ]);
       $('#toasts').appendChild(node);
       setTimeout(() => {
         node.style.transition = 'opacity .3s ease, transform .3s ease';
@@ -1568,33 +1573,32 @@
       ])) : [];
 
       const contributors = on && land.byMember.length
-        ? el('div', { class: 'stack', style: 'gap:2px;margin-top:var(--s-3)' }, [
+        ? el('div', { class: 'stack', style: 'gap:8px' }, [
           el('span', { class: 'field-label', text: 'Who holds it' }),
-          el('div', { class: 'stack', style: 'gap:6px' }, land.byMember.slice(0, 4).map((m) => el('div', { class: 'row row--between' }, [
-            el('span', { class: 'tiny', style: m.me ? 'color:var(--text-hi);font-weight:800' : '', text: `${m.name} · ${m.plots} ${m.plots === 1 ? 'plot' : 'plots'}` }),
-            el('span', { class: 'tiny', text: `${Units.areaText(m.area)} ${Units.areaLabel()}` }),
+          el('div', { class: 'stack', style: 'gap:8px' }, land.byMember.slice(0, 4).map((m) => el('div', { class: 'holder-row', 'data-me': String(!!m.me) }, [
+            el('span', { text: `${m.name} · ${m.plots} ${m.plots === 1 ? 'plot' : 'plots'}` }),
+            el('span', { text: `${Units.areaText(m.area)} ${Units.areaLabel()}` }),
           ]))),
         ])
         : null;
 
-      return el('div', { class: 'card stack', style: 'margin-top:var(--s-3)' }, [
-        el('div', { class: 'row row--between' }, [
-          el('span', { class: 'card-title', text: 'Crew territory' }),
-          on ? el('span', { class: 'chip chip--pro', text: 'PRO' }) : null,
-        ]),
-        el('div', { class: 'row row--between' }, [
-          el('div', { class: 'stack', style: 'gap:2px' }, [
-            el('span', { class: 'stat-value', style: 'font-size:26px', text: Units.areaText(land.area) }),
-            el('span', { class: 'stat-label', text: `${Units.areaLabel()} held by ${crew.name}` }),
+      // Two figures, each with a short label under it. The labels used to be
+      // whole sentences in capitals ("KM² HELD BY HAN RIVER PACERS") that
+      // broke over two lines on every phone.
+      return this.crewSection('Crew territory', [
+        el('div', { class: 'land-figures' }, [
+          el('div', { class: 'land-figure' }, [
+            el('span', { class: 'stat-value', text: Units.areaText(land.area) }),
+            el('span', { class: 'land-figure-label', text: `${Units.areaLabel()} held` }),
           ]),
-          el('div', { class: 'stack', style: 'gap:2px;align-items:flex-end' }, [
-            el('span', { class: 'stat-value', style: 'font-size:26px', text: M.ordinal(place || standings.length) }),
-            el('span', { class: 'stat-label', text: `of ${standings.length} crews` }),
+          el('div', { class: 'land-figure land-figure--right' }, [
+            el('span', { class: 'stat-value', text: M.ordinal(place || standings.length) }),
+            el('span', { class: 'land-figure-label', text: `of ${standings.length} crews` }),
           ]),
         ]),
-        on ? el('div', { class: 'stack', style: 'gap:0;margin-top:var(--s-2)' }, rows) : null,
+        on ? el('div', { class: 'stack', style: 'gap:0' }, rows) : null,
         contributors,
-        on ? null : el('div', { class: 'lock-row', style: 'margin-top:var(--s-3)' }, [
+        on ? null : el('div', { class: 'lock-row' }, [
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
             el('span', { class: 'lock-note', text: 'Every crew in its own colour' }),
           ]),
@@ -1604,7 +1608,7 @@
             onclick: () => this.openPro('crewTerritory'),
           }),
         ]),
-      ]);
+      ], on ? el('span', { class: 'chip chip--pro', text: 'PRO' }) : null);
     },
 
     /**
@@ -1738,9 +1742,21 @@
       }
       const host = $('#myCrew');
       host.innerHTML = '';
+      host.className = 'crew-page';
+      // "+ Start" founds a crew. Already in one, it could only ever say
+      // "leave your current crew first", so it is not offered.
+      $('#createCrewBtn').hidden = !!mine;
 
       if (mine) {
+        // One job per block, in the order a crew is lived: who we are, what
+        // we are doing this week, the crew in numbers and when it meets, what
+        // the captain last said, and the ground we hold. It used to be one
+        // card holding nine things, two of them cards of their own.
         host.appendChild(this.crewHero(mine));
+        host.appendChild(this.crewSection('This week', this.missionBlock(mine)));
+        host.appendChild(this.crewSection('The crew', this.crewNumbers(mine)));
+        const board = this.crewBoardPreview(mine);
+        if (board) host.appendChild(board);
         host.appendChild(this.crewLandCard(mine));
       } else {
         const pending = M.Crew.all(state).find((c) => c.pendingMe);
@@ -1797,79 +1813,122 @@
       return badge;
     },
 
+    /** A titled block on the crew screen: the same shape as every other screen. */
+    crewSection(title, body, action) {
+      return el('section', { class: 'section' }, [
+        el('div', { class: 'section-head' }, [
+          el('h2', { class: 'section-title', text: title }),
+          action || null,
+        ]),
+      ].concat(Array.isArray(body) ? body : [body]));
+    },
+
+    /**
+     * Who the crew is and where you stand in it — and the one thing to do
+     * from here. Nothing else lives in the hero any more: the mission, the
+     * numbers and the notice each have a section of their own below it.
+     */
     crewHero(crew) {
       const isLeader = M.Crew.isLeader(crew);
-      const band = M.Crew.paceBand(crew);
       const level = M.Crew.level(crew);
-      const notice = M.Crew.notices(crew)[0];
-      const leader = M.Crew.paceLeader(crew);
-      const pacesetters = M.Crew.pacesetters(crew);
+      const waiting = crew.requests.length;
 
       const heroCanvas = el('canvas', { class: 'crew-hero-canvas', 'aria-hidden': 'true' });
       requestAnimationFrame(() => M.Visual.band(heroCanvas, {
         seed: crew.id ? crew.id.length * 17 + 5 : 9, from: crew.color, to: '#ff6a1f',
       }));
-      return el('div', { class: 'crew-hero' }, [
+
+      return el('section', { class: 'crew-hero' }, [
         heroCanvas,
-        el('div', { class: 'row' }, [
+        // Text over a picture needs its own ground, as on Home.
+        el('div', { class: 'crew-hero-veil', 'aria-hidden': 'true' }),
+        el('div', { class: 'crew-id' }, [
           this.crewBadge(crew),
-          el('div', { class: 'stack grow', style: 'gap:3px' }, [
-            el('span', { class: 'crew-name', text: crew.name }),
-            el('span', { class: 'tiny', text: crew.tagline }),
+          el('div', { class: 'crew-id-text' }, [
+            el('h2', { class: 'crew-hero-name', text: crew.name }),
+            el('div', { class: 'crew-id-tags' }, [
+              el('span', { class: 'role-tag', 'data-role': isLeader ? 'leader' : 'member', text: isLeader ? 'Captain' : 'Member' }),
+              el('span', { class: 'crew-tier', text: `Tier ${level.tier.index} · ${level.tier.name}` }),
+            ]),
           ]),
-          el('span', { class: 'role-tag', 'data-role': isLeader ? 'leader' : 'member', text: isLeader ? 'Captain' : 'Member' }),
         ]),
-
-        // Level: four tiers, climbed only by clearing the weekly mission.
-        el('div', { class: 'stack', style: 'gap:6px' }, [
-          el('div', { class: 'row row--between' }, [
-            el('span', { class: 'crew-tier', text: `Tier ${level.tier.index} · ${level.tier.name}` }),
-            el('span', { class: 'tiny', text: level.next ? `${level.next.xp - level.xp} XP to ${level.next.name}` : 'Top tier' }),
+        crew.tagline ? el('p', { class: 'crew-hero-tagline', text: crew.tagline }) : null,
+        // How far to the next tier, as a bar you can read at a glance.
+        el('div', { class: 'crew-level' }, [
+          el('div', { class: 'bar crew-level-bar' }, [
+            el('i', { style: `width:${Math.max(3, Math.round(level.progress * 100))}%` }),
           ]),
-          el('div', { class: 'tier-pips' }, M.Crew.CREW_TIERS.map((t) => el('i', { 'data-on': String(t.index <= level.tier.index) }))),
+          el('span', { class: 'crew-level-next', text: level.next
+            ? `${level.next.xp - level.xp} XP to ${level.next.name}`
+            : 'Top tier — nothing above this one' }),
         ]),
+        el('button', {
+          class: 'btn btn--block' + (isLeader ? ' btn--primary' : ''), type: 'button',
+          text: isLeader ? `Manage crew${waiting ? ` · ${waiting} waiting` : ''}` : 'Open crew',
+          onclick: () => this.openCrewSheet(crew.id),
+        }),
+      ]);
+    },
 
-        this.missionBlock(crew),
-
-        notice ? el('div', { class: 'notice notice--hero' }, [
-          el('div', { class: 'stack grow', style: 'gap:0' }, [
-            el('p', { text: notice.text }),
-            el('span', { class: 'notice-meta', text: `${notice.by} · ${relTime(notice.at)}` }),
+    /**
+     * The crew in three numbers, then when and where it meets. The fastest
+     * pace used to be labelled with its runner's first name alone, so a crew
+     * whose quickest runner was you showed "5'48" / YOU" and meant nothing.
+     */
+    crewNumbers(crew) {
+      const band = M.Crew.paceBand(crew);
+      const leader = M.Crew.paceLeader(crew);
+      const pacesetters = M.Crew.pacesetters(crew);
+      const kpi = (value, label) => el('div', { class: 'kpi' }, [
+        el('div', { class: 'stat-value', text: value }),
+        el('div', { class: 'stat-label', text: label }),
+      ]);
+      const who = leader ? leader.name.split(' ')[0] : null;
+      return [
+        el('div', { class: 'kpis' }, [
+          kpi(String(M.Crew.memberCount(crew)), 'Runners'),
+          kpi(Units.distText(M.Crew.weeklyVolume(crew)), `${Units.distLabel()} / week`),
+          kpi(band ? Units.paceText(band[0] / 1000) : '—', who ? `Best · ${who}` : 'Best pace'),
+        ]),
+        el('div', { class: 'crew-meet' }, [
+          el('div', { class: 'crew-meet-row' }, [
+            this.icon('i-calendar'),
+            el('span', { text: `${M.Crew.formatDays(crew)} · ${M.Crew.formatTime(crew.schedule.time)}` }),
           ]),
-        ]) : null,
-        el('div', { class: 'crew-stats' }, [
-          statCell(String(M.Crew.memberCount(crew)), 'Runners'),
-          statCell(Units.distText(M.Crew.weeklyVolume(crew)), Units.distLabel() + ' / week'),
-          // The quickest pace in the crew belongs to somebody — say who.
-          statCell(band ? Units.paceText(band[0] / 1000) : '—',
-                   leader ? leader.name.split(' ')[0] : 'Best pace'),
+          el('div', { class: 'crew-meet-row' }, [
+            this.icon('i-pin'),
+            el('span', { text: crew.schedule.spot }),
+          ]),
         ]),
-
-        // And who else is running quicker than the crew average.
-        pacesetters.length ? el('div', { class: 'stack', style: 'gap:5px' }, [
-          el('span', { class: 'stat-label', text: 'Setting the pace' }),
+        pacesetters.length ? el('div', { class: 'stack', style: 'gap:10px' }, [
+          el('span', { class: 'field-label', text: 'Setting the pace' }),
           el('div', { class: 'pacesetters' }, pacesetters.slice(0, 5).map((m) => el('span', { class: 'pacesetter' }, [
             el('span', { class: 'pacesetter-dot', style: `background:${m.color}` }),
             el('span', { text: m.id === 'me' ? 'You' : m.name.split(' ')[0] }),
             el('b', { text: Units.paceText(m.pace / 1000) }),
           ]))),
         ]) : null,
-        el('div', { class: 'row row--between' }, [
-          el('span', { class: 'tiny', text: `Meets ${M.Crew.formatDays(crew)} · ${M.Crew.formatTime(crew.schedule.time)} · ${crew.schedule.spot}` }),
-        ]),
-        el('button', {
-          class: 'btn btn--block' + (isLeader ? ' btn--primary' : ''), type: 'button',
-          text: isLeader ? `Manage crew${crew.requests.length ? ` · ${crew.requests.length} waiting` : ''}` : 'Open crew',
-          onclick: () => this.openCrewSheet(crew.id),
-        }),
-      ]);
+      ];
+    },
 
-      function statCell(value, label) {
-        return el('div', { class: 'cell' }, [
-          el('div', { class: 'stat-value', text: value }),
-          el('div', { class: 'stat-label', text: label }),
-        ]);
-      }
+    /** The latest notice, on the screen itself; the whole board is one tap away. */
+    crewBoardPreview(crew) {
+      const notices = M.Crew.notices(crew);
+      const isLeader = M.Crew.isLeader(crew);
+      if (!notices.length && !isLeader) return null;
+      const latest = notices[0];
+      const action = isLeader
+        ? el('button', { class: 'link', type: 'button', text: 'Write', onclick: () => this.composeNotice(crew.id) })
+        : notices.length > 1
+          ? el('button', { class: 'link', type: 'button', text: `All ${notices.length}`, onclick: () => this.openCrewSheet(crew.id) })
+          : null;
+      return this.crewSection('Notice board', latest
+        ? el('div', { class: 'notice notice--lead' }, [
+          el('p', { text: latest.text }),
+          el('span', { class: 'notice-meta', text: `${latest.by} · ${relTime(latest.at)}` }),
+        ])
+        : el('p', { class: 'crew-empty', text: 'Nothing posted yet. Whatever you write here, the whole crew sees.' }),
+      action);
     },
 
     /** This week's mission, as the whole crew sees it. */
@@ -1880,12 +1939,8 @@
       // No mission, or last week's: the captain picks, everyone else waits.
       if (!status.mission || status.stale) {
         return el('div', { class: 'mission', 'data-empty': 'true' }, [
-          el('div', { class: 'row' }, [
-            el('div', { class: 'stack grow', style: 'gap:2px' }, [
-              el('span', { class: 'mission-name', text: 'No mission this week' }),
-              el('span', { class: 'tiny', text: isLeader ? 'Pick one and the whole crew runs it together.' : 'Your captain has not set one yet.' }),
-            ]),
-          ]),
+          el('span', { class: 'mission-name', text: 'No mission this week' }),
+          el('p', { class: 'mission-note', text: isLeader ? 'Pick one and the whole crew runs it together.' : 'Your captain has not set one yet.' }),
           isLeader ? el('button', {
             class: 'btn btn--primary btn--block', type: 'button', text: "Set this week's mission",
             onclick: () => this.openMissionPicker(crew.id),
@@ -1894,30 +1949,33 @@
       }
 
       const def = status.def;
-      const fmt = (v) => def.unit === 'dist' ? `${Units.distText(v)} ${Units.distLabel()}`
-        : def.unit === 'area' ? `${Units.areaText(v)} ${Units.areaLabel()}`
-          : String(Math.round(v));
+      const num = (v) => def.unit === 'dist' ? Units.distText(v)
+        : def.unit === 'area' ? Units.areaText(v) : String(Math.round(v));
+      const unit = def.unit === 'dist' ? ` ${Units.distLabel()}` : def.unit === 'area' ? ` ${Units.areaLabel()}` : '';
+      const heads = status.mission.heads;
 
       return el('div', { class: 'mission', 'data-done': String(!!status.mission.completedAt || status.complete) }, [
-        el('div', { class: 'row' }, [
-          el('div', { class: 'stack grow', style: 'gap:2px' }, [
-            el('span', { class: 'mission-name', text: def.name }),
-            el('span', { class: 'tiny', text: status.mission.heads
-              ? `${def.note} · ${status.mission.heads} ${status.mission.heads === 1 ? 'member' : 'members'}`
-              : def.note }),
-          ]),
-          el('span', { class: 'mission-xp', text: `+${status.mission.xp}` }),
+        el('div', { class: 'mission-head' }, [
+          el('span', { class: 'mission-name', text: def.name }),
+          el('span', { class: 'mission-xp', text: `+${status.mission.xp} XP` }),
         ]),
-        el('div', { class: 'bar' }, [
-          el('i', { style: `width:${clamp(status.progress * 100, 2, 100)}%` + (status.complete ? ';background:var(--ok)' : '') }),
+        el('p', { class: 'mission-note', text: heads
+          ? `${def.note} · ${heads} ${heads === 1 ? 'runner' : 'runners'}`
+          : def.note }),
+        // Where the crew is, large; where it is going, beside it.
+        el('div', { class: 'mission-count' }, [
+          el('b', { text: num(status.have) }),
+          el('span', { text: ` / ${num(status.need)}${unit}` }),
         ]),
-        el('div', { class: 'row row--between' }, [
-          el('span', { class: 'mission-count', style: status.complete ? 'color:var(--ok)' : '', text: `${fmt(status.have)} / ${fmt(status.need)}` }),
-          el('span', { class: 'tiny', text: status.complete ? 'Cleared together' : 'Resets Monday' }),
+        el('div', { class: 'bar mission-bar' }, [
+          el('i', { style: `width:${clamp(status.progress * 100, 2, 100)}%` }),
+        ]),
+        el('div', { class: 'mission-status', 'data-done': String(!!status.complete) }, [
+          status.complete ? this.icon('i-check') : null,
+          el('span', { text: status.complete ? 'Cleared together' : 'Resets Monday' }),
         ]),
         isLeader && !status.complete ? el('button', {
-          class: 'btn btn--ghost btn--block', type: 'button', text: 'Change mission',
-          style: 'padding:9px;font-size:12px',
+          class: 'btn btn--ghost btn--block btn--sm', type: 'button', text: 'Change mission',
           onclick: () => this.openMissionPicker(crew.id),
         }) : null,
       ]);
@@ -1934,12 +1992,14 @@
         const fmt = option.def.unit === 'dist' ? `${Units.distText(option.target)} ${Units.distLabel()}`
           : option.def.unit === 'area' ? `${Units.areaText(option.target)} ${Units.areaLabel()}`
             : String(option.target);
+        // Name and reward on one line, what it asks for on the full width under
+        // them — squeezed beside the reward, the target wrapped a word at a time.
         return el('button', { class: 'mission-option', type: 'button' }, [
-          el('div', { class: 'stack grow', style: 'gap:2px' }, [
-            el('span', { style: 'font-weight:800;font-size:14px', text: option.def.name }),
-            el('span', { class: 'tiny', text: `${fmt} — ${option.def.note}` }),
+          el('span', { class: 'mission-head' }, [
+            el('span', { class: 'mission-option-name', text: option.def.name }),
+            el('span', { class: 'mission-xp', text: `+${option.xp} XP` }),
           ]),
-          el('span', { class: 'mission-xp', text: `+${option.xp}` }),
+          el('span', { class: 'mission-note', text: `${fmt} — ${option.def.note}` }),
         ]);
       });
 
@@ -1952,8 +2012,8 @@
       }));
 
       const heads = M.Crew.memberCount(crew);
-      body.appendChild(el('div', { class: 'stack' }, [
-        el('h3', { style: 'font-size:20px', text: "This week's mission" }),
+      body.appendChild(el('div', { class: 'stack sheet-stack' }, [
+        el('h3', { class: 'sheet-title', text: "This week's mission" }),
         el('p', { class: 'muted', text: `Targets are ${heads} ${heads === 1 ? 'member' : 'members'}' worth. Every runner who joins raises them.` }),
       ].concat(rows).concat([
         el('button', { class: 'btn btn--ghost btn--block', type: 'button', text: 'Back', onclick: () => this.openCrewSheet(crewId) }),
@@ -1963,46 +2023,48 @@
       this.openSheet('#crewSheet');
     },
 
-    /** The captain's board. Members read it; only the captain writes. */
+    /** Writing a notice, from the board or straight from the crew screen. */
+    composeNotice(crewId) {
+      this.promptText({
+        title: 'Post a notice',
+        body: 'Everyone in the crew sees this.',
+        placeholder: 'What does the crew need to know?',
+        multiline: true,
+        maxLength: 280,
+        confirmLabel: 'Post',
+        emptyMessage: 'A notice needs something in it',
+      }).then((text) => {
+        if (text === null) return;
+        const result = State.crewAction((st) => M.Crew.postNotice(st, crewId, text));
+        if (result.error) { this.toast(result.error); return; }
+        this.toast('Notice posted to the crew');
+        if (!$('#crewSheet').hidden) this.openCrewSheet(crewId);
+        this.renderCrew();
+      });
+    },
+
+    /**
+     * The captain's board. Members read it; only the captain writes. Returns
+     * the board's contents; the sheet gives it its heading and its spacing.
+     */
     noticeBoard(crew) {
       const isLeader = M.Crew.isLeader(crew);
       const notices = M.Crew.notices(crew);
-      const parts = [
-        el('span', { class: 'card-title', text: `Notice board${notices.length ? ` · ${notices.length}` : ''}` }),
-      ];
-
-      const compose = () => {
-        this.promptText({
-          title: 'Post a notice',
-          body: 'Everyone in the crew sees this.',
-          placeholder: 'What does the crew need to know?',
-          multiline: true,
-          maxLength: 280,
-          confirmLabel: 'Post',
-          emptyMessage: 'A notice needs something in it',
-        }).then((text) => {
-          if (text === null) return;
-          const result = State.crewAction((st) => M.Crew.postNotice(st, crew.id, text));
-          if (result.error) { this.toast(result.error); return; }
-          this.toast('Notice posted to the crew');
-          this.openCrewSheet(crew.id);
-          this.renderCrew();
-        });
-      };
+      const parts = [];
 
       if (isLeader) {
         // The board is the button: tapping it writes a notice.
-        parts.push(el('button', { class: 'notice-compose', type: 'button', onclick: compose }, [
+        parts.push(el('button', { class: 'notice-compose', type: 'button', onclick: () => this.composeNotice(crew.id) }, [
           el('span', { class: 'notice-compose-mark', text: '+' }),
           el('span', { text: notices.length ? 'Write a notice…' : 'Write the first notice — your crew sees whatever you put here.' }),
         ]));
       } else if (!notices.length) {
-        parts.push(el('div', { class: 'empty', text: 'Your captain has not posted anything yet.' }));
+        parts.push(el('p', { class: 'crew-empty', text: 'Your captain has not posted anything yet.' }));
       }
 
       notices.forEach((notice) => {
         parts.push(el('div', { class: 'notice' }, [
-          el('div', { class: 'stack grow', style: 'gap:0' }, [
+          el('div', { class: 'stack grow', style: 'gap:6px' }, [
             el('p', { text: notice.text }),
             el('span', { class: 'notice-meta', text: `${notice.by} · ${relTime(notice.at)}` }),
           ]),
@@ -2021,6 +2083,15 @@
     },
 
     /* --- Crew form controls ---------------------------------------------- */
+
+    /**
+     * A label and the control it names, kept together. Laid out as loose
+     * siblings, every label sat exactly as far from the field above it as from
+     * its own, and read as belonging to either.
+     */
+    formField(label, control) {
+      return el('div', { class: 'form-field' }, [el('label', { class: 'field-label', text: label }), control]);
+    },
 
     /** Day chips — a crew can meet on as many days as it likes. */
     dayPicker(selected) {
@@ -2128,11 +2199,10 @@
       return el('div', { class: 'row', style: 'gap:var(--s-3)' }, [
         preview,
         el('div', { class: 'stack grow', style: 'gap:6px' }, [
-          el('span', { class: 'tiny', text: crew.photo ? 'Your crew photo. Tap to replace it.' : 'No photo yet — your crew shows its initials.' }),
+          el('span', { class: 'person-meta', text: crew.photo ? 'Your crew photo. Tap to replace it.' : 'No photo yet — your crew shows its initials.' }),
           el('div', { class: 'row', style: 'gap:var(--s-2)' }, [
             el('button', {
-              class: 'btn btn--ghost', type: 'button', text: 'Choose photo',
-              style: 'padding:8px 14px;font-size:12px',
+              class: 'btn btn--ghost btn--sm', type: 'button', text: 'Choose photo',
               onclick: () => input.click(),
             }),
             crew.photo ? el('button', {
@@ -2164,15 +2234,15 @@
         el('option', { value: 'review', text: 'I approve each request' }),
       ]);
 
-      body.appendChild(el('div', { class: 'stack' }, [
-        el('h3', { style: 'font-size:20px', text: 'Start a crew' }),
+      body.appendChild(el('div', { class: 'stack sheet-stack' }, [
+        el('h3', { class: 'sheet-title', text: 'Start a crew' }),
         el('p', { class: 'muted', text: 'You will be its captain, which means the member list, the notice board and the weekly mission are yours to run.' }),
-        el('label', { class: 'field-label', text: 'Name' }), name,
-        el('label', { class: 'field-label', text: 'Tagline' }), tagline,
-        el('label', { class: 'field-label', text: 'Joining' }), open,
-        el('label', { class: 'field-label', text: 'Which days you run' }), days,
-        el('label', { class: 'field-label', text: 'Time' }), time,
-        el('label', { class: 'field-label', text: 'Where you meet' }), spot,
+        this.formField('Name', name),
+        this.formField('Tagline', tagline),
+        this.formField('Joining', open),
+        this.formField('Which days you run', days),
+        this.formField('Time', time),
+        this.formField('Where you meet', spot),
         el('p', { class: 'tiny', text: 'You can add a crew photo once it exists.' }),
         el('div', { class: 'row', style: 'gap:var(--s-3);margin-top:var(--s-3)' }, [
           el('button', { class: 'btn grow', type: 'button', text: 'Cancel', onclick: () => { this.closeSheet('#crewSheet'); } }),
@@ -2208,53 +2278,68 @@
       const body = $('#crewSheetBody');
       body.innerHTML = '';
 
-      const parts = [
-        el('div', { class: 'row' }, [
-          this.crewBadge(crew),
-          el('div', { class: 'stack grow', style: 'gap:3px' }, [
-            el('span', { class: 'crew-name', text: crew.name }),
-            el('span', { class: 'tiny', text: crew.tagline }),
-          ]),
-        ]),
-        el('div', { class: 'crew-stats' }, [
-          cell(String(M.Crew.memberCount(crew)), 'Runners'),
-          cell(Units.distText(M.Crew.weeklyVolume(crew)), Units.distLabel() + ' / week'),
-          isMember
-            ? cell(new Date(crew.foundedAt).toLocaleDateString('en-US', { month: 'short', year: '2-digit' }), 'Founded')
-            : cell(Units.distText(crew.distance), Units.distLabel() + ' away'),
-        ]),
-        el('p', { class: 'tiny', text: `Meets ${M.Crew.formatDays(crew)} at ${M.Crew.formatTime(crew.schedule.time)} · ${crew.schedule.spot}` }),
-      ];
-
-      // Level, then the week's mission, then the board — what the crew is
-      // doing right now, before who is in it.
       const level = M.Crew.level(crew);
-      parts.push(el('div', { class: 'stack', style: 'gap:6px' }, [
-        el('div', { class: 'row row--between' }, [
-          el('span', { class: 'crew-tier', text: `Tier ${level.tier.index} · ${level.tier.name}` }),
-          el('span', { class: 'tiny', text: `${crew.missionsDone || 0} missions cleared` }),
+      const count = M.Crew.memberCount(crew);
+      const cleared = crew.missionsDone || 0;
+      const parts = [];
+
+      // Every block of the sheet is a titled section with room above it. They
+      // used to run straight into each other — "Notice board" sat on the
+      // mission card, "Members" on the last request — and read as one list.
+      const section = (title, nodes) => el('section', { class: 'sheet-section' }, [
+        el('h3', { class: 'sheet-section-title', text: title }),
+      ].concat(nodes));
+
+      parts.push(el('div', { class: 'sheet-head' }, [
+        this.crewBadge(crew),
+        el('div', { class: 'sheet-head-text' }, [
+          el('h2', { class: 'sheet-title', text: crew.name }),
+          el('p', { class: 'sheet-sub', text: [
+            isLeader ? 'Captain' : isMember ? 'Member' : null,
+            `Tier ${level.tier.index} ${level.tier.name}`,
+            `${count} ${count === 1 ? 'runner' : 'runners'}`,
+          ].filter(Boolean).join(' · ') }),
         ]),
-        el('div', { class: 'tier-pips' }, M.Crew.CREW_TIERS.map((t) => el('i', { 'data-on': String(t.index <= level.tier.index) }))),
-        el('span', { class: 'tiny', text: level.tier.note }),
       ]));
 
-      if (isMember || isLeader) {
-        parts.push(this.missionBlock(crew));
-        this.noticeBoard(crew).forEach((node) => parts.push(node));
+      if (!isMember) {
+        // Looking in from outside, this sheet is the crew's whole profile:
+        // what it is, how hard it runs, how far away, when it meets.
+        const kpi = (value, label) => el('div', { class: 'kpi' }, [
+          el('div', { class: 'stat-value', text: value }),
+          el('div', { class: 'stat-label', text: label }),
+        ]);
+        if (crew.tagline) parts.push(el('p', { class: 'sheet-lead', text: crew.tagline }));
+        parts.push(el('div', { class: 'kpis sheet-kpis' }, [
+          kpi(Units.distText(M.Crew.weeklyVolume(crew)), `${Units.distLabel()} / week`),
+          kpi(Units.distText(crew.distance), `${Units.distLabel()} away`),
+          kpi(String(cleared), cleared === 1 ? 'Mission' : 'Missions'),
+        ]));
+        parts.push(el('div', { class: 'crew-meet sheet-meet' }, [
+          el('div', { class: 'crew-meet-row' }, [
+            this.icon('i-calendar'),
+            el('span', { text: `${M.Crew.formatDays(crew)} · ${M.Crew.formatTime(crew.schedule.time)}` }),
+          ]),
+          el('div', { class: 'crew-meet-row' }, [this.icon('i-pin'), el('span', { text: crew.schedule.spot })]),
+        ]));
       }
 
-      // Captain's desk: requests first, because they are the thing waiting.
+      // The captain's desk: requests first, because they are the thing waiting.
+      // (The mission, the numbers and the schedule are on the crew screen right
+      // behind this sheet, so a member no longer reads them twice.)
       if (isLeader && crew.requests.length) {
-        parts.push(el('span', { class: 'card-title', text: `Join requests · ${crew.requests.length}` }));
-        crew.requests.forEach((person) => {
-          parts.push(el('div', { class: 'request' }, [
+        parts.push(section(`Join requests · ${crew.requests.length}`, crew.requests.map((person) =>
+          el('div', { class: 'request' }, [
             el('span', { class: 'friend-avatar', style: `background:${person.color}`, text: person.initials }),
-            el('div', { class: 'stack grow', style: 'gap:2px' }, [
-              el('span', { style: 'font-weight:800;font-size:14px', text: person.name }),
-              el('span', { class: 'tiny', text: `${Units.distText(person.weekly)} ${Units.distLabel()} a week · asked ${relTime(person.at || Date.now())}` }),
+            el('div', { class: 'stack grow', style: 'gap:3px;min-width:0' }, [
+              el('span', { class: 'person-name', text: person.name }),
+              // Two lines on purpose: as one, it broke wherever it ran out of
+              // room and left a "·" hanging off the end of the first.
+              el('span', { class: 'person-meta', text: `${Units.distText(person.weekly)} ${Units.distLabel()} a week` }),
+              el('span', { class: 'person-meta', text: `Asked ${relTime(person.at || Date.now())}` }),
             ]),
             el('button', {
-              class: 'icon-btn icon-btn--ok', type: 'button', 'aria-label': 'Approve',
+              class: 'icon-btn icon-btn--ok', type: 'button', 'aria-label': 'Approve ' + person.name,
               onclick: () => {
                 const r = State.crewAction((st) => M.Crew.approve(st, crew.id, person.id));
                 if (r.error) { this.toast(r.error); return; }
@@ -2264,30 +2349,35 @@
               },
             }, [this.icon('i-check')]),
             el('button', {
-              class: 'icon-btn icon-btn--no', type: 'button', 'aria-label': 'Decline',
+              class: 'icon-btn icon-btn--no', type: 'button', 'aria-label': 'Decline ' + person.name,
               onclick: () => {
                 State.crewAction((st) => M.Crew.decline(st, crew.id, person.id));
                 this.openCrewSheet(crew.id);
                 this.renderCrew();
               },
             }, [this.icon('i-cross')]),
-          ]));
-        });
+          ]))));
       }
 
-      parts.push(el('span', { class: 'card-title', text: `Members · ${crew.members.length}` }));
+      if (isMember) {
+        const notices = M.Crew.notices(crew);
+        parts.push(section(`Notice board${notices.length ? ` · ${notices.length}` : ''}`, this.noticeBoard(crew)));
+      } else {
+        parts.push(el('p', { class: 'sheet-note', text: `${level.tier.note} ${cleared} ${cleared === 1 ? 'mission' : 'missions'} cleared.` }));
+      }
+
       const roster = el('div', { class: 'stack', style: 'gap:0' });
       crew.members.slice().sort((a, b) => (a.role === 'leader' ? -1 : b.role === 'leader' ? 1 : b.weekly - a.weekly)).forEach((member) => {
         const isMe = member.id === 'me';
         const row = el('div', { class: 'member' }, [
           el('span', { class: 'friend-avatar', style: `background:${member.color}`, text: member.initials }),
-          el('div', { class: 'stack grow', style: 'gap:2px' }, [
+          el('div', { class: 'stack grow', style: 'gap:3px;min-width:0' }, [
             el('span', {
-              style: `font-weight:${isMe ? 800 : 600};font-size:14px;color:${isMe ? 'var(--accent)' : 'var(--text-hi)'}`,
+              class: 'person-name' + (isMe ? ' person-name--me' : ''),
               // Don't write "You (you)" when that is literally their name.
               text: isMe && member.name.toLowerCase() !== 'you' ? `${member.name} (you)` : member.name,
             }),
-            el('span', { class: 'tiny', text: `${Units.distText(member.weekly)} ${Units.distLabel()} this week` }),
+            el('span', { class: 'person-meta', text: `${Units.distText(member.weekly)} ${Units.distLabel()} this week` }),
           ]),
           el('span', { class: 'role-tag', 'data-role': member.role, text: M.Crew.ROLES[member.role] }),
         ]);
@@ -2299,7 +2389,7 @@
         }
         roster.appendChild(row);
       });
-      parts.push(roster);
+      parts.push(section(`Members · ${crew.members.length}`, [roster]));
 
       // Actions depend on who you are to this crew.
       const actions = [];
@@ -2334,17 +2424,10 @@
           },
         }));
       }
-      parts.push(el('div', { class: 'row', style: 'gap:var(--s-3);margin-top:var(--s-4)' }, actions));
+      parts.push(el('div', { class: 'sheet-actions' }, actions));
 
       parts.forEach((node) => body.appendChild(node));
       this.openSheet('#crewSheet');
-
-      function cell(value, label) {
-        return el('div', { class: 'cell' }, [
-          el('div', { class: 'stat-value', text: value }),
-          el('div', { class: 'stat-label', text: label }),
-        ]);
-      }
     },
 
     /**
@@ -2392,8 +2475,8 @@
         const row = el('button', { class: 'friend', type: 'button' }, [
           el('span', { class: 'friend-avatar', style: `background:${member.color}`, text: member.initials }),
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
-            el('span', { style: 'font-weight:800;font-size:14px', text: member.name }),
-            el('span', { class: 'tiny', text: `${M.Crew.ROLES[member.role]} · ${Units.distText(member.weekly)} ${Units.distLabel()} this week` }),
+            el('span', { class: 'person-name', text: member.name }),
+            el('span', { class: 'person-meta', text: `${Units.distText(member.weekly)} ${Units.distLabel()} this week` }),
           ]),
           el('span', { class: 'role-tag', 'data-role': member.role, text: M.Crew.ROLES[member.role] }),
         ]);
@@ -2414,8 +2497,8 @@
         return row;
       });
 
-      body.appendChild(el('div', { class: 'stack' }, [
-        el('h3', { style: 'font-size:20px', text: 'Choose the next captain' }),
+      body.appendChild(el('div', { class: 'stack sheet-stack' }, [
+        el('h3', { class: 'sheet-title', text: 'Choose the next captain' }),
         el('p', { class: 'muted', text: `${crew.name} has ${others.length} other runner${others.length === 1 ? '' : 's'} in it, so it cannot simply be deleted. Pick who takes it over — the crew carries on, and you become a member.` }),
       ].concat(rows).concat([
         el('button', { class: 'btn btn--ghost btn--block', type: 'button', text: 'Back', onclick: () => this.openCrewSheet(crewId) }),
@@ -2437,12 +2520,12 @@
         this.renderCrew();
       };
 
-      body.appendChild(el('div', { class: 'stack' }, [
-        el('div', { class: 'row' }, [
-          el('span', { class: 'friend-avatar', style: `background:${member.color}`, text: member.initials }),
-          el('div', { class: 'stack grow', style: 'gap:2px' }, [
-            el('span', { style: 'font-weight:800;font-size:17px', text: member.name }),
-            el('span', { class: 'tiny', text: `${M.Crew.ROLES[member.role]} · joined ${relTime(member.joinedAt)}` }),
+      body.appendChild(el('div', { class: 'stack sheet-stack' }, [
+        el('div', { class: 'sheet-head' }, [
+          el('span', { class: 'friend-avatar friend-avatar--big', style: `background:${member.color}`, text: member.initials }),
+          el('div', { class: 'sheet-head-text' }, [
+            el('h3', { class: 'sheet-title', text: member.name }),
+            el('span', { class: 'sheet-sub', text: `${M.Crew.ROLES[member.role]} · joined ${relTime(member.joinedAt)}` }),
           ]),
         ]),
         member.role === 'pacer'
@@ -2501,15 +2584,15 @@
         else this.renderCrew();
       });
 
-      body.appendChild(el('div', { class: 'stack' }, [
-        el('h3', { style: 'font-size:20px', text: 'Edit crew' }),
-        el('label', { class: 'field-label', text: 'Crew photo' }), photo,
-        el('label', { class: 'field-label', text: 'Name' }), name,
-        el('label', { class: 'field-label', text: 'Tagline' }), tagline,
-        el('label', { class: 'field-label', text: 'Joining' }), open,
-        el('label', { class: 'field-label', text: 'Which days you run' }), days,
-        el('label', { class: 'field-label', text: 'Time' }), time,
-        el('label', { class: 'field-label', text: 'Where you meet' }), spot,
+      body.appendChild(el('div', { class: 'stack sheet-stack' }, [
+        el('h3', { class: 'sheet-title', text: 'Edit crew' }),
+        this.formField('Crew photo', photo),
+        this.formField('Name', name),
+        this.formField('Tagline', tagline),
+        this.formField('Joining', open),
+        this.formField('Which days you run', days),
+        this.formField('Time', time),
+        this.formField('Where you meet', spot),
         el('div', { class: 'row', style: 'gap:var(--s-3);margin-top:var(--s-3)' }, [
           el('button', { class: 'btn grow', type: 'button', text: 'Back', onclick: () => this.openCrewSheet(crewId) }),
           el('button', {

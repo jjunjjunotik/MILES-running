@@ -1434,3 +1434,163 @@
 /* The dots sat hard against the bars of the week above them. */
 .hero-body { padding-bottom: 30px; }
 .hero-dots { bottom: 11px; }
+
+/* ==========================================================================
+   CREW — rebuilt for the people who run one
+   The captain's screen had become one card holding nine things, two of them
+   cards of their own, in 9-13px type; the manage sheet ran its sections into
+   each other with no space between. Now: the hero is identity only, every
+   other job is its own titled section, the type starts at 14px, and every
+   control is thumb-sized.
+   ========================================================================== */
+
+.crew-page { display: flex; flex-direction: column; gap: var(--band); }
+
+/* --- The hero: who the crew is, your place in it, the one thing to do ---- */
+.crew-hero { gap: var(--s-4); padding: var(--s-5); }
+.crew-hero-canvas { opacity: 0.55; }
+.crew-hero > .crew-hero-veil {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(5,7,10,0.30) 0%, rgba(5,7,10,0.62) 100%);
+}
+.crew-id { display: flex; align-items: center; gap: var(--s-4); }
+.crew-id .crew-badge { width: 68px; height: 68px; border-radius: 22px; font-size: 22px; }
+.crew-id-text { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.crew-hero-name {
+  margin: 0;
+  font-size: 28px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.1;
+  color: var(--text-hi);
+  overflow-wrap: anywhere;
+}
+.crew-id-tags { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; }
+.crew-hero-tagline { margin: 0; font-size: var(--t-body); font-weight: 700; line-height: 1.45; color: var(--text-mid); }
+.crew-level { display: flex; flex-direction: column; gap: 8px; }
+.crew-level-bar { height: 8px; }
+.crew-level-bar i { background: linear-gradient(90deg, var(--amber), var(--flame-2)); }
+.crew-level-next { font-size: var(--t-small); font-weight: 700; color: var(--text-mid); }
+
+/* Role and tier read as words, not as 9px capitals. */
+.role-tag { font-size: 12px; padding: 5px 10px; letter-spacing: 0.08em; }
+.crew-tier {
+  font-size: var(--t-small); font-weight: 800;
+  letter-spacing: 0; text-transform: none;
+  color: var(--amber-ink);
+}
+
+/* --- This week's mission ---------------------------------------------------- */
+.mission { gap: var(--s-3); padding: var(--s-5); border-radius: var(--r-lg); }
+.mission-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s-3); }
+.mission-name { font-size: var(--t-lead); }
+.mission-xp { font-size: var(--t-body); color: var(--amber-ink); }
+.mission-note { margin: 0; font-size: var(--t-small); font-weight: 700; line-height: 1.45; color: var(--text-mid); }
+.mission-count {
+  margin-top: 4px;
+  font-family: var(--font-num); font-size: var(--t-body); font-weight: 800;
+  color: var(--text-mid);
+}
+.mission-count b { font-size: 30px; letter-spacing: -0.03em; color: var(--text-hi); }
+.mission[data-done="true"] .mission-count b { color: var(--ok-ink); }
+.mission-bar { height: 10px; }
+.mission[data-done="true"] .mission-bar i { background: var(--ok); }
+.mission-status {
+  display: flex; align-items: center; gap: 6px;
+  font-size: var(--t-small); font-weight: 800; color: var(--text-mid);
+}
+.mission-status[data-done="true"] { color: var(--ok-ink); }
+.mission-status .ico { width: 17px; height: 17px; }
+
+/* --- The crew in numbers, and when it meets ------------------------------ */
+.crew-meet { display: flex; flex-direction: column; gap: 12px; }
+.crew-meet-row {
+  display: flex; align-items: center; gap: 12px;
+  font-size: var(--t-body); font-weight: 700; color: var(--text-hi);
+}
+.crew-meet-row .ico { width: 20px; height: 20px; flex: none; color: var(--flame-ink); }
+.pacesetter { font-size: var(--t-small); padding: 8px 12px; }
+
+/* --- Notices --------------------------------------------------------------- */
+.notice { padding: var(--s-4); border-radius: var(--r-lg); align-items: flex-start; }
+.notice p { margin: 0; font-size: var(--t-body); line-height: 1.5; }
+.notice-meta { margin-top: 0; font-size: var(--t-small); }
+.notice--lead { flex-direction: column; gap: 8px; }
+.crew-empty { margin: 0; font-size: var(--t-small); font-weight: 700; line-height: 1.45; color: var(--text-mid); }
+.notice-compose {
+  min-height: var(--tap);
+  padding: var(--s-4);
+  border-radius: var(--r-lg);
+  font-size: var(--t-body);
+}
+.notice-compose-mark { width: 30px; height: 30px; font-size: 18px; }
+
+/* --- Crew territory ------------------------------------------------------ */
+.land-figures { display: flex; justify-content: space-between; align-items: flex-end; gap: var(--s-4); }
+.land-figure { display: flex; flex-direction: column; gap: 4px; }
+.land-figure .stat-value { font-size: 32px; letter-spacing: -0.04em; }
+.land-figure--right { align-items: flex-end; text-align: right; }
+.land-figure-label { font-size: var(--t-small); font-weight: 700; color: var(--text-mid); }
+.holding-row { padding: 9px 0; }
+.holding-name { width: 128px; font-size: var(--t-small); }
+.holding-area { font-size: var(--t-small); width: 52px; }
+.holder-row {
+  display: flex; justify-content: space-between; gap: var(--s-3);
+  font-size: var(--t-small); font-weight: 700; color: var(--text-mid);
+}
+.holder-row[data-me="true"] { color: var(--text-hi); font-weight: 800; }
+
+/* --- The manage sheet ------------------------------------------------------ */
+.sheet-head { display: flex; align-items: center; gap: var(--s-4); padding-top: var(--s-2); }
+.sheet-head .crew-badge { width: 60px; height: 60px; border-radius: 20px; font-size: 20px; }
+.sheet-head-text { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.sheet-title {
+  margin: 0;
+  font-size: 24px; font-weight: 800; letter-spacing: -0.03em; line-height: 1.15;
+  color: var(--text-hi);
+  overflow-wrap: anywhere;
+}
+.sheet-sub { margin: 0; font-size: var(--t-small); font-weight: 700; color: var(--text-mid); }
+.sheet-lead { margin: var(--s-4) 0 0; font-size: var(--t-body); font-weight: 700; line-height: 1.45; color: var(--text-mid); }
+.sheet-note { margin: var(--s-5) 0 0; font-size: var(--t-small); font-weight: 700; line-height: 1.45; color: var(--text-mid); }
+.sheet-kpis { margin-top: var(--s-5); }
+.sheet-meet { margin-top: var(--s-5); }
+.sheet-section { display: flex; flex-direction: column; gap: var(--s-3); margin-top: var(--s-6); }
+.sheet-section-title {
+  margin: 0;
+  font-size: 19px; font-weight: 800; letter-spacing: -0.02em;
+  color: var(--text-hi);
+}
+.sheet-actions { display: flex; gap: var(--s-3); margin-top: var(--s-6); }
+
+/* People: a request, a member. Names you can read, and buttons you can hit. */
+.request { gap: var(--s-3); padding: var(--s-3) var(--s-4); border-radius: var(--r-lg); }
+.member { gap: var(--s-3); padding: 14px 0; }
+.request .friend-avatar, .member .friend-avatar { width: 44px; height: 44px; font-size: 15px; }
+.person-name { font-size: var(--t-body); font-weight: 800; color: var(--text-hi); overflow-wrap: anywhere; }
+.person-name--me { color: var(--accent); }
+.person-meta { font-size: var(--t-small); font-weight: 700; color: var(--text-mid); }
+.icon-btn { width: var(--tap); height: var(--tap); padding: 12px; }
+
+/* The meeting rows sit a step further from the numbers above them. */
+.section > .crew-meet { margin-top: 6px; }
+
+/* --- The crew's other sheets: mission picker, one member, edit, hand-over --
+   Same title, same people rows, same spacing as the manage sheet, so moving
+   between them feels like one place rather than four. */
+.sheet-stack { gap: var(--s-4); padding-top: var(--s-2); }
+.sheet-stack > .muted { font-size: var(--t-small); }
+.mission-option {
+  flex-direction: column; align-items: stretch; gap: 6px;
+  padding: var(--s-4); border-radius: var(--r-lg); min-height: var(--tap);
+}
+.mission-option .mission-note { display: block; }
+.mission-option-name { font-size: var(--t-body); font-weight: 800; color: var(--text-hi); }
+.friend-avatar--big { width: 56px; height: 56px; border-radius: 18px; font-size: 18px; }
+#crewSheetBody .friend { padding: var(--s-4); border-radius: var(--r-lg); }
+
+/* The seven meeting days: a thumb-sized toggle each, with a name you can read.
+   A 3px gap is what lets all seven clear 44px on a 360px phone. */
+.day-picker { gap: 3px; }
+.day-chip { min-height: var(--tap); padding: 0; font-size: var(--t-small); }
+
+/* A label sits tight to its own field and a clear step from the next one. */
+.form-field { display: flex; flex-direction: column; gap: 8px; }
+.sheet-stack > .form-field + .form-field { margin-top: 6px; }

@@ -306,13 +306,15 @@ p { margin: 0; }
   align-items: center;
   gap: var(--s-3);
   max-width: 100%;
-  padding: 11px 16px;
-  border-radius: var(--r-pill);
+  padding: 12px 18px;
+  /* A pill stops reading as one when a message runs to two lines. */
+  border-radius: var(--r-lg);
   background: rgba(12, 16, 22, 0.95);
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow-2);
-  font-size: 13px;
+  font-size: var(--t-small);
   font-weight: 700;
+  line-height: 1.4;
   animation: toast-in 0.28s cubic-bezier(0.2, 1, 0.3, 1);
 }
 .toast b { color: var(--accent); }
@@ -427,7 +429,10 @@ p { margin: 0; }
   background: rgba(0, 0, 0, 0.3);
   color: var(--text-hi);
   font-family: inherit;
-  font-size: 14px;
+  /* 16px, not 14: iOS Safari zooms the whole page into any field smaller
+     than that the moment it is focused, and does not zoom back out. */
+  font-size: 16px;
+  min-height: var(--tap);
   font-weight: 700;
   -webkit-appearance: none;
   appearance: none;
@@ -446,8 +451,9 @@ select.input {
 select.input option { background: var(--ink-700); color: var(--text-hi); }
 
 .field-label {
-  font-size: 10px;
-  letter-spacing: 0.14em;
+  /* 10px sat under the app's own legibility floor. */
+  font-size: 12px;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
   color: var(--text-lo);
   font-weight: 800;

@@ -115,6 +115,11 @@ implies: approve or decline join requests, promote members to pacer, remove
 people, edit the crew's name, tagline and regular run, hand the crew to someone
 else, or disband it.
 
+The crew screen reads top to bottom in the order a crew's week is lived: the
+crew itself, **This week**'s mission, **The crew** in numbers and when it meets,
+the latest notice, and the ground it holds — one titled block each. **Manage
+crew** opens on whatever is waiting for the captain, join requests first.
+
 A crew meets on **as many days a week as it likes**, at a time set in plain
 am/pm. The front page names whoever holds the crew's quickest pace, and lists
 everyone running faster than the crew's average under **Setting the pace**.
@@ -286,7 +291,7 @@ whichever basemap is underneath.
 
 ## Tests
 
-Six checks live in the repo root. The first is plain Node; the rest drive the
+Fifteen checks live in the repo root. The first is plain Node; the rest drive the
 real app in headless Chromium and need Playwright, which the app itself does
 not — `npm i playwright`, or run with `NODE_PATH` pointing at an install that
 has it. The three marked `:8765` want `python3 -m http.server 8765` running.
@@ -306,6 +311,7 @@ node test-dialogs.js      confirms and prompts where modals are blocked :8765
 node test-touch.js        every control is big enough to hit with a thumb
 node test-type.js         nothing renders below the legibility floor
 node test-hero.js         the home picture swipes, and nothing a swipe could break does
+node test-crew.js         a captain's crew screen: one job per block, nothing shown twice
 ```
 
 `test-tiles.js` serves its own tiles from a throwaway HTTP server, so it needs

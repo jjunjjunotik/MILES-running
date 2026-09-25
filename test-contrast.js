@@ -121,21 +121,45 @@ const AUDIT = `(() => {
 
   const seen = new Map();
   const onGradient = new Map();
+  const collect = (rows) => rows.forEach((r) => {
+    const k = `${r.cls}|${r.size}|${r.weight}`;
+    // An element whose backdrop really is a gradient goes to the gradient
+    // pass whether or not anybody remembered to list it. "Really is" means
+    // opaque: a gradient of rgba(...,0.14) is a tint over the surface below,
+    // and the composited measurement already handles that correctly —
+    // measuring against its raw stops would be measuring a colour that is
+    // never actually on screen.
+    const solidGradient = r.stops && r.stops.length && r.stops.every((c) => c.a >= 0.9);
+    const bucket = solidGradient || GRADIENT.test(r.cls || '') ? onGradient : seen;
+    if (!bucket.has(k) || bucket.get(k).ratio > r.ratio) bucket.set(k, r);
+  });
   for (const tab of ['home', 'crew', 'territory', 'quests', 'profile', 'feed']) {
     await page.evaluate((t) => MILES.UI.go(t), tab);
     await page.waitForTimeout(450);
-    (await page.evaluate(AUDIT)).forEach((r) => {
-      const k = `${r.cls}|${r.size}|${r.weight}`;
-      // An element whose backdrop really is a gradient goes to the gradient
-      // pass whether or not anybody remembered to list it. "Really is" means
-      // opaque: a gradient of rgba(...,0.14) is a tint over the surface below,
-      // and the composited measurement already handles that correctly —
-      // measuring against its raw stops would be measuring a colour that is
-      // never actually on screen.
-      const solidGradient = r.stops && r.stops.length && r.stops.every((c) => c.a >= 0.9);
-      const bucket = solidGradient || GRADIENT.test(r.cls || '') ? onGradient : seen;
-      if (!bucket.has(k) || bucket.get(k).ratio > r.ratio) bucket.set(k, r);
-    });
+    collect(await page.evaluate(AUDIT));
+  }
+
+  // The captain's sheets, each opened the way the crew screen opens it. Two
+  // requests are let in first so the roster has people in it to measure, and
+  // one is left waiting so the request row is on screen too.
+  await page.evaluate(() => {
+    const S = MILES.State, C = MILES.Crew;
+    const crew = C.mine(S.data);
+    crew.requests.slice(0, 2).map((q) => q.id).forEach((id) => S.crewAction((st) => C.approve(st, crew.id, id)));
+    MILES.UI.go('crew');
+  });
+  const mine = `MILES.Crew.mine(MILES.State.data)`;
+  for (const open of [
+    `MILES.UI.openCrewSheet(${mine}.id)`,
+    `MILES.UI.openMissionPicker(${mine}.id)`,
+    `(() => { const c = ${mine}; MILES.UI.openCrewSheet(c.id); MILES.UI.manageMember(c.id, c.members.find((m) => m.id !== 'me').id); })()`,
+    `(() => { const c = ${mine}; MILES.UI.openCrewSheet(c.id); MILES.UI.editCrew(c.id); })()`,
+    `(() => { const c = ${mine}; MILES.UI.openCrewSheet(c.id); MILES.UI.chooseSuccessor(c.id); })()`,
+  ]) {
+    await page.evaluate(`document.querySelectorAll('.sheet-scrim').forEach(s => s.hidden = true)`);
+    await page.evaluate(open);
+    await page.waitForTimeout(450);
+    collect(await page.evaluate(AUDIT));
   }
 
   // Gradient-backed text, measured against every stop of its own gradient.
