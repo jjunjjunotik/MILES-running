@@ -922,6 +922,10 @@
      * card you share is yours rather than the app's.
      */
     paintCard(activity, athlete) {
+      // Never the kind's own colour a second time under another name:
+      // "Default" and "Chalk" on a free run were the same card.
+      const offered = M.cardThemesFor(activity.kind);
+      if (this.cardTheme && offered.indexOf(this.cardTheme) < 0) this.cardTheme = null;
       M.renderCard($('#cardCanvas'), activity, {
         athlete,
         rank: Stats.rank(State.data).current.name,
@@ -936,7 +940,7 @@
         type: 'button', text: 'Default', 'aria-pressed': String(!this.cardTheme),
         onclick: () => { this.cardTheme = null; this.paintCard(activity, athlete); },
       }));
-      Object.keys(M.CARD_THEMES).forEach((key) => {
+      offered.forEach((key) => {
         seg.appendChild(el('button', {
           type: 'button',
           'aria-pressed': String(this.cardTheme === key),
@@ -1138,15 +1142,32 @@
         result.unlocked.forEach((q) => this.toast(`Quest complete — <b>${q.name}</b> +${q.xp} XP`, 'reward'));
       }
 
-      if (activity.splits.length) {
-        extras.appendChild(el('div', { class: 'card stack' }, [
-          el('span', { class: 'card-title', text: 'Splits' }),
-          el('div', { class: 'stack', style: 'gap:6px' }, activity.splits.map((sp) => el('div', { class: 'row row--between' }, [
-            el('span', { class: 'tiny', text: `KM ${sp.km}` }),
-            el('span', { class: 'stat-value', style: 'font-size:13px', text: clock(sp.seconds) }),
-          ]))),
-        ]));
-      }
+      this.renderSplits(activity);
+    },
+
+    /**
+     * The run kilometre by kilometre, straight under the card — above the
+     * colourways, which are a detail next to how the run actually went. Each
+     * split carries a bar against the slowest, so the even ones and the one
+     * that fell apart are visible before any number is read.
+     */
+    renderSplits(activity) {
+      const host = $('#finishSplits');
+      host.innerHTML = '';
+      const splits = activity.splits || [];
+      if (!splits.length) return;
+      const slowest = Math.max.apply(null, splits.map((sp) => sp.seconds));
+      const fastest = Math.min.apply(null, splits.map((sp) => sp.seconds));
+      host.appendChild(el('section', { class: 'splits' }, [
+        el('h3', { class: 'splits-title', text: 'Splits' }),
+        el('div', { class: 'splits-rows' }, splits.map((sp) => el('div', {
+          class: 'split', 'data-best': String(sp.seconds === fastest && splits.length > 1),
+        }, [
+          el('span', { class: 'split-km', text: `${sp.km} km` }),
+          el('span', { class: 'split-bar' }, [el('i', { style: `width:${clamp((sp.seconds / slowest) * 100, 8, 100)}%` })]),
+          el('span', { class: 'split-time stat-value', text: clock(sp.seconds) }),
+        ]))),
+      ]));
     },
 
     /* --- Territory ---------------------------------------------------------- */
@@ -2923,15 +2944,7 @@
       this.paintCard(activity, item ? item.who : State.data.profile.name);
       const extras = $('#finishExtras');
       extras.innerHTML = '';
-      if (activity.splits && activity.splits.length) {
-        extras.appendChild(el('div', { class: 'card stack' }, [
-          el('span', { class: 'card-title', text: 'Splits' }),
-          el('div', { class: 'stack', style: 'gap:6px' }, activity.splits.map((sp) => el('div', { class: 'row row--between' }, [
-            el('span', { class: 'tiny', text: `KM ${sp.km}` }),
-            el('span', { class: 'stat-value', style: 'font-size:13px', text: clock(sp.seconds) }),
-          ]))),
-        ]));
-      }
+      this.renderSplits(activity);
     },
 
     /** Friends' runs, generated once per session so the feed feels populated. */

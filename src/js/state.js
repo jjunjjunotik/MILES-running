@@ -295,6 +295,12 @@
       { day: today - 12, dist: 5200, kind: 'free' },
     ];
 
+    // One split per whole kilometre, wandering a few seconds either side of
+    // the run's pace the way a real run does.
+    const seedSplits = (dist, paceSec, r) => Array.from({ length: Math.floor(dist / 1000) }, (_, i) => ({
+      km: i + 1, seconds: Math.round(paceSec + (r() - 0.5) * 24),
+    }));
+
     plan.forEach((p) => {
       const dayStart = weekStart + p.day * 864e5;
       const startedAt = dayStart + (6 + Math.floor(rand() * 13)) * 3600e3;
@@ -312,7 +318,8 @@
         duration,
         elevation: Math.round(20 + rand() * 90),
         route,
-        splits: [],
+        // Its own generator, so adding splits left every other seeded number as it was.
+        splits: seedSplits(p.dist, paceSec, M.rng(Math.floor(startedAt / 1000) % 99991)),
         loopClosed: isLoop,
         title: KINDS[p.kind].name,
         claimedArea: 0,

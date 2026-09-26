@@ -56,9 +56,16 @@
     flame:  { accent: '#f2642a', ink: '#ff9a6c' },
     violet: { accent: '#a855f7', ink: '#c4a2fb' },
     rose:   { accent: '#e8587a', ink: '#f2879f' },
+    amber:  { accent: '#eab052', ink: '#f0c46e' },
   };
 
-  const THEME_NAMES = { chalk: 'Chalk', flame: 'Flame', violet: 'Violet', rose: 'Rose' };
+  /** The colourways worth offering for a kind: never one that is its default. */
+  function themesFor(kind) {
+    const own = (M.KINDS[kind] || M.KINDS.free).accent;
+    return Object.keys(THEMES).filter((k) => THEMES[k].accent !== own);
+  }
+
+  const THEME_NAMES = { chalk: 'Chalk', flame: 'Flame', violet: 'Violet', rose: 'Rose', amber: 'Amber' };
 
   /* The faces the card is set in. A canvas only draws a web font the page
      has already loaded, and on a first run nothing on screen may have asked
@@ -66,7 +73,7 @@
      card is painted again once they arrive. */
   const FACES = [
     `italic 800 64px ${NUM}`, `700 100px ${NUM}`,
-    `600 30px ${SANS}`, `700 30px ${SANS}`,
+    `italic 700 100px ${NUM}`, `600 30px ${SANS}`, `700 30px ${SANS}`,
   ];
 
   function roundRect(ctx, x, y, w, h, r) {
@@ -122,42 +129,53 @@
     ctx.fillStyle = theme.ink;
     ctx.fillText(K.badge, tagX + 16, PAD + 42);
 
-    const date = new Date(activity.startedAt).toLocaleDateString('en-US', {
-      weekday: 'short', month: 'short', day: 'numeric',
-    });
-    const time = new Date(activity.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    ctx.font = `600 26px ${SANS}`;
-    ctx.fillStyle = INK.lo;
-    ctx.textAlign = 'right';
-    ctx.fillText(`${date}${SEP}${time}`, W - PAD, PAD + 42);
-    ctx.textAlign = 'left';
-
     /* --- The one number this run was about --------------------------------
        A race is about where you came; a territory run is about how much
        ground you took; a free run is about the distance. Whichever it is
-       gets the headline, and the other numbers fall in behind it. ---------- */
+       gets the headline, and the other numbers fall in behind it. The
+       distance is said once: in the headline, or in the caption when the
+       headline is something else. ---------------------------------------- */
 
+    const dist = `${Units.distText(activity.distance)} ${Units.distLabel()}`;
     const headline = kind === 'race' && activity.placing
-      ? { value: ordinal(activity.placing), unit: `of ${activity.fieldSize}`, caption: activity.finished ? `Finished the ${Units.distText(activity.target)} ${Units.distLabel()}` : 'Did not finish' }
+      ? { value: ordinal(activity.placing), unit: `of ${activity.fieldSize}`, caption: activity.finished ? `Finished the ${Units.distText(activity.target)} ${Units.distLabel()}` : `Did not finish${SEP}${dist}` }
       : kind === 'territory' && activity.claimedArea
-        ? { value: Units.areaText(activity.claimedArea), unit: Units.areaLabel(), caption: 'Claimed by closing the loop' }
+        ? { value: Units.areaText(activity.claimedArea), unit: Units.areaLabel(), caption: `Claimed with a ${dist} loop` }
         : { value: Units.distText(activity.distance), unit: Units.distLabel(), caption: kind === 'territory' ? 'No loop closed — no land taken' : activity.title || 'Run' };
 
-    ctx.fillStyle = INK.mid;
-    ctx.font = `600 32px ${SANS}`;
-    ctx.fillText(headline.caption, PAD, 238);
+    // What kind of run it came to, small, opposite the wordmark.
+    ctx.fillStyle = INK.lo;
+    ctx.font = `600 26px ${SANS}`;
+    ctx.textAlign = 'right';
+    ctx.fillText(headline.caption, W - PAD, PAD + 42);
+    ctx.textAlign = 'left';
 
-    // A long distance steps down in size rather than running off the card.
+    /* --- When ---------------------------------------------------------------
+       The date is half of what a run was, so it is set large, in the numbers'
+       face, with the time of day beside it. ------------------------------ */
+    const at = new Date(activity.startedAt);
+    const date = at.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+    const time = at.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+    ctx.fillStyle = INK.hi;
+    ctx.font = `700 116px ${NUM}`;
+    ctx.fillText(date, PAD - 4, 262);
+    const dateW = ctx.measureText(date).width;
+    ctx.fillStyle = INK.mid;
+    ctx.font = `600 40px ${SANS}`;
+    ctx.fillText(time, PAD - 4 + dateW + 22, 262);
+
+    // Leaning like the wordmark: the number is the run's own name for itself.
+    // A long one steps down in size rather than running off the card.
     ctx.font = `700 56px ${SANS}`;
     const unitW = ctx.measureText(headline.unit).width;
-    fitFont(ctx, headline.value, 700, 264, NUM, W - PAD * 2 - unitW - 20);
+    fitFont(ctx, headline.value, 'italic 700', 240, NUM, W - PAD * 2 - unitW - 24);
     ctx.fillStyle = INK.hi;
-    ctx.fillText(headline.value, PAD - 8, 452);
+    ctx.fillText(headline.value, PAD - 8, 484);
     const valueW = ctx.measureText(headline.value).width;
 
     ctx.fillStyle = INK.mid;
     ctx.font = `700 56px ${SANS}`;
-    ctx.fillText(headline.unit, PAD - 8 + valueW + 20, 452);
+    ctx.fillText(headline.unit, PAD - 8 + valueW + 24, 484);
 
     /* --- What came of it --------------------------------------------------
        One line on a dark plate in the panel's corner, the way the app labels
@@ -176,7 +194,7 @@
        reach), framed on the route, with the line laid over it the way a map
        lays one — a dark casing under a solid stroke. A run with no trace
        falls back to the survey contours. ----------------------------------- */
-    const panel = { x: PAD, y: 500, w: W - PAD * 2, h: 510 };
+    const panel = { x: PAD, y: 528, w: W - PAD * 2, h: 478 };
     const view = routeMap(activity, panel, outcome ? 86 : 0);
     roundRect(ctx, panel.x, panel.y, panel.w, panel.h, 40);
     ctx.fillStyle = INK.panel;
@@ -211,14 +229,14 @@
     }
 
     /* --- Stat row ---------------------------------------------------------
-       Whatever the headline took, distance always appears here, so the three
-       cells read the same way on every card. Laid out like the app's own
+       Time, pace and the climb: the three things the headline does not
+       already say, the same three on every card. Laid out like the app's own
        figures: the number, its unit beside it, and a plain word under it,
        with a hairline between the columns. -------------------------------- */
     const stats = [
-      { label: 'Distance', value: Units.distText(activity.distance), unit: Units.distLabel() },
       { label: 'Time', value: clock(activity.duration) },
       { label: 'Pace', value: Units.paceText(activity.duration / Math.max(1, activity.distance)), unit: Units.paceLabel() },
+      { label: 'Elevation gain', value: Units.elevText(activity.elevation || 0), unit: Units.elevLabel() },
     ];
 
     const colW = (W - PAD * 2) / stats.length;
@@ -426,6 +444,7 @@
 
   M.renderCard = renderCard;
   M.CARD_THEMES = THEME_NAMES;
+  M.cardThemesFor = themesFor;
   M.ordinal = ordinal;
   M.downloadCard = downloadCard;
 })(window.MILES);

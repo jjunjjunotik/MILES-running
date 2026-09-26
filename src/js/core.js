@@ -76,6 +76,11 @@ window.MILES = window.MILES || {};
 
     paceLabel() { return this.isMetric() ? '/km' : '/mi'; },
 
+    /** metres climbed → "84" in metres or feet */
+    elevText(metres) { return String(Math.round(this.isMetric() ? metres : metres * 3.28084)); },
+
+    elevLabel() { return this.isMetric() ? 'm' : 'ft'; },
+
     /** m/s → km/h or mph */
     speed(mps) { return this.isMetric() ? mps * 3.6 : mps * 2.236936; },
 
