@@ -1,0 +1,15 @@
+node_modules/
+dist/
+# 계정과 분석 기록이 들어 있는 데이터베이스. 비밀번호 해시가 있으므로 절대 커밋하지 않는다.
+data/
+*.db
+*.db-wal
+*.db-shm
+.env
+.env.local
+*.log
+.DS_Store
+.smoke/
+demo/
+.env.*
+!.env.example
