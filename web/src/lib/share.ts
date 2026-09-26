@@ -10,31 +10,42 @@ import {
 
 const W = 1080;
 /** 측정용 캔버스 높이. 실제 카드 높이는 그려 본 뒤 내용에 맞춰 정한다. */
-const MEASURE_H = 2200;
-const BOTTOM_PAD = 64;
+const MEASURE_H = 2400;
+const BOTTOM_PAD = 80;
+const PAD = 80;
 
-const COLORS: Record<Status, string> = {
-  good: "#2f9169",
-  watch: "#c08a1e",
-  consult: "#cf6b4f",
+/**
+ * 공유 이미지는 어디서 열릴지 모르므로 항상 밝은 바탕으로 그린다.
+ * 값은 styles.css 의 라이트 토큰과 같다.
+ */
+const INK = {
+  paper: "#f4f5f7",
+  ink: "#16181d",
+  ink2: "#40444c",
+  ink3: "#5f646d",
+  line: "#dfe2e8",
 };
 
-const SOFT: Record<Status, string> = {
-  good: "#e8f4ee",
-  watch: "#fbf2df",
-  consult: "#fceee9",
+const TONE: Record<Attention, string> = {
+  routine: "#23704c",
+  monitor: "#835800",
+  consult: "#a9430f",
+  soon: "#b0271d",
 };
 
-/** styles.css 의 att-* 와 같은 색을 쓴다. */
-const ATTENTION_COLORS: Record<Attention, string> = {
-  routine: "#2f9169",
-  monitor: "#c08a1e",
-  consult: "#cf6b4f",
-  soon: "#b04e33",
+const STATUS_TONE: Record<Status, Attention> = {
+  good: "routine",
+  watch: "monitor",
+  consult: "consult",
 };
 
-const FONT_STACK =
-  '"Pretendard", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif';
+const SANS =
+  '"IBM Plex Sans KR", -apple-system, "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif';
+const MONO = '"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace';
+
+const INDEX_NOTE =
+  "사진 속 겉모습이 얼마나 고르게 보이는지 나타낸 참고 수치예요. 건강 점수가 아니에요.";
+const FINDINGS_NOTE = "무엇이 보였는지와 지켜볼 변화는 앱에서 확인할 수 있어요.";
 
 /**
  * 공유용 카드 이미지를 캔버스로 직접 그린다.
@@ -46,6 +57,8 @@ export async function renderShareCard(
   analysis: NailAnalysis,
   meta: { dateLabel: string; partLabel: string; nickname: string },
 ): Promise<Blob> {
+  await loadCardFonts(analysis, meta);
+
   // 제목 줄 수에 따라 내용 높이가 달라지므로, 한 번 그려 높이를 재고 다시 그린다.
   const probe = document.createElement("canvas");
   probe.width = W;
@@ -69,6 +82,44 @@ export async function renderShareCard(
   return blob;
 }
 
+/**
+ * 캔버스는 글꼴이 이미 내려와 있어야 그 글꼴로 그린다. 한글 글꼴은 글자 범위별로
+ * 나뉘어 있으므로 카드에 들어갈 글자를 넘겨 필요한 조각만 먼저 받는다.
+ * 네트워크가 느려도 카드 만들기가 멈추지 않도록 오래 기다리지는 않는다.
+ */
+async function loadCardFonts(
+  analysis: NailAnalysis,
+  meta: { dateLabel: string; partLabel: string; nickname: string },
+): Promise<void> {
+  if (typeof document === "undefined" || !("fonts" in document)) return;
+  const text = [
+    "NailSense 관찰 지표 짚어 본 특징 건 님의 0123456789/",
+    analysis.headline,
+    meta.dateLabel,
+    meta.partLabel,
+    meta.nickname,
+    INDEX_NOTE,
+    FINDINGS_NOTE,
+    DISCLAIMER_SHORT,
+    "변화가 이어지면 의료 전문가와 상담하세요.",
+    ...analysis.metrics.map(
+      (metric) => METRIC_LABELS[metric.key] + STATUS_LABELS[metric.status],
+    ),
+    ...(analysis.findings ?? []).map(
+      (finding) => finding.label + ATTENTION_LABELS[finding.attention],
+    ),
+  ].join(" ");
+  const faces = [`400 24px ${SANS}`, `600 24px ${SANS}`, `500 24px ${MONO}`];
+  try {
+    await Promise.race([
+      Promise.all(faces.map((face) => document.fonts.load(face, text))),
+      new Promise((resolve) => setTimeout(resolve, 2000)),
+    ]);
+  } catch {
+    // 글꼴을 못 받으면 시스템 글꼴로 그린다.
+  }
+}
+
 /** 카드를 그리고 내용이 끝나는 y 좌표를 돌려준다. */
 function paint(
   ctx: CanvasRenderingContext2D,
@@ -76,223 +127,136 @@ function paint(
   analysis: NailAnalysis,
   meta: { dateLabel: string; partLabel: string; nickname: string },
 ): number {
-  // 배경
-  const bg = ctx.createLinearGradient(0, 0, W, H);
-  bg.addColorStop(0, "#ffffff");
-  bg.addColorStop(1, "#eef8f6");
-  ctx.fillStyle = bg;
+  const inner = W - PAD * 2;
+
+  ctx.fillStyle = INK.paper;
   ctx.fillRect(0, 0, W, H);
-
-  const pad = 72;
-  let y = 96;
-
-  // 브랜드
-  ctx.fillStyle = "#1f9e8b";
-  roundRect(ctx, pad, y - 26, 46, 46, 14);
-  ctx.fill();
-  ctx.fillStyle = "#ffffff";
-  ctx.font = `700 24px ${FONT_STACK}`;
-  ctx.textBaseline = "middle";
-  ctx.fillText("N", pad + 15, y - 2);
-
-  ctx.fillStyle = "#0f5c50";
-  ctx.font = `700 26px ${FONT_STACK}`;
-  ctx.fillText("NailSense", pad + 62, y - 3);
-
-  ctx.fillStyle = "#77828f";
-  ctx.font = `500 23px ${FONT_STACK}`;
-  ctx.textAlign = "right";
-  ctx.fillText(meta.dateLabel, W - pad, y - 3);
+  ctx.textBaseline = "top";
   ctx.textAlign = "left";
 
+  let y = PAD;
+
+  // 앱 이름과 날짜
+  ctx.fillStyle = INK.ink;
+  ctx.font = `600 32px ${SANS}`;
+  ctx.fillText("NailSense", PAD, y);
+  ctx.fillStyle = INK.ink3;
+  ctx.font = `400 25px ${SANS}`;
+  ctx.textAlign = "right";
+  ctx.fillText(meta.dateLabel, W - PAD, y + 5);
+  ctx.textAlign = "left";
+
+  y += 96;
+
+  // 한 줄 요약
+  ctx.fillStyle = INK.ink;
+  ctx.font = `600 54px ${SANS}`;
+  y = wrapText(ctx, analysis.headline, PAD, y, inner, 74);
+
+  y += 10;
+  ctx.fillStyle = INK.ink3;
+  ctx.font = `400 26px ${SANS}`;
+  const subject = meta.nickname
+    ? `${meta.nickname}님의 ${meta.partLabel}`
+    : meta.partLabel;
+  ctx.fillText(subject, PAD, y);
+
   y += 72;
+  y = rule(ctx, y);
 
-  // 헤드라인
-  ctx.fillStyle = "#11181f";
-  ctx.font = `700 58px ${FONT_STACK}`;
-  ctx.textBaseline = "top";
-  y = wrapText(ctx, analysis.headline, pad, y, W - pad * 2, 72);
+  // 항목 6개 (2열 3행)
+  const colW = inner / 2;
+  const rowH = 100;
+  analysis.metrics.slice(0, 6).forEach((metric, index) => {
+    const x = PAD + (index % 2) * colW;
+    const top = y + Math.floor(index / 2) * rowH;
+    ctx.fillStyle = INK.ink3;
+    ctx.font = `400 24px ${SANS}`;
+    ctx.fillText(METRIC_LABELS[metric.key], x, top);
+    ctx.fillStyle = TONE[STATUS_TONE[metric.status]];
+    ctx.font = `600 29px ${SANS}`;
+    ctx.fillText(STATUS_LABELS[metric.status], x, top + 38);
+  });
+  y += rowH * 3 + 8;
+  y = rule(ctx, y);
 
-  y += 14;
-  ctx.fillStyle = "#77828f";
-  ctx.font = `500 26px ${FONT_STACK}`;
-  const subject = meta.nickname ? `${meta.nickname} · ` : "";
-  ctx.fillText(`${subject}${meta.partLabel}`, pad, y);
+  // 관찰 지표. 링이나 막대 없이 숫자로만 적는다.
+  ctx.fillStyle = INK.ink;
+  ctx.font = `600 27px ${SANS}`;
+  ctx.fillText("관찰 지표", PAD, y + 12);
+  const value = String(Math.round(analysis.observationScore));
+  ctx.font = `500 25px ${MONO}`;
+  const ofW = ctx.measureText("/100").width;
+  ctx.fillStyle = INK.ink3;
+  ctx.textAlign = "right";
+  ctx.fillText("/100", W - PAD, y + 16);
+  ctx.fillStyle = INK.ink;
+  ctx.font = `500 46px ${MONO}`;
+  ctx.fillText(value, W - PAD - ofW - 6, y);
+  ctx.textAlign = "left";
 
   y += 66;
-
-  // 점수 카드
-  const cardH = 188;
-  ctx.fillStyle = "rgba(255,255,255,0.82)";
-  roundRect(ctx, pad, y, W - pad * 2, cardH, 28);
-  ctx.fill();
-  ctx.strokeStyle = "#e3eaee";
-  ctx.lineWidth = 2;
-  roundRect(ctx, pad, y, W - pad * 2, cardH, 28);
-  ctx.stroke();
-
-  drawRing(ctx, pad + 104, y + cardH / 2, 66, analysis.observationScore);
-
-  const textX = pad + 200;
-  ctx.fillStyle = "#11181f";
-  ctx.font = `700 30px ${FONT_STACK}`;
-  ctx.fillText("관찰 지표", textX, y + 46);
-  ctx.fillStyle = "#77828f";
-  ctx.font = `500 23px ${FONT_STACK}`;
-  wrapText(
-    ctx,
-    "사진 속 겉모습이 얼마나 고르게 보이는지를 나타낸 참고 수치입니다. 건강 점수가 아닙니다.",
-    textX,
-    y + 88,
-    W - pad - textX - 34,
-    32,
-  );
-
-  y += cardH + 44;
-
-  // 항목 그리드 (2열 x 3행)
-  const colW = (W - pad * 2 - 20) / 2;
-  const rowH = 132;
-  analysis.metrics.slice(0, 6).forEach((metric, index) => {
-    const col = index % 2;
-    const row = Math.floor(index / 2);
-    const x = pad + col * (colW + 20);
-    const top = y + row * (rowH + 18);
-
-    ctx.fillStyle = "rgba(255,255,255,0.82)";
-    roundRect(ctx, x, top, colW, rowH, 22);
-    ctx.fill();
-    ctx.strokeStyle = "#e3eaee";
-    roundRect(ctx, x, top, colW, rowH, 22);
-    ctx.stroke();
-
-    ctx.fillStyle = "#11181f";
-    ctx.font = `600 27px ${FONT_STACK}`;
-    ctx.fillText(METRIC_LABELS[metric.key], x + 26, top + 28);
-
-    // 상태 배지
-    const label = STATUS_LABELS[metric.status];
-    ctx.font = `600 22px ${FONT_STACK}`;
-    const badgeW = ctx.measureText(label).width + 34;
-    ctx.fillStyle = SOFT[metric.status];
-    roundRect(ctx, x + 26, top + 70, badgeW, 40, 20);
-    ctx.fill();
-    ctx.fillStyle = COLORS[metric.status];
-    ctx.beginPath();
-    ctx.arc(x + 26 + 15, top + 90, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillText(label, x + 26 + 26, top + 79);
-  });
-
-  y += rowH * 3 + 18 * 2 + 44;
+  ctx.fillStyle = INK.ink3;
+  ctx.font = `400 23px ${SANS}`;
+  y = wrapText(ctx, INDEX_NOTE, PAD, y, inner, 34);
+  y += 34;
 
   // 짚어 본 특징. 카드에는 이름과 단계만 담고 자세한 설명은 앱에서 보게 한다.
   const findings = (analysis.findings ?? []).slice(0, 3);
   if (findings.length > 0) {
-    const boxPad = 30;
-    const rowGap = 50;
-    const boxH = 62 + findings.length * rowGap + 40;
+    y = rule(ctx, y);
+    ctx.fillStyle = INK.ink;
+    ctx.font = `600 27px ${SANS}`;
+    ctx.fillText(`짚어 본 특징 ${findings.length}건`, PAD, y);
+    y += 58;
 
-    ctx.fillStyle = "rgba(255,255,255,0.82)";
-    roundRect(ctx, pad, y, W - pad * 2, boxH, 24);
-    ctx.fill();
-    ctx.strokeStyle = "#e3eaee";
-    ctx.lineWidth = 2;
-    roundRect(ctx, pad, y, W - pad * 2, boxH, 24);
-    ctx.stroke();
-
-    ctx.fillStyle = "#77828f";
-    ctx.font = `700 22px ${FONT_STACK}`;
-    ctx.fillText(`짚어 본 특징 ${findings.length}건`, pad + boxPad, y + 26);
-
-    findings.forEach((finding, index) => {
-      const top = y + 66 + index * rowGap;
-      const color = ATTENTION_COLORS[finding.attention];
+    for (const finding of findings) {
       const stage = ATTENTION_LABELS[finding.attention];
-
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.arc(pad + boxPad + 6, top + 14, 6, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.font = `600 23px ${FONT_STACK}`;
+      ctx.font = `600 24px ${SANS}`;
       const stageW = ctx.measureText(stage).width;
-      const labelX = pad + boxPad + 24;
-      const labelMax = W - pad - boxPad - stageW - 24 - labelX;
-
-      ctx.fillStyle = "#11181f";
-      ctx.font = `600 25px ${FONT_STACK}`;
-      ctx.fillText(ellipsize(ctx, finding.label, labelMax), labelX, top);
-
-      ctx.fillStyle = color;
-      ctx.font = `600 23px ${FONT_STACK}`;
+      ctx.fillStyle = TONE[finding.attention];
       ctx.textAlign = "right";
-      ctx.fillText(stage, W - pad - boxPad, top + 2);
+      ctx.fillText(stage, W - PAD, y + 3);
       ctx.textAlign = "left";
-    });
 
-    ctx.fillStyle = "#77828f";
-    ctx.font = `500 21px ${FONT_STACK}`;
-    ctx.fillText(
-      "무엇이 보였는지와 지켜볼 변화는 앱에서 확인할 수 있어요.",
-      pad + boxPad,
-      y + 66 + findings.length * rowGap + 4,
-    );
+      ctx.fillStyle = INK.ink;
+      ctx.font = `400 27px ${SANS}`;
+      ctx.fillText(
+        ellipsize(ctx, finding.label, inner - stageW - 32),
+        PAD,
+        y,
+      );
+      y += 52;
+    }
 
-    y += boxH + 32;
+    y += 4;
+    ctx.fillStyle = INK.ink3;
+    ctx.font = `400 23px ${SANS}`;
+    y = wrapText(ctx, FINDINGS_NOTE, PAD, y, inner, 34);
+    y += 34;
   }
 
   // 고지 문구
-  ctx.fillStyle = "#eef2f4";
-  roundRect(ctx, pad, y, W - pad * 2, 116, 22);
-  ctx.fill();
-  ctx.fillStyle = "#5a6673";
-  ctx.font = `500 22px ${FONT_STACK}`;
-  wrapText(
+  y = rule(ctx, y);
+  ctx.fillStyle = INK.ink2;
+  ctx.font = `400 23px ${SANS}`;
+  y = wrapText(
     ctx,
     `${DISCLAIMER_SHORT} 변화가 이어지면 의료 전문가와 상담하세요.`,
-    pad + 28,
-    y + 30,
-    W - pad * 2 - 56,
-    32,
+    PAD,
+    y,
+    inner,
+    34,
   );
 
-  return y + 116;
+  return y;
 }
 
-function drawRing(
-  ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  r: number,
-  score: number,
-) {
-  ctx.lineWidth = 14;
-  ctx.strokeStyle = "#e3eaee";
-  ctx.beginPath();
-  ctx.arc(cx, cy, r, 0, Math.PI * 2);
-  ctx.stroke();
-
-  ctx.strokeStyle = "#1f9e8b";
-  ctx.lineCap = "round";
-  ctx.beginPath();
-  ctx.arc(
-    cx,
-    cy,
-    r,
-    -Math.PI / 2,
-    -Math.PI / 2 + (Math.PI * 2 * Math.max(0, Math.min(100, score))) / 100,
-  );
-  ctx.stroke();
-  ctx.lineCap = "butt";
-
-  ctx.fillStyle = "#11181f";
-  ctx.font = `700 46px ${FONT_STACK}`;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText(String(Math.round(score)), cx, cy);
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
+/** 구획 사이 가는 선. 선 아래에서 다음 내용이 시작할 y 를 돌려준다. */
+function rule(ctx: CanvasRenderingContext2D, y: number): number {
+  ctx.fillStyle = INK.line;
+  ctx.fillRect(PAD, y, W - PAD * 2, 2);
+  return y + 40;
 }
 
 /** 한 줄에 들어가지 않는 이름은 끝을 줄임표로 자른다. */
@@ -309,23 +273,6 @@ function ellipsize(
     cut = cut.slice(0, -1);
   }
   return `${cut}…`;
-}
-
-function roundRect(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  y: number,
-  w: number,
-  h: number,
-  r: number,
-) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
 }
 
 /**

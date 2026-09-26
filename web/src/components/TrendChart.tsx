@@ -9,15 +9,12 @@ const PAD_R = 34;
 const PAD_T = 18;
 const PAD_B = 24;
 
-const ACCENT = "#1f9e8b";
-const SURFACE = "#ffffff";
-
 /**
  * 관찰 지표의 날짜별 추이.
  *
- * 단일 계열이므로 범례를 두지 않고 카드 제목이 무엇을 그린 것인지 말한다.
- * 값 라벨은 마지막 지점 하나에만 붙이고, 나머지 값은 탭했을 때와
- * 아래 기록 목록에서 확인할 수 있게 한다.
+ * 단일 계열이므로 범례를 두지 않고 구획 제목이 무엇을 그린 것인지 말한다.
+ * 값 라벨은 마지막 지점 하나에만 붙이고, 나머지 값은 눌렀을 때와
+ * 기록 목록에서 확인할 수 있게 한다. 색은 모두 CSS 토큰을 따라 다크 모드에서도 읽힌다.
  */
 export function TrendChart({ records }: { records: NailRecord[] }) {
   // 기록은 최신순으로 들어오므로 시간 순서로 뒤집는다. 최근 12건만 본다.
@@ -75,78 +72,43 @@ export function TrendChart({ records }: { records: NailRecord[] }) {
         className="trend"
         viewBox={`0 0 ${W} ${H}`}
         role="img"
-        aria-label={`관찰 지표 추이. ${points.length}건의 기록, 가장 최근 값 ${Math.round(last.y)}점.`}
+        aria-label={`관찰 지표 추이. ${points.length}건의 기록, 가장 최근 값 ${Math.round(last.y)}.`}
         onMouseLeave={() => setSelected(null)}
       >
-        {/* 기준선은 한 단계만 진한 회색의 실선 얇은 선으로만 둔다. */}
         {[yMax, (yMax + yMin) / 2, yMin].map((value) => (
           <line
             key={value}
+            className="grid"
             x1={PAD_L}
             x2={W - PAD_R}
             y1={py(value)}
             y2={py(value)}
-            stroke="#ebeef2"
             strokeWidth="1"
           />
         ))}
 
-        {area && <path d={area} fill={ACCENT} fillOpacity="0.1" />}
-
-        {points.length > 1 && (
-          <path
-            d={line}
-            fill="none"
-            stroke={ACCENT}
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          />
-        )}
+        {area && <path className="area" d={area} />}
+        {points.length > 1 && <path className="line" d={line} />}
 
         {points.map((point, index) => {
-          const isLast = index === points.length - 1;
-          const isActive = selected === index;
-          if (!isLast && !isActive && points.length > 1) {
-            // 중간 지점은 작게 두고, 탭 영역만 넉넉히 잡는다.
-            return (
-              <g key={point.id}>
-                <circle
-                  cx={px(index)}
-                  cy={py(point.y)}
-                  r="3"
-                  fill={SURFACE}
-                  stroke={ACCENT}
-                  strokeWidth="1.5"
-                />
-                <circle
-                  cx={px(index)}
-                  cy={py(point.y)}
-                  r="16"
-                  fill="transparent"
-                  style={{ cursor: "pointer" }}
-                  onMouseEnter={() => setSelected(index)}
-                  onClick={() => setSelected(index)}
-                />
-              </g>
-            );
-          }
+          const strong =
+            index === points.length - 1 ||
+            selected === index ||
+            points.length === 1;
           return (
             <g key={point.id}>
-              {/* 표면색 링이 선 위에서도 점을 또렷하게 만든다. */}
               <circle
+                className={strong ? "pt-strong" : "pt"}
                 cx={px(index)}
                 cy={py(point.y)}
-                r="6"
-                fill={SURFACE}
+                r={strong ? 4.5 : 3}
               />
-              <circle cx={px(index)} cy={py(point.y)} r="4.5" fill={ACCENT} />
+              {/* 점은 작아도 누를 곳은 넉넉하게 */}
               <circle
+                className="hit"
                 cx={px(index)}
                 cy={py(point.y)}
                 r="16"
-                fill="transparent"
-                style={{ cursor: "pointer" }}
                 onMouseEnter={() => setSelected(index)}
                 onClick={() => setSelected(index)}
               />
@@ -154,38 +116,29 @@ export function TrendChart({ records }: { records: NailRecord[] }) {
           );
         })}
 
-        {/* 값 라벨은 마지막 지점 하나에만. */}
         <text
+          className="val"
           x={px(points.length - 1) + 12}
           y={py(last.y) + 4}
-          fontSize="13"
-          fontWeight="700"
-          fill="#11181f"
         >
           {Math.round(last.y)}
         </text>
 
-        <text x={PAD_L} y={H - 6} fontSize="10.5" fill="#77828f">
+        <text className="axis" x={PAD_L} y={H - 6}>
           {formatDateShort(first.x)}
         </text>
         {points.length > 1 && (
-          <text
-            x={W - PAD_R}
-            y={H - 6}
-            fontSize="10.5"
-            fill="#77828f"
-            textAnchor="end"
-          >
+          <text className="axis" x={W - PAD_R} y={H - 6} textAnchor="end">
             {formatDateShort(last.x)}
           </text>
         )}
       </svg>
 
-      <div className="small muted center" style={{ minHeight: 20 }}>
+      <p className="trend-caption" aria-live="polite">
         {active
-          ? `${formatDateShort(active.x)} · ${Math.round(active.y)}점`
-          : "점을 눌러 해당 날짜의 값을 볼 수 있어요"}
-      </div>
+          ? `${formatDateShort(active.x)} 기록의 관찰 지표는 ${Math.round(active.y)}입니다.`
+          : "점을 누르면 그날의 값을 볼 수 있어요."}
+      </p>
     </div>
   );
 }

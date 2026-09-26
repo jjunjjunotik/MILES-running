@@ -6,7 +6,7 @@ import {
   type Metric,
 } from "../../../shared/analysis";
 import { ChevronIcon } from "./Icons";
-import { StatusPill } from "./ui";
+import { StatusTag } from "./ui";
 
 export function MetricList({
   metrics,
@@ -28,49 +28,44 @@ export function MetricList({
     });
 
   return (
-    <div className="card">
+    <div>
       {metrics.map((metric) => {
         const isOpen = open.has(metric.key);
+        const bodyId = `metric-${metric.key}`;
         return (
-          <div
-            key={metric.key}
-            className={`metric${isOpen ? " open" : ""}`}
-          >
+          <div key={metric.key} className={`metric${isOpen ? " open" : ""}`}>
             <button
               className="metric-head"
               onClick={() => toggle(metric.key)}
               aria-expanded={isOpen}
+              aria-controls={bodyId}
             >
-              <div className="flex-1">
-                <div className="flex gap-8">
-                  <span className="name">{METRIC_LABELS[metric.key]}</span>
-                  <StatusPill status={metric.status} />
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="metric-top">
+                  <span className="metric-name">
+                    {METRIC_LABELS[metric.key]}
+                  </span>
+                  <StatusTag status={metric.status} />
                 </div>
-                {!isOpen && (
-                  <div className="obs mt-8">{metric.observation}</div>
-                )}
+                {!isOpen && <div className="metric-obs">{metric.observation}</div>}
               </div>
-              <ChevronIcon />
+              <ChevronIcon size={18} className="chev" />
             </button>
 
-            <div className="metric-body">
+            <div className="metric-body" id={bodyId} inert={!isOpen}>
               <div>
-                <div className="inner">
-                  <div className="block">
-                    <div className="k">사진에서 보이는 것</div>
-                    <div className="v">{metric.observation}</div>
+                <div className="metric-inner">
+                  <div>
+                    <h5>사진에서 보이는 것</h5>
+                    <p>{metric.observation}</p>
                   </div>
-                  <div className="block">
-                    <div className="k">AI 설명 · 일반 정보</div>
-                    <div className="v">{metric.explanation}</div>
+                  <div>
+                    <h5>일반적인 정보</h5>
+                    <p>{metric.explanation}</p>
                   </div>
-                  <div className="flex gap-8 small muted">
-                    <span className="pill pill-neutral">
-                      {CONFIDENCE_LABELS[metric.confidence]}
-                    </span>
-                  </div>
-                  <div className="small muted">
-                    살펴본 범위: {METRIC_DESCRIPTIONS[metric.key]}
+                  <div className="scope">
+                    <div>확인 정도: {CONFIDENCE_LABELS[metric.confidence]}</div>
+                    <div>살펴본 범위: {METRIC_DESCRIPTIONS[metric.key]}</div>
                   </div>
                 </div>
               </div>

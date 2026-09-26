@@ -1,29 +1,25 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ATTENTION_LABELS,
   FINGER_KEYS,
   FINGER_LABELS,
   topAttention,
   type FingerKey,
   type NailRecord,
 } from "../../../shared/analysis";
-import { getImage } from "../lib/storage";
 import type { ServerScan } from "../lib/server";
 import { TrendChart } from "../components/TrendChart";
-import { DeltaBadge } from "./ResultScreen";
+import { Thumb } from "../components/Thumb";
+import { CameraIcon, HistoryIcon, TrashIcon } from "../components/Icons";
 import {
-  CameraIcon,
-  ChevronIcon,
-  HistoryIcon,
-  TrashIcon,
-  TrendIcon,
-} from "../components/Icons";
-import {
+  AttentionTag,
+  Delta,
   Empty,
-  Notice,
+  Reading,
+  Sheet,
   TopBar,
   formatDate,
   formatRelative,
+  partLabel,
 } from "../components/ui";
 
 type Filter = "all" | FingerKey;
@@ -71,16 +67,12 @@ export function HistoryScreen({
         <TopBar title="기록" />
         <main className="screen">
           <Empty
-            icon={<HistoryIcon size={24} />}
+            icon={<HistoryIcon size={26} />}
             title="기록이 비어 있어요"
             body="분석할 때마다 날짜별로 쌓여서, 시간이 지나며 어떻게 달라지는지 비교할 수 있어요."
             action={
-              <button
-                className="btn btn-primary btn-sm"
-                onClick={onStartScan}
-                style={{ width: "auto" }}
-              >
-                <CameraIcon size={17} />
+              <button className="btn btn-primary btn-sm" onClick={onStartScan}>
+                <CameraIcon size={18} />
                 첫 기록 만들기
               </button>
             }
@@ -93,11 +85,12 @@ export function HistoryScreen({
   return (
     <>
       <TopBar title="기록" />
-      <main className="screen stagger">
+      <main className="screen">
         {fingersInUse.length > 1 && (
-          <div className="chip-row" style={{ marginBottom: 4 }}>
+          <div className="chips scroll" role="group" aria-label="손가락별로 보기">
             <button
-              className={`chip${filter === "all" ? " active" : ""}`}
+              className="chip"
+              aria-pressed={filter === "all"}
               onClick={() => setFilter("all")}
             >
               전체
@@ -105,7 +98,8 @@ export function HistoryScreen({
             {fingersInUse.map((key) => (
               <button
                 key={key}
-                className={`chip${filter === key ? " active" : ""}`}
+                className="chip"
+                aria-pressed={filter === key}
                 onClick={() => setFilter(key)}
               >
                 {FINGER_LABELS[key]}
@@ -115,117 +109,110 @@ export function HistoryScreen({
         )}
 
         {filtered.length >= 2 && (
-          <div className="card mt-12">
-            <div className="flex gap-8" style={{ marginBottom: 6 }}>
-              <TrendIcon size={16} />
-              <span style={{ fontWeight: 600, fontSize: 14 }}>
-                관찰 지표 추이
-                {filter !== "all" ? ` · ${FINGER_LABELS[filter]}` : ""}
-              </span>
-            </div>
+          <section className="sec" style={{ marginTop: 28 }}>
+            <h3 className="sec-title">
+              관찰 지표 추이
+              {filter !== "all" && (
+                <span className="count">{FINGER_LABELS[filter]}</span>
+              )}
+            </h3>
             <TrendChart records={filtered} />
-          </div>
+          </section>
         )}
 
-        <div className="section-title">
-          전체 {filtered.length}건
-        </div>
-        <div className="card">
-          {filtered.map((record, index) => {
-            // 같은 부위의 바로 이전 기록과 비교한다.
-            const earlier = filtered
-              .slice(index + 1)
-              .find(
-                (other) =>
-                  other.finger === record.finger && other.hand === record.hand,
-              );
-            const delta = earlier
-              ? Math.round(
-                  record.analysis.observationScore -
-                    earlier.analysis.observationScore,
-                )
-              : null;
+        <section className="sec" style={filtered.length >= 2 ? undefined : { marginTop: 20 }}>
+          <h3 className="sec-title">
+            전체 기록 <span className="count">{filtered.length}건</span>
+          </h3>
+          <ul className="history-list">
+            {filtered.map((record, index) => {
+              // 같은 부위의 바로 이전 기록과 비교한다.
+              const earlier = filtered
+                .slice(index + 1)
+                .find(
+                  (other) =>
+                    other.finger === record.finger && other.hand === record.hand,
+                );
+              const delta = earlier
+                ? Math.round(
+                    record.analysis.observationScore -
+                      earlier.analysis.observationScore,
+                  )
+                : null;
+              const attention = topAttention(record.analysis.findings);
 
-            const attention = topAttention(record.analysis.findings);
-
-            return (
-              <div className="history-item" key={record.id}>
-                <Thumb record={record} />
-                <button
-                  className="flex-1"
-                  style={{ textAlign: "left" }}
-                  onClick={() => onOpenRecord(record)}
-                >
-                  <div
-                    className="truncate"
-                    style={{ fontWeight: 600, fontSize: 14.5 }}
+              return (
+                <li className="history-item" key={record.id}>
+                  <Thumb record={record} />
+                  <button
+                    className="history-open"
+                    onClick={() => onOpenRecord(record)}
                   >
-                    {record.analysis.headline}
-                  </div>
-                  <div className="small muted" style={{ marginTop: 2 }}>
-                    {formatRelative(record.createdAt)} ·{" "}
-                    {record.hand === "left" ? "왼손" : "오른손"}{" "}
-                    {FINGER_LABELS[record.finger]}
-                  </div>
-                  <div className="flex gap-8" style={{ marginTop: 6 }}>
-                    <span className="pill pill-accent">
-                      {Math.round(record.analysis.observationScore)}점
-                    </span>
-                    {delta !== null && <DeltaBadge value={delta} />}
+                    <div className="history-title">
+                      {record.analysis.headline}
+                    </div>
+                    <div className="history-meta">
+                      {formatRelative(record.createdAt)},{" "}
+                      {partLabel(record.hand, FINGER_LABELS[record.finger])}
+                    </div>
                     {attention && (
-                      <span className={`pill att-${attention}`}>
-                        <span className="dot" />
-                        {ATTENTION_LABELS[attention]}
-                      </span>
+                      <div className="tags">
+                        <AttentionTag attention={attention} />
+                      </div>
                     )}
+                  </button>
+                  <div
+                    className="history-reading"
+                    aria-label={`관찰 지표 ${Math.round(record.analysis.observationScore)}`}
+                  >
+                    <Reading value={record.analysis.observationScore} small />
+                    {delta !== null && <Delta value={delta} />}
                   </div>
-                </button>
-                <button
-                  className="icon-btn"
-                  aria-label="이 기록 삭제"
-                  onClick={() => setPendingDelete(record.id)}
-                >
-                  <TrashIcon size={16} />
-                </button>
-                <ChevronIcon size={16} />
-              </div>
-            );
-          })}
-        </div>
+                  <button
+                    className="icon-btn"
+                    aria-label="이 기록 삭제"
+                    onClick={() => setPendingDelete(record.id)}
+                  >
+                    <TrashIcon size={19} />
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </section>
 
         {failedScans.length > 0 && (
-          <>
-            <div className="section-title">분석되지 않은 시도</div>
-            <div className="card">
+          <section className="sec">
+            <h3 className="sec-title">분석되지 않은 시도</h3>
+            <ul className="list">
               {failedScans.slice(0, 5).map((scan) => (
-                <div className="row" key={scan.id}>
-                  <div className="flex-1">
-                    <div className="label" style={{ fontSize: 13.5 }}>
-                      {formatRelative(scan.capturedAt)} ·{" "}
-                      {scan.hand === "left" ? "왼손" : "오른손"}{" "}
-                      {FINGER_LABELS[scan.finger as FingerKey] ?? ""}
+                <li className="row" key={scan.id}>
+                  <div className="row-main">
+                    <div className="row-title">
+                      {formatRelative(scan.capturedAt)},{" "}
+                      {partLabel(
+                        scan.hand,
+                        FINGER_LABELS[scan.finger as FingerKey] ?? "",
+                      )}
                     </div>
-                    <div className="sub">
-                      {scan.errorMessage ?? "분석이 완료되지 않았습니다."}
+                    <div className="row-sub">
+                      {scan.errorMessage ?? "분석이 끝나지 않았어요."}
                     </div>
                   </div>
-                </div>
+                </li>
               ))}
-            </div>
-            <div className="small muted mt-8">
-              사진이 흐리거나 손톱이 보이지 않으면 결과를 만들지 않습니다. 다시
-              촬영하면 새 기록으로 쌓입니다.
-            </div>
-          </>
+            </ul>
+            <p className="fineprint">
+              사진이 흐리거나 손톱이 보이지 않으면 결과를 만들지 않아요. 다시
+              찍으면 새 기록으로 쌓여요.
+            </p>
+          </section>
         )}
 
-        <div className="mt-16">
-          <Notice>
-            관찰 지표는 사진끼리 비교하기 위한 참고 수치입니다. 조명과 각도에
-            따라 값이 달라질 수 있으니, 비슷한 환경에서 찍은 사진끼리 비교하는
-            것이 좋습니다.
-          </Notice>
-        </div>
+        <p className="fineprint-block">
+          관찰 지표는 사진끼리 비교하기 위한 참고 수치예요. 조명과 각도에 따라
+          값이 달라질 수 있으니, 비슷한 환경에서 찍은 사진끼리 비교해 주세요.
+        </p>
       </main>
 
       {pendingDelete && (
@@ -243,36 +230,6 @@ export function HistoryScreen({
   );
 }
 
-function Thumb({ record }: { record: NailRecord }) {
-  const [url, setUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!record.hasImage) return;
-    let objectUrl: string | null = null;
-    let cancelled = false;
-
-    void getImage(record.id).then((blob) => {
-      if (cancelled || !blob) return;
-      objectUrl = URL.createObjectURL(blob);
-      setUrl(objectUrl);
-    });
-
-    return () => {
-      cancelled = true;
-      if (objectUrl) URL.revokeObjectURL(objectUrl);
-    };
-  }, [record.id, record.hasImage]);
-
-  if (url) {
-    return <img className="history-thumb" src={url} alt="" />;
-  }
-  return (
-    <div className="history-thumb-empty" aria-hidden="true">
-      <HistoryIcon size={18} />
-    </div>
-  );
-}
-
 function ConfirmDelete({
   record,
   onCancel,
@@ -285,32 +242,27 @@ function ConfirmDelete({
   const [busy, setBusy] = useState(false);
 
   return (
-    <>
-      <div className="sheet-backdrop" onClick={onCancel} />
-      <div className="sheet" role="dialog" aria-modal="true">
-        <div className="handle" />
-        <h3 style={{ margin: "0 0 6px", fontSize: 17 }}>이 기록을 지울까요?</h3>
-        <p className="small muted" style={{ marginTop: 0 }}>
-          {record ? `${formatDate(record.createdAt)}의 기록` : "선택한 기록"}과
-          함께 저장된 사진이 이 기기에서 완전히 삭제됩니다. 되돌릴 수 없어요.
-        </p>
-        <div className="btn-row mt-16">
-          <button className="btn btn-secondary" onClick={onCancel}>
-            취소
-          </button>
-          <button
-            className="btn btn-primary"
-            style={{ background: "var(--consult)", boxShadow: "none" }}
-            disabled={busy}
-            onClick={() => {
-              setBusy(true);
-              void onConfirm().finally(() => setBusy(false));
-            }}
-          >
-            삭제
-          </button>
-        </div>
+    <Sheet label="기록 삭제" onClose={() => !busy && onCancel()}>
+      <h3>이 기록을 지울까요?</h3>
+      <p>
+        {record ? `${formatDate(record.createdAt)} 기록` : "선택한 기록"}과
+        함께 저장된 사진이 이 기기에서 완전히 지워져요. 되돌릴 수 없어요.
+      </p>
+      <div className="btn-row mt-16">
+        <button className="btn btn-secondary" onClick={onCancel} disabled={busy}>
+          취소
+        </button>
+        <button
+          className="btn btn-danger"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            void onConfirm().finally(() => setBusy(false));
+          }}
+        >
+          삭제
+        </button>
       </div>
-    </>
+    </Sheet>
   );
 }

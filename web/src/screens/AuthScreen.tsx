@@ -11,8 +11,7 @@ import {
   type Providers,
 } from "../lib/server";
 import { mountGoogleButton, signInWithApplePopup } from "../lib/social";
-import { ShieldIcon, SparkIcon } from "../components/Icons";
-import { Notice } from "../components/ui";
+import { AppleLogoIcon, BackIcon } from "../components/Icons";
 
 type Mode = "login" | "signup";
 
@@ -131,38 +130,43 @@ export function AuthScreen({
 
   return (
     <main className="screen auth">
-      <div className="brandmark center" style={{ justifyContent: "center" }}>
-        <SparkIcon size={15} />
-        NailSense
+      <div className="flow-top">
+        {onBack ? (
+          <button className="icon-btn" onClick={onBack} aria-label="돌아가기" style={{ marginLeft: -10 }}>
+            <BackIcon size={22} />
+          </button>
+        ) : (
+          <span />
+        )}
+        <span className="wordmark">NailSense</span>
+        <span style={{ width: 40 }} />
       </div>
 
       <h2 className="auth-title">
-        {mode === "login" ? "다시 오셨네요" : "계정을 만들어요"}
+        {mode === "login" ? "로그인" : "계정 만들기"}
       </h2>
-      <p className="small muted center">
-        기록이 계정에 저장되어 기기를 바꿔도 이어집니다. 로그인하지 않아도 앱은
+      <p className="auth-lede">
+        기록이 계정에 저장되어 기기를 바꿔도 이어져요. 로그인하지 않아도 앱은
         그대로 쓸 수 있어요.
       </p>
 
-      <div className="social-row mt-16">
+      <div className="social">
         {providers?.google && <div ref={googleSlot} className="google-slot" />}
 
         {providers?.apple && (
           <button
-            className="btn social-btn apple"
+            className="btn btn-apple"
             onClick={() => void appleSignIn()}
             disabled={busy}
           >
-            <AppleMark />
+            <AppleLogoIcon size={19} weight="fill" />
             Apple로 계속하기
           </button>
         )}
 
         {(providers?.google || providers?.apple) && !emailOpen && (
           <>
-            <div className="social-divider">
-              <span>또는</span>
-            </div>
+            <div className="divider">또는</div>
             <button
               className="btn btn-secondary"
               onClick={() => setEmailOpen(true)}
@@ -174,109 +178,108 @@ export function AuthScreen({
       </div>
 
       {error && !emailOpen && (
-        <div className="auth-error" role="alert">
+        <p className="form-error mt-12" role="alert">
           {error}
-        </div>
+        </p>
       )}
 
       {emailOpen && (
-      <form className="card mt-16" onSubmit={submit}>
-        {mode === "signup" && (
-          <label className="field-row">
-            <span>이름 또는 닉네임 (선택)</span>
+        <form className="auth-form form-stack" onSubmit={submit}>
+          {mode === "signup" && (
+            <div>
+              <label className="field-label" htmlFor="auth-name">
+                이름 또는 닉네임 <span className="opt">(선택)</span>
+              </label>
+              <input
+                id="auth-name"
+                className="field"
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                autoComplete="nickname"
+                maxLength={40}
+              />
+              <p className="field-help">결과 화면에 표시돼요.</p>
+            </div>
+          )}
+
+          <div>
+            <label className="field-label" htmlFor="auth-email">
+              이메일
+            </label>
             <input
+              id="auth-email"
               className="field"
-              type="text"
-              value={displayName}
-              onChange={(e) => setDisplayName(e.target.value)}
-              autoComplete="nickname"
-              maxLength={40}
-              placeholder="결과 화면에 표시돼요"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              required
+              inputMode="email"
             />
-          </label>
-        )}
-
-        <label className="field-row">
-          <span>이메일</span>
-          <input
-            className="field"
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            autoComplete="email"
-            required
-            inputMode="email"
-            placeholder="you@example.com"
-          />
-        </label>
-
-        <label className="field-row">
-          <span>비밀번호</span>
-          <input
-            className="field"
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            autoComplete={mode === "signup" ? "new-password" : "current-password"}
-            required
-            minLength={8}
-            placeholder="8자 이상"
-          />
-        </label>
-
-        {error && (
-          <div className="auth-error" role="alert">
-            {error}
           </div>
+
+          <div>
+            <label className="field-label" htmlFor="auth-password">
+              비밀번호
+            </label>
+            <input
+              id="auth-password"
+              className="field"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete={mode === "signup" ? "new-password" : "current-password"}
+              required
+              minLength={8}
+              aria-describedby="auth-password-help"
+            />
+            <p className="field-help" id="auth-password-help">
+              8자 이상
+            </p>
+          </div>
+
+          {error && (
+            <p className="form-error" role="alert">
+              {error}
+            </p>
+          )}
+
+          <button className="btn btn-primary" type="submit" disabled={busy}>
+            {busy
+              ? "잠시만요"
+              : mode === "login"
+                ? "로그인"
+                : "가입하고 시작하기"}
+          </button>
+
+          <button
+            type="button"
+            className="link"
+            style={{ justifySelf: "center" }}
+            onClick={() => {
+              setMode(mode === "login" ? "signup" : "login");
+              setError(null);
+            }}
+          >
+            {mode === "login"
+              ? "계정이 없으신가요? 가입하기"
+              : "이미 계정이 있으신가요? 로그인"}
+          </button>
+        </form>
+      )}
+
+      <div className="auth-foot">
+        <p className="fineprint" style={{ margin: 0 }}>
+          비밀번호는 서버에 원문으로 저장되지 않아요. 손톱 사진은 계정이 아니라
+          이 기기의 브라우저 안에만 보관돼요. {DISCLAIMER_SHORT}
+        </p>
+        {onBack && (
+          <button className="link link-quiet" onClick={onBack}>
+            로그인하지 않고 계속 쓰기
+          </button>
         )}
-
-        <button className="btn btn-primary mt-12" type="submit" disabled={busy}>
-          {busy
-            ? "잠시만요…"
-            : mode === "login"
-              ? "로그인"
-              : "가입하고 시작하기"}
-        </button>
-
-        <button
-          type="button"
-          className="link-btn center mt-12"
-          style={{ width: "100%" }}
-          onClick={() => {
-            setMode(mode === "login" ? "signup" : "login");
-            setError(null);
-          }}
-        >
-          {mode === "login"
-            ? "계정이 없으신가요? 가입하기"
-            : "이미 계정이 있으신가요? 로그인"}
-        </button>
-      </form>
-      )}
-
-      <div className="mt-16">
-        <Notice icon={<ShieldIcon size={15} />}>
-          비밀번호는 서버에 원문으로 저장되지 않습니다. 손톱 사진은 계정이 아니라
-          이 기기의 브라우저 안에만 보관됩니다.
-        </Notice>
       </div>
-
-      <div className="small muted center mt-16">{DISCLAIMER_SHORT}</div>
-
-      {onBack && (
-        <button className="link-btn center mt-16" style={{ width: "100%" }} onClick={onBack}>
-          로그인하지 않고 계속 쓰기
-        </button>
-      )}
     </main>
-  );
-}
-
-/** 애플 가이드라인상 버튼에는 애플 마크가 들어가야 한다. */
-function AppleMark() {
-  return (
-    <svg width="17" height="17" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M16.36 12.73c-.02-2.3 1.88-3.4 1.96-3.46-1.07-1.56-2.73-1.78-3.32-1.8-1.42-.14-2.76.83-3.48.83-.72 0-1.82-.81-2.99-.79-1.54.02-2.96.89-3.75 2.27-1.6 2.77-.41 6.87 1.15 9.12.76 1.1 1.67 2.34 2.86 2.29 1.15-.05 1.58-.74 2.97-.74 1.39 0 1.78.74 2.99.72 1.23-.02 2.01-1.12 2.76-2.23.87-1.28 1.23-2.52 1.25-2.58-.03-.01-2.4-.92-2.4-3.63zM14.1 5.3c.63-.77 1.06-1.83.94-2.9-.91.04-2.02.61-2.67 1.37-.58.68-1.09 1.77-.95 2.81 1.02.08 2.05-.52 2.68-1.28z" />
-    </svg>
   );
 }

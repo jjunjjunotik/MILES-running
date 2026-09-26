@@ -8,8 +8,8 @@ import {
 } from "../../../shared/articles";
 import { fetchArticle, listArticles, type ArticleSummary } from "../lib/server";
 import { STANDALONE_DEMO } from "../lib/api";
-import { ChevronIcon, InfoIcon, SparkIcon } from "../components/Icons";
-import { Empty, Notice, TopBar } from "../components/ui";
+import { BackIcon, ChevronIcon, SearchIcon } from "../components/Icons";
+import { Empty, TopBar } from "../components/ui";
 
 type Filter = "all" | ArticleCategory;
 
@@ -98,32 +98,28 @@ export function LibraryScreen() {
               }}
               aria-label="목록으로"
             >
-              <span style={{ transform: "rotate(180deg)", display: "grid" }}>
-                <ChevronIcon size={18} />
-              </span>
+              <BackIcon size={22} />
             </button>
           }
         />
-        <main className="screen stagger">
-          <div className="article-head">
-            <span className="pill pill-accent">
+        <main className="screen">
+          <header className="article-head">
+            <p className="cat">
               {ARTICLE_CATEGORY_LABELS[
                 (summary?.category ?? "care") as ArticleCategory
               ]}
-            </span>
+            </p>
             <h2>{summary?.title}</h2>
-            <p className="small muted">{summary?.summary}</p>
-          </div>
+            <p className="lede">{summary?.summary}</p>
+          </header>
 
-          <article className="card article-body">
+          <article className="article-body">
             {(body ?? "").split("\n\n").map((paragraph, index) => (
               <Paragraph key={index} text={paragraph} />
             ))}
           </article>
 
-          <div className="mt-16">
-            <Notice icon={<InfoIcon size={15} />}>{ARTICLE_DISCLAIMER}</Notice>
-          </div>
+          <p className="fineprint-block">{ARTICLE_DISCLAIMER}</p>
         </main>
       </>
     );
@@ -132,19 +128,26 @@ export function LibraryScreen() {
   return (
     <>
       <TopBar title="건강 정보" />
-      <main className="screen stagger">
-        <input
-          className="field"
-          type="search"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="궁금한 내용을 검색해 보세요"
-          aria-label="건강 정보 검색"
-        />
+      <main className="screen">
+        <div className="search mt-8">
+          <SearchIcon size={18} />
+          <label htmlFor="library-search" className="sr-only">
+            건강 정보 검색
+          </label>
+          <input
+            id="library-search"
+            className="field"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="궁금한 내용 검색"
+          />
+        </div>
 
-        <div className="chip-row mt-12">
+        <div className="chips scroll mt-12" role="group" aria-label="분류">
           <button
-            className={`chip${filter === "all" ? " active" : ""}`}
+            className="chip"
+            aria-pressed={filter === "all"}
             onClick={() => setFilter("all")}
           >
             전체
@@ -152,7 +155,8 @@ export function LibraryScreen() {
           {ARTICLE_CATEGORIES.map((category) => (
             <button
               key={category}
-              className={`chip${filter === category ? " active" : ""}`}
+              className="chip"
+              aria-pressed={filter === category}
               onClick={() => setFilter(category)}
             >
               {ARTICLE_CATEGORY_LABELS[category]}
@@ -162,34 +166,33 @@ export function LibraryScreen() {
 
         {shown.length === 0 ? (
           <Empty
-            icon={<SparkIcon size={24} />}
+            icon={<SearchIcon size={26} />}
             title="찾는 내용이 없어요"
-            body="다른 단어로 검색하거나 카테고리를 바꿔 보세요."
+            body="다른 단어로 검색하거나 분류를 바꿔 보세요."
           />
         ) : (
-          <div className="mt-16">
+          <ul className="article-list">
             {shown.map((article) => (
-              <button
-                key={article.slug}
-                className="card article-card"
-                onClick={() => void open(article.slug)}
-              >
-                <div className="flex-1">
-                  <span className="small muted">
-                    {ARTICLE_CATEGORY_LABELS[article.category]}
-                  </span>
-                  <div className="t">{article.title}</div>
-                  <div className="s">{article.summary}</div>
-                </div>
-                <ChevronIcon size={16} />
-              </button>
+              <li key={article.slug}>
+                <button
+                  className="article-card"
+                  onClick={() => void open(article.slug)}
+                >
+                  <div>
+                    <div className="cat">
+                      {ARTICLE_CATEGORY_LABELS[article.category]}
+                    </div>
+                    <div className="t">{article.title}</div>
+                    <div className="s">{article.summary}</div>
+                  </div>
+                  <ChevronIcon size={18} />
+                </button>
+              </li>
             ))}
-          </div>
+          </ul>
         )}
 
-        <div className="mt-16">
-          <Notice icon={<InfoIcon size={15} />}>{ARTICLE_DISCLAIMER}</Notice>
-        </div>
+        <p className="fineprint-block">{ARTICLE_DISCLAIMER}</p>
       </main>
     </>
   );
@@ -199,7 +202,7 @@ export function LibraryScreen() {
 function Paragraph({ text }: { text: string }) {
   const lines = text.split("\n");
   return (
-    <p className="para">
+    <p>
       {lines.map((line, lineIndex) => (
         <span key={lineIndex}>
           {line.split(/(\*\*[^*]+\*\*)/g).map((part, index) =>

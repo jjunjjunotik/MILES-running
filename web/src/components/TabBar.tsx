@@ -2,22 +2,18 @@ import type { Tab } from "../App";
 import {
   HistoryIcon,
   HomeIcon,
+  LibraryIcon,
   ProfileIcon,
-  ResultIcon,
   ScanIcon,
-  type IconProps,
+  type Icon,
 } from "./Icons";
 
-const TABS: {
-  key: Tab;
-  label: string;
-  Icon: (props: IconProps) => React.JSX.Element;
-}[] = [
-  { key: "home", label: "홈", Icon: HomeIcon },
-  { key: "scan", label: "스캔", Icon: ScanIcon },
-  { key: "history", label: "기록", Icon: HistoryIcon },
-  { key: "library", label: "정보", Icon: ResultIcon },
-  { key: "profile", label: "프로필", Icon: ProfileIcon },
+const TABS: { key: Tab; label: string; Glyph: Icon }[] = [
+  { key: "home", label: "홈", Glyph: HomeIcon },
+  { key: "scan", label: "스캔", Glyph: ScanIcon },
+  { key: "history", label: "기록", Glyph: HistoryIcon },
+  { key: "library", label: "정보", Glyph: LibraryIcon },
+  { key: "profile", label: "프로필", Glyph: ProfileIcon },
 ];
 
 export function TabBar({
@@ -28,23 +24,17 @@ export function TabBar({
   onChange: (tab: Tab) => void;
 }) {
   return (
-    <nav className="tabbar">
-      {TABS.map(({ key, label, Icon }) => {
-        const isScan = key === "scan";
+    <nav className="tabbar" aria-label="주요 화면">
+      {TABS.map(({ key, label, Glyph }) => {
+        const current = active === key;
         return (
           <button
             key={key}
-            className={`tab${active === key ? " active" : ""}${isScan ? " tab-scan" : ""}`}
+            className="tab"
             onClick={() => onChange(key)}
-            aria-current={active === key ? "page" : undefined}
+            aria-current={current ? "page" : undefined}
           >
-            {isScan ? (
-              <span className="tab-icon-wrap">
-                <Icon size={20} />
-              </span>
-            ) : (
-              <Icon />
-            )}
+            <Glyph size={24} weight={current ? "fill" : "regular"} />
             <span>{label}</span>
           </button>
         );

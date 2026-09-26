@@ -3,7 +3,7 @@
  *
  * 두 제공자 모두 자기 스크립트를 불러와야 동작한다. 그 스크립트는 서버가
  * "이 제공자를 설정했다"고 알려 줄 때만 불러온다. 설정하지 않았다면 외부 스크립트가
- * 아예 오지 않는다 — 쓰지도 않을 제3자 스크립트를 로그인 화면에 올려 두지 않기 위해서다.
+ * 아예 오지 않는다. 쓰지도 않을 제3자 스크립트를 로그인 화면에 올려 두지 않기 위해서다.
  */
 
 const GOOGLE_SRC = "https://accounts.google.com/gsi/client";
@@ -86,11 +86,18 @@ export async function mountGoogleButton(options: {
     },
     cancel_on_tap_outside: true,
   });
+  // 구글 버튼은 구글이 직접 그린다. 화면의 밝기와 모서리 규칙(10px)에 가깝게 고른다.
+  const chosen = document.documentElement.dataset.theme;
+  const dark =
+    chosen === "dark" ||
+    (chosen !== "light" &&
+      typeof matchMedia === "function" &&
+      matchMedia("(prefers-color-scheme: dark)").matches);
   api.renderButton(options.parent, {
     type: "standard",
-    theme: "outline",
+    theme: dark ? "filled_black" : "outline",
     size: "large",
-    shape: "pill",
+    shape: "rectangular",
     text: "continue_with",
     locale: "ko",
     width: Math.min(options.parent.clientWidth || 320, 400),

@@ -8,6 +8,9 @@
  *   demo/artifact.html         <html>/<head>/<body> 래퍼 없이 본문만 담은 파일
  *
  * 분석 요청은 네트워크로 나가지 않고 샘플 결과로 대체된다(VITE_STANDALONE_DEMO=1).
+ *
+ * 글꼴: 앱은 글꼴 파일을 직접 호스팅하지만, 한 파일에 한글 글꼴을 모두 넣으면 수 MB가
+ * 된다. 데모는 Artifact 가 허용하는 Google Fonts 에서 같은 글꼴을 불러온다.
  */
 import { build } from "vite";
 import react from "@vitejs/plugin-react";
@@ -17,9 +20,28 @@ import path from "node:path";
 const OUT_DIR = "demo";
 const TMP_DIR = path.join(OUT_DIR, ".build");
 
+// 글꼴 서버에는 이 페이지 주소를 보내지 않는다.
+const FONT_LINKS = [
+  '<link rel="preconnect" href="https://fonts.googleapis.com" referrerpolicy="no-referrer">',
+  '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin referrerpolicy="no-referrer">',
+  '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+KR:wght@400;600&display=swap" referrerpolicy="no-referrer">',
+].join("\n");
+
+/** 직접 호스팅용 글꼴 CSS 를 빈 CSS 로 바꿔 끼운다. */
+const skipSelfHostedFonts = {
+  name: "demo-skip-self-hosted-fonts",
+  enforce: "pre",
+  resolveId(id) {
+    return id.startsWith("@fontsource/") ? "\0demo-font.css" : null;
+  },
+  load(id) {
+    return id === "\0demo-font.css" ? "" : null;
+  },
+};
+
 await build({
   root: "web",
-  plugins: [react()],
+  plugins: [skipSelfHostedFonts, react()],
   define: { "import.meta.env.VITE_STANDALONE_DEMO": '"1"' },
   build: {
     outDir: path.resolve(TMP_DIR),
@@ -58,12 +80,15 @@ const inlined = html
     () => `<script type="module">\n${safeJs}\n</script>`,
   );
 
-if (inlined.includes("/assets/")) {
+if (inlined.includes("/assets/") || /\.woff2?\b/.test(inlined)) {
   throw new Error("인라인되지 않은 자산이 남아 있습니다.");
 }
 
+const withFonts = inlined.replace("</title>", () => `</title>\n${FONT_LINKS}`);
+if (withFonts === inlined) throw new Error("글꼴 링크를 넣을 자리를 찾지 못했습니다.");
+
 fs.mkdirSync(OUT_DIR, { recursive: true });
-fs.writeFileSync(path.join(OUT_DIR, "nailsense-demo.html"), inlined);
+fs.writeFileSync(path.join(OUT_DIR, "nailsense-demo.html"), withFonts);
 
 // Artifact 로 게시할 때는 바깥 래퍼 없이 본문만 넘긴다.
 const head = inlined.match(/<head>([\s\S]*?)<\/head>/i)?.[1] ?? "";
@@ -82,7 +107,7 @@ if (!title || !style || !script) {
 }
 fs.writeFileSync(
   path.join(OUT_DIR, "artifact.html"),
-  `${title}\n${style}\n${body.trim()}\n${script}\n`,
+  `${title}\n${FONT_LINKS}\n${style}\n${body.trim()}\n${script}\n`,
 );
 
 fs.rmSync(TMP_DIR, { recursive: true, force: true });

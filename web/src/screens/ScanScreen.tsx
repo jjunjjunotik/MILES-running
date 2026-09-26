@@ -10,12 +10,13 @@ import { ImageError, prepareImage, type PreparedImage } from "../lib/image";
 import { putImage, saveRecord, type Settings } from "../lib/storage";
 import { STANDALONE_DEMO } from "../lib/api";
 import {
+  AlbumIcon,
   CameraIcon,
-  CheckIcon,
+  CheckCircleIcon,
+  ChevronIcon,
+  CircleIcon,
   InfoIcon,
-  ShieldIcon,
-  SparkIcon,
-  UploadIcon,
+  OfflineIcon,
 } from "../components/Icons";
 import { Notice, TopBar } from "../components/ui";
 
@@ -233,49 +234,69 @@ export function ScanScreen({
         <TopBar title="분석 중" />
         <main className="screen">
           {/* 진행 상황을 화면 낭독기에도 알린다. */}
-          <div className="analyzing" role="status" aria-live="polite">
-            <div className="pulse-ring" />
-            <div>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>
-                사진을 살펴보고 있어요
-              </div>
-              <div className="small muted">
-                {attempt > 1
-                  ? "생각보다 오래 걸리고 있어요. 계속 시도하고 있으니 그대로 두셔도 돼요."
-                  : "보통 10~30초 정도 걸려요"}
+          <div role="status" aria-live="polite">
+            <div className="an-head">
+              {image ? (
+                <img className="thumb" src={image.previewUrl} alt="" />
+              ) : (
+                <div className="thumb" aria-hidden="true" />
+              )}
+              <div>
+                <div className="an-title">사진을 살펴보고 있어요</div>
+                <div className="an-sub">
+                  {attempt > 1
+                    ? "생각보다 오래 걸리고 있어요. 계속 시도하고 있으니 그대로 두셔도 돼요."
+                    : "보통 10~30초 정도 걸려요."}
+                </div>
               </div>
             </div>
-            <div className="step-list">
-              {STEPS.map((label, index) => (
-                <div
-                  key={label}
-                  className={`step${index <= step ? " done" : ""}`}
-                >
-                  <span className="mark">
-                    {index < step ? <CheckIcon size={10} /> : null}
-                  </span>
-                  {label}
+
+            <ol className="steps">
+              {STEPS.map((label, index) => {
+                const state =
+                  index < step ? "done" : index === step ? "current" : "";
+                return (
+                  <li key={label} className={`step ${state}`}>
+                    {index < step ? (
+                      <CheckCircleIcon size={20} weight="fill" />
+                    ) : (
+                      <CircleIcon size={20} weight={index === step ? "bold" : "regular"} />
+                    )}
+                    {label}
+                  </li>
+                );
+              })}
+            </ol>
+
+            {attempt > 1 && (
+              <p className="retry-note">
+                {attempt}번째 시도 중이에요.
+                {attempt > 4 && lastReason ? ` 서버 응답: ${lastReason}` : ""}
+              </p>
+            )}
+          </div>
+
+          {/* 결과가 들어올 자리를 미리 그려 둔다. */}
+          <div className="skel-result" aria-hidden="true">
+            <span className="skel" style={{ height: 22, width: "72%" }} />
+            <span className="skel" style={{ height: 14, width: "100%" }} />
+            <span className="skel" style={{ height: 14, width: "88%" }} />
+            <div className="skel-grid">
+              {Array.from({ length: 6 }, (_, index) => (
+                <div key={index} style={{ display: "grid", gap: 6 }}>
+                  <span className="skel" style={{ height: 12, width: "40%" }} />
+                  <span className="skel" style={{ height: 16, width: "70%" }} />
                 </div>
               ))}
             </div>
-            {attempt > 1 && (
-              <div className="small muted center">
-                {attempt}번째 시도 중
-                {attempt > 4 && lastReason ? (
-                  <>
-                    <br />
-                    <span style={{ opacity: 0.8 }}>서버 응답: {lastReason}</span>
-                  </>
-                ) : null}
-              </div>
-            )}
-            <button
-              className="btn btn-secondary btn-sm"
-              onClick={() => abort.current?.abort()}
-            >
-              그만두기
-            </button>
           </div>
+
+          <button
+            className="btn btn-secondary mt-24"
+            onClick={() => abort.current?.abort()}
+          >
+            그만두기
+          </button>
         </main>
       </>
     );
@@ -284,7 +305,7 @@ export function ScanScreen({
   return (
     <>
       <TopBar title="손톱 스캔" />
-      <main className="screen stagger">
+      <main className="screen">
         <input
           ref={fileInput}
           type="file"
@@ -301,8 +322,10 @@ export function ScanScreen({
           onChange={(event) => void pick(event.target.files?.[0])}
         />
 
-        <div
-          className={`dropzone${dragging ? " dragging" : ""}`}
+        <button
+          type="button"
+          className={`picker${dragging ? " dragging" : ""}`}
+          aria-label={image ? "사진 다시 고르기" : "손톱 사진 고르기"}
           onDragOver={(event) => {
             event.preventDefault();
             setDragging(true);
@@ -313,142 +336,149 @@ export function ScanScreen({
             setDragging(false);
             void pick(event.dataTransfer.files?.[0]);
           }}
-          onClick={() => !image && fileInput.current?.click()}
+          onClick={() => fileInput.current?.click()}
         >
           {image ? (
             <img src={image.previewUrl} alt="선택한 손톱 사진 미리보기" />
           ) : (
-            <div className="dropzone-empty">
-              <div className="big">
-                <CameraIcon size={26} />
-              </div>
+            <span className="picker-empty">
+              <CameraIcon size={30} />
               <strong>손톱 사진을 올려 주세요</strong>
-              여기를 눌러 사진을 고르거나
-              <br />
-              파일을 끌어다 놓을 수 있어요
-            </div>
+              <span>눌러서 고르거나 파일을 끌어다 놓으세요</span>
+            </span>
           )}
-        </div>
+        </button>
 
         <div className="btn-row mt-12">
           <button
             className="btn btn-secondary"
             onClick={() => cameraInput.current?.click()}
           >
-            <CameraIcon size={18} />
+            <CameraIcon size={19} />
             촬영
           </button>
           <button
             className="btn btn-secondary"
             onClick={() => fileInput.current?.click()}
           >
-            <UploadIcon size={18} />
+            <AlbumIcon size={19} />
             {image ? "다시 고르기" : "앨범"}
           </button>
         </div>
 
         {error && (
           <div className="mt-12">
-            <Notice>{error}</Notice>
+            <Notice tone="consult">{error}</Notice>
           </div>
         )}
 
         {image && image.quality.level === "warn" && (
           <div className="mt-12">
-            <Notice tone="strong" icon={<InfoIcon size={15} />}>
-              <strong>{image.quality.issues.join(" · ")}</strong>
+            <Notice tone="monitor">
+              <strong>{image.quality.issues.join(", ")}</strong>
               <br />
-              {image.quality.hint}
-              <br />
-              이대로도 분석할 수 있지만, 볼 수 있는 항목이 줄어들 수 있어요.
+              {image.quality.hint} 이대로도 분석할 수 있지만, 볼 수 있는 항목이
+              줄어들 수 있어요.
             </Notice>
           </div>
         )}
 
-        <div className="section-title">어느 손톱인가요?</div>
-        <div className="card">
-          <div className="chip-row">
-            {(["left", "right"] as const).map((value) => (
-              <button
-                key={value}
-                className={`chip${hand === value ? " active" : ""}`}
-                onClick={() => setHand(value)}
-              >
-                {value === "left" ? "왼손" : "오른손"}
-              </button>
-            ))}
-          </div>
-          <div className="chip-row mt-12">
-            {FINGER_KEYS.map((key) => (
-              <button
-                key={key}
-                className={`chip${finger === key ? " active" : ""}`}
-                onClick={() => setFinger(key)}
-              >
-                {FINGER_LABELS[key]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="section-title">메모 (선택)</div>
-        <textarea
-          className="field"
-          rows={3}
-          maxLength={300}
-          placeholder="최근 변화나 신경 쓰이는 점을 적어 두면 다음에 비교하기 좋아요."
-          value={note}
-          onChange={(event) => setNote(event.target.value)}
-        />
-
-        <div className="section-title">잘 찍는 방법</div>
-        <div className="card">
-          <ul
-            className="small muted"
-            style={{ margin: 0, paddingLeft: 18, lineHeight: 1.9 }}
-          >
+        <details className="how-to mt-8">
+          <summary>
+            <ChevronIcon size={16} />잘 찍는 방법
+          </summary>
+          <ul>
             <li>밝은 자연광 아래에서, 그림자가 지지 않게 찍어 주세요.</li>
             <li>손톱 하나가 화면의 절반 이상을 채우도록 가까이 찍어 주세요.</li>
-            <li>매니큐어나 젤을 지운 상태여야 손톱판이 보입니다.</li>
+            <li>매니큐어나 젤을 지운 상태여야 손톱판이 보여요.</li>
             <li>손톱 주변 피부까지 함께 나오면 더 많은 항목을 볼 수 있어요.</li>
           </ul>
-        </div>
+        </details>
 
-        <div className="mt-16">
-          <Notice icon={<ShieldIcon />}>
-            사진은 분석을 위해 이 앱의 서버로만 전송되며 저장되지 않습니다.
-            {settings.keepPhotos
-              ? " 분석이 끝난 사진은 이 기기에만 함께 저장됩니다."
-              : " 현재 설정에서는 사진을 기기에 저장하지 않고 결과만 남깁니다."}
-          </Notice>
-        </div>
+        <section className="sec">
+          <h3 className="sec-title">어느 손톱인가요?</h3>
+          <div className="pick-group" role="group" aria-label="손">
+            <div className="chips">
+              {(["left", "right"] as const).map((value) => (
+                <button
+                  key={value}
+                  className="chip"
+                  aria-pressed={hand === value}
+                  onClick={() => setHand(value)}
+                >
+                  {value === "left" ? "왼손" : "오른손"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="pick-group" role="group" aria-label="손가락">
+            <div className="chips">
+              {FINGER_KEYS.map((key) => (
+                <button
+                  key={key}
+                  className="chip"
+                  aria-pressed={finger === key}
+                  onClick={() => setFinger(key)}
+                >
+                  {FINGER_LABELS[key]}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <section className="sec">
+          <label className="field-label" htmlFor="scan-note">
+            메모 <span className="opt">(선택)</span>
+          </label>
+          <textarea
+            id="scan-note"
+            className="field"
+            rows={3}
+            maxLength={300}
+            placeholder="최근 변화나 신경 쓰이는 점"
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+          />
+          <p className="field-help">
+            적어 두면 다음에 같은 손톱을 찍었을 때 비교하기 좋아요.
+          </p>
+        </section>
 
         {demoMode && (
-          <div className="mt-12">
-            <Notice tone="strong" icon={<SparkIcon size={15} />}>
-              데모 모드입니다. 실제 사진 분석 대신 샘플 결과가 표시됩니다.
+          <div className="mt-24">
+            <Notice tone="accent">
+              데모 모드예요. 실제 사진 분석 대신 샘플 결과를 보여 드려요.
             </Notice>
           </div>
         )}
 
         <button
-          className="btn btn-primary mt-16"
+          className="btn btn-primary mt-24"
           disabled={!image || !online}
           onClick={() => void run()}
         >
-          <SparkIcon size={18} />
           분석 시작
         </button>
 
         {!online ? (
-          <div className="small muted center mt-8">
-            <InfoIcon size={13} /> 네트워크가 연결되면 분석할 수 있어요
-          </div>
+          <p className="scan-hint">
+            <OfflineIcon size={16} />
+            네트워크가 연결되면 분석할 수 있어요
+          </p>
         ) : !image ? (
-          <div className="small muted center mt-8">
-            <InfoIcon size={13} /> 먼저 사진을 선택해 주세요
-          </div>
+          <p className="scan-hint">
+            <InfoIcon size={16} />
+            먼저 사진을 골라 주세요
+          </p>
         ) : null}
+
+        <p className="fineprint mt-24">
+          사진은 분석할 때만 이 앱의 서버를 거치고 서버에는 저장되지 않아요.
+          {settings.keepPhotos
+            ? " 분석이 끝난 사진은 이 기기에만 함께 저장돼요."
+            : " 지금 설정에서는 사진을 기기에 저장하지 않고 결과만 남겨요."}
+        </p>
       </main>
     </>
   );

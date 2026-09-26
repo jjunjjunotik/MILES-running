@@ -30,8 +30,11 @@ await page.goto(BASE, { waitUntil: "networkidle" });
 await page.waitForTimeout(600);
 
 // 온보딩만 건너뛴다. 로그인 없이도 분석할 수 있어야 한다.
-if ((await page.locator("text=건너뛰기").count()) > 0) {
-  await page.click("text=건너뛰기");
+// 첫 화면이 뜰 때까지 기다린 뒤 판단한다. 개발 서버는 모듈을 처음 변환하느라 느릴 수 있다.
+const skip = page.locator("text=건너뛰기");
+await skip.or(page.locator("text=손톱 스캔 시작하기")).first().waitFor({ timeout: 20000 });
+if ((await skip.count()) > 0) {
+  await skip.click();
   await page.waitForTimeout(500);
 }
 await page.waitForSelector("text=손톱 스캔 시작하기", { timeout: 20000 });

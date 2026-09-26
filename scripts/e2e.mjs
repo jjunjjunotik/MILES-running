@@ -108,7 +108,7 @@ await shot(page, "10-profile-guest");
 
 await page.click(".signin-btn");
 await page.waitForTimeout(600);
-if (!(await has("다시 오셨네요"))) problems.push("프로필에서 로그인 화면이 열리지 않음");
+if ((await page.locator(".auth-title").count()) === 0) problems.push("프로필에서 로그인 화면이 열리지 않음");
 await shot(page, "11-auth-optional");
 await page.click("text=계정이 없으신가요? 가입하기");
 await page.waitForTimeout(200);
@@ -136,7 +136,7 @@ await page.click(".tabbar >> text=프로필");
 await page.waitForTimeout(500);
 await page.click("text=로그아웃");
 await page.waitForTimeout(900);
-if (await has("다시 오셨네요")) problems.push("로그아웃 후 로그인 화면에 갇힘");
+if ((await page.locator(".auth-title").count()) > 0) problems.push("로그아웃 후 로그인 화면에 갇힘");
 if ((await page.locator(".tabbar").count()) === 0) problems.push("로그아웃 후 앱이 사라짐");
 await shot(page, "13-after-signout");
 

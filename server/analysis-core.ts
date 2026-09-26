@@ -85,7 +85,7 @@ export function normalize(analysis: NailAnalysis): NailAnalysis {
       },
   );
 
-  return {
+  return tidyStrings({
     ...analysis,
     observationScore: Math.max(
       0,
@@ -93,7 +93,35 @@ export function normalize(analysis: NailAnalysis): NailAnalysis {
     ),
     metrics,
     findings: normalizeFindings(analysis.findings),
-  };
+  });
+}
+
+/**
+ * 모델은 프롬프트에서 막아도 가끔 문장 사이에 줄표(—, –)를 끼워 넣는다.
+ * 화면 문구 규칙에 맞춰 숫자 사이의 줄표는 물결표("2~3주")로, 문장이 끝난 자리는
+ * 마침표로, 나머지는 쉼표로 바꾼다.
+ * 문장부호만 고칠 뿐 내용은 건드리지 않는다.
+ */
+export function tidyDashes(text: string): string {
+  return text
+    .replace(/(\d)\s*[–—]\s*(\d)/g, "$1~$2")
+    // "~습니다 — 이어지는 말" 처럼 문장이 끝난 자리라면 마침표로 끊는다.
+    .replace(/([다요])\s*[—–]+\s*(?=\S)/g, "$1. ")
+    .replace(/\s*[—–]+\s*/g, ", ")
+    .replace(/,\s*([,.])/g, "$1")
+    .replace(/^,\s*/, "")
+    .replace(/,\s*$/, "");
+}
+
+function tidyStrings<T>(value: T): T {
+  if (typeof value === "string") return tidyDashes(value) as T;
+  if (Array.isArray(value)) return value.map((item) => tidyStrings(item)) as T;
+  if (value && typeof value === "object") {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, item]) => [key, tidyStrings(item)]),
+    ) as T;
+  }
+  return value;
 }
 
 const MAX_FINDINGS = 4;

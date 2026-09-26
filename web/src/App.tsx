@@ -39,6 +39,14 @@ import {
   type ServerScan,
 } from "./lib/server";
 import { seedExampleRecords } from "./lib/seed";
+import { IconContext, OfflineIcon } from "./components/Icons";
+
+/** 아이콘 기본값. 장식용이라 화면 낭독기에서는 숨기고, 뜻은 옆의 글자가 전한다. */
+const ICON_DEFAULTS = {
+  size: 20,
+  weight: "regular" as const,
+  "aria-hidden": true,
+};
 
 export type Tab = "home" | "scan" | "library" | "history" | "profile";
 
@@ -312,28 +320,28 @@ export function App() {
     setPhase("ready");
   }, []);
 
-  if (phase === "loading") {
-    return (
-      <div className="app">
-        <main className="screen boot" aria-busy="true">
-          <div className="pulse-ring" />
-          <div className="small muted">불러오는 중…</div>
+  return (
+    <IconContext.Provider value={ICON_DEFAULTS}>
+      <div className="app">{renderPhase()}</div>
+    </IconContext.Provider>
+  );
+
+  function renderPhase() {
+    if (phase === "loading") {
+      return (
+        <main className="boot" aria-busy="true">
+          <span className="wordmark">NailSense</span>
+          <span className="sr-only">불러오는 중</span>
         </main>
-      </div>
-    );
-  }
+      );
+    }
 
-  if (phase === "onboarding") {
-    return (
-      <div className="app">
-        <OnboardingScreen onDone={finishOnboarding} />
-      </div>
-    );
-  }
+    if (phase === "onboarding") {
+      return <OnboardingScreen onDone={finishOnboarding} />;
+    }
 
-  if (showAuth) {
-    return (
-      <div className="app">
+    if (showAuth) {
+      return (
         <AuthScreen
           onSignedIn={(signedIn) => {
             setShowAuth(false);
@@ -341,98 +349,100 @@ export function App() {
           }}
           onBack={() => setShowAuth(false)}
         />
-      </div>
+      );
+    }
+
+    return (
+      <>
+        {!online && (
+          <div className="offline-bar" role="status">
+            <OfflineIcon size={16} />
+            네트워크가 끊겼어요. 저장된 기록은 계속 볼 수 있어요.
+          </div>
+        )}
+
+        {result ? (
+          <ResultScreen
+            result={result}
+            settings={settings}
+            records={records}
+            onStartScan={() => {
+              setResult(null);
+              setTab("scan");
+            }}
+            onGoHistory={() => {
+              setResult(null);
+              setTab("history");
+            }}
+            onClose={() => setResult(null)}
+          />
+        ) : (
+          <>
+            {tab === "home" && (
+              <HomeScreen
+                records={records}
+                settings={settings}
+                demoMode={demoMode}
+                signedIn={Boolean(user)}
+                onStartScan={() => setTab("scan")}
+                onOpenRecord={openRecord}
+                onGoHistory={() => setTab("history")}
+                onGoLibrary={() => setTab("library")}
+              />
+            )}
+
+            {tab === "scan" && (
+              <ScanScreen
+                settings={settings}
+                demoMode={demoMode}
+                online={online}
+                signedIn={Boolean(user)}
+                onDone={async (view) => {
+                  await refreshRecords();
+                  showResult(view);
+                }}
+              />
+            )}
+
+            {tab === "library" && <LibraryScreen />}
+
+            {tab === "history" && (
+              <HistoryScreen
+                records={records}
+                failedScans={failedScans}
+                onOpenRecord={openRecord}
+                onStartScan={() => setTab("scan")}
+                onDelete={removeRecord}
+                onChanged={refreshRecords}
+              />
+            )}
+
+            {tab === "profile" && (
+              <ProfileScreen
+                user={user}
+                onSignIn={() => setShowAuth(true)}
+                settings={settings}
+                records={records}
+                onChangeSettings={updateSettings}
+                onChanged={refreshRecords}
+                onDeleteAll={removeAllRecords}
+                onSignOut={signOut}
+                demoMode={demoMode}
+                provider={provider}
+              />
+            )}
+          </>
+        )}
+
+        {/* 결과를 보는 중에도 탭은 그대로 둔다. 어디에 있든 빠져나갈 길이 있어야 한다. */}
+        <TabBar
+          active={tab}
+          onChange={(next) => {
+            setResult(null);
+            setTab(next);
+          }}
+        />
+      </>
     );
   }
-
-  return (
-    <div className="app">
-      {!online && (
-        <div className="offline-bar" role="status">
-          네트워크가 끊겼어요. 저장된 기록은 계속 볼 수 있어요.
-        </div>
-      )}
-
-      {result ? (
-        <ResultScreen
-          result={result}
-          settings={settings}
-          records={records}
-          onStartScan={() => {
-            setResult(null);
-            setTab("scan");
-          }}
-          onGoHistory={() => {
-            setResult(null);
-            setTab("history");
-          }}
-          onClose={() => setResult(null)}
-        />
-      ) : (
-        <>
-          {tab === "home" && (
-            <HomeScreen
-              records={records}
-              settings={settings}
-              demoMode={demoMode}
-              onStartScan={() => setTab("scan")}
-              onOpenRecord={openRecord}
-              onGoHistory={() => setTab("history")}
-              onGoLibrary={() => setTab("library")}
-            />
-          )}
-
-          {tab === "scan" && (
-            <ScanScreen
-              settings={settings}
-              demoMode={demoMode}
-              online={online}
-              signedIn={Boolean(user)}
-              onDone={async (view) => {
-                await refreshRecords();
-                showResult(view);
-              }}
-            />
-          )}
-
-          {tab === "library" && <LibraryScreen />}
-
-          {tab === "history" && (
-            <HistoryScreen
-              records={records}
-              failedScans={failedScans}
-              onOpenRecord={openRecord}
-              onStartScan={() => setTab("scan")}
-              onDelete={removeRecord}
-              onChanged={refreshRecords}
-            />
-          )}
-
-          {tab === "profile" && (
-            <ProfileScreen
-              user={user}
-              onSignIn={() => setShowAuth(true)}
-              settings={settings}
-              records={records}
-              onChangeSettings={updateSettings}
-              onChanged={refreshRecords}
-              onDeleteAll={removeAllRecords}
-              onSignOut={signOut}
-              demoMode={demoMode}
-              provider={provider}
-            />
-          )}
-        </>
-      )}
-
-      {/* 결과를 보는 중에도 탭은 그대로 둔다. 어디에 있든 빠져나갈 길이 있어야 한다. */}
-      <TabBar
-        active={tab}
-        onChange={(next) => {
-          setResult(null);
-          setTab(next);
-        }}
-      />
-    </div>
-  );
 }
