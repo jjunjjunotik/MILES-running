@@ -27,27 +27,27 @@
   const FAIL_LIMIT = 8;         // consecutive misses before a source is given up on
 
   /* Sources that need no API key. Dark is the default because the app is dark:
-     a bright basemap would drown the routes and the territory colours. */
+     a bright basemap would drown the routes and the territory colours.
+
+     Dark was CARTO's dark_all until CARTO began answering keyless requests
+     with an "API KEY REQUIRED" watermark in place of every tile — a 200 with
+     a picture, so nothing failed and the map simply showed the watermark.
+     Esri's Dark Gray Canvas has no key and real streets to zoom 16 here; the
+     map scales the last level up beyond that rather than asking for tiles
+     that come back as "Map data not yet available". CARTO's light style went
+     the same way, and there was no keyless light map with streets at running
+     zooms to replace it, so it is gone; Street is the light option, and Topo
+     took its place. */
   const SOURCES = {
     dark: {
       key: 'dark',
       name: 'Dark',
-      url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
-      subdomains: ['a', 'b', 'c', 'd'],
-      retina: true,
-      maxZoom: 20,
-      dim: 0.18,
-      attribution: '© OpenStreetMap · © CARTO',
-    },
-    light: {
-      key: 'light',
-      name: 'Light',
-      url: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
-      subdomains: ['a', 'b', 'c', 'd'],
-      retina: true,
-      maxZoom: 20,
-      dim: 0.5,
-      attribution: '© OpenStreetMap · © CARTO',
+      url: 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+      subdomains: [''],
+      retina: false,
+      maxZoom: 16,
+      dim: 0.08,
+      attribution: '© Esri · © OpenStreetMap',
     },
     osm: {
       key: 'osm',
@@ -58,6 +58,18 @@
       maxZoom: 19,
       dim: 0.5,
       attribution: '© OpenStreetMap contributors',
+    },
+    // Contour lines under the streets: the same idea as the app's own drawn
+    // cards, from a real survey.
+    topo: {
+      key: 'topo',
+      name: 'Topo',
+      url: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+      subdomains: ['a', 'b', 'c'],
+      retina: false,
+      maxZoom: 17,
+      dim: 0.5,
+      attribution: '© OpenTopoMap · © OpenStreetMap',
     },
     drawn: { key: 'drawn', name: 'Drawn', url: null, attribution: '' },
   };

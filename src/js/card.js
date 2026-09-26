@@ -5,7 +5,7 @@
 
    It is the app's own page, not a poster in another style: the same warm
    ground, the same two faces, the run kind's own colour, and the route laid
-   over the survey contours that sit behind every drawn card in the app.
+   on the same map the app draws it on.
    ========================================================================== */
 
 (function (M) {
@@ -159,24 +159,6 @@
     ctx.font = `700 56px ${SANS}`;
     ctx.fillText(headline.unit, PAD - 8 + valueW + 20, 452);
 
-    /* --- The ground it covered ---------------------------------------------
-       A panel of survey contours in the run's colour, with the route laid
-       over it the way a map lays a line: a dark casing under a solid stroke.
-       It used to glow, which is what a neon line on black always does. --- */
-    const panel = { x: PAD, y: 500, w: W - PAD * 2, h: 510 };
-    roundRect(ctx, panel.x, panel.y, panel.w, panel.h, 40);
-    ctx.fillStyle = INK.panel;
-    ctx.fill();
-    ctx.save();
-    roundRect(ctx, panel.x, panel.y, panel.w, panel.h, 40);
-    ctx.clip();
-    M.Visual.contours(ctx, panel, theme.accent, seed, { line: 0.1, index: 0.22, width: 2.2 });
-    ctx.restore();
-    roundRect(ctx, panel.x, panel.y, panel.w, panel.h, 40);
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = INK.line;
-    ctx.stroke();
-
     /* --- What came of it --------------------------------------------------
        One line on a dark plate in the panel's corner, the way the app labels
        its own map: a square of colour and the words, in sentence case. The
@@ -188,7 +170,29 @@
         ? (activity.finished ? { text: `Crossed the line ${ordinal(activity.placing)}`, color: theme.ink } : { text: 'Did not finish', color: INK.lo })
         : null;
 
-    drawRoute(ctx, activity, panel, theme, outcome ? 86 : 0);
+    /* --- Where it went -----------------------------------------------------
+       The route on the map it was run on: the same basemap the app shows
+       (street imagery, or the drawn city when imagery is off or out of
+       reach), framed on the route, with the line laid over it the way a map
+       lays one — a dark casing under a solid stroke. A run with no trace
+       falls back to the survey contours. ----------------------------------- */
+    const panel = { x: PAD, y: 500, w: W - PAD * 2, h: 510 };
+    const view = routeMap(activity, panel, outcome ? 86 : 0);
+    roundRect(ctx, panel.x, panel.y, panel.w, panel.h, 40);
+    ctx.fillStyle = INK.panel;
+    ctx.fill();
+    ctx.save();
+    roundRect(ctx, panel.x, panel.y, panel.w, panel.h, 40);
+    ctx.clip();
+    if (view) ctx.drawImage(view.canvas, panel.x, panel.y, panel.w, panel.h);
+    else M.Visual.contours(ctx, panel, theme.accent, seed, { line: 0.1, index: 0.22, width: 2.2 });
+    ctx.restore();
+    roundRect(ctx, panel.x, panel.y, panel.w, panel.h, 40);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = INK.line;
+    ctx.stroke();
+
+    drawRoute(ctx, activity, panel, theme, view);
 
     if (outcome) {
       ctx.font = `700 26px ${SANS}`;
@@ -271,6 +275,20 @@
     // The same fine grain that sits over the app, so the card is paper too.
     M.Visual._grain(ctx, W, H, seed + 3);
 
+    // Street tiles arrive one at a time. Paint again as they land, for a few
+    // seconds after the card first appears, so the saved card has its map.
+    if (canvas._offTiles) canvas._offTiles();
+    canvas._offTiles = null;
+    const until = opts._tilesUntil || Date.now() + 8000;
+    if (view && M.Tiles && M.Tiles.usable() && Date.now() < until) {
+      let timer = null;
+      const off = M.Bus.on('tiles:loaded', () => {
+        clearTimeout(timer);
+        timer = setTimeout(() => renderCard(canvas, activity, Object.assign({}, opts, { _tilesUntil: until })), 150);
+      });
+      canvas._offTiles = () => { off(); clearTimeout(timer); };
+    }
+
     // A face that had not loaded yet was drawn in its fallback: paint again
     // once they are in. Once only, so a face that never arrives cannot loop.
     if (!opts._afterFonts && document.fonts && document.fonts.load) {
@@ -284,8 +302,37 @@
     return canvas;
   }
 
-  /** `reserve` keeps that many pixels clear at the foot of the panel. */
-  function drawRoute(ctx, activity, panel, theme, reserve) {
+  /* The card's map is drawn at a phone's density, so its streets and labels
+     come out at the weight they have in the app rather than hairline-thin. */
+  const MAP_DPR = 2.4;
+
+  /**
+   * The app's own map, drawn off-screen at the panel's size and framed on the
+   * route. `reserve` keeps that many card pixels clear at the foot of the
+   * panel. Returns null when there is no route to frame.
+   */
+  function routeMap(activity, panel, reserve) {
+    const route = activity.route || [];
+    if (route.length < 2 || !M.MapView) return null;
+    const view = new M.MapView(document.createElement('canvas'), {
+      size: { w: panel.w / MAP_DPR, h: panel.h / MAP_DPR }, dpr: MAP_DPR, padding: 30,
+    });
+    view.setAnchor(route[0]);
+    // Frame in the room above the reserve, then slide the frame so the route
+    // sits in that room rather than in the middle of the whole panel.
+    const fullH = view.h;
+    view.h = (panel.h - reserve) / MAP_DPR;
+    view.fit([route]);
+    view.h = fullH;
+    const c = Geo.project(view.center, view.anchor);
+    c.y += (reserve / MAP_DPR / 2) * view.mpp;
+    view.center = Geo.unproject(c, view.anchor);
+    view.draw();
+    view.destroy();
+    return view;
+  }
+
+  function drawRoute(ctx, activity, panel, theme, view) {
     const route = activity.route || [];
     if (route.length < 2) {
       ctx.fillStyle = INK.lo;
@@ -296,21 +343,18 @@
       return;
     }
 
-    const inner = 72;
-    const origin = route[0];
-    const proj = route.map((p) => Geo.project(p, origin));
-    const minX = Math.min.apply(null, proj.map((p) => p.x));
-    const maxX = Math.max.apply(null, proj.map((p) => p.x));
-    const minY = Math.min.apply(null, proj.map((p) => p.y));
-    const maxY = Math.max.apply(null, proj.map((p) => p.y));
-    const room = panel.h - (reserve || 0);
-    const scale = Math.min((panel.w - inner * 2) / Math.max(1, maxX - minX),
-                           (room - inner * 2) / Math.max(1, maxY - minY));
-    const ox = panel.x + (panel.w - (maxX - minX) * scale) / 2 - minX * scale;
-    const oy = panel.y + (room - (maxY - minY) * scale) / 2 - minY * scale;
-    const at = (p) => ({ x: p.x * scale + ox, y: p.y * scale + oy });
+    // Points go through the map's own projection, so the line lands on the
+    // streets it was run along.
+    const at = (latlng) => {
+      const s = view.toScreen(latlng);
+      return { x: panel.x + s.x * MAP_DPR, y: panel.y + s.y * MAP_DPR };
+    };
+    const proj = route;
 
     ctx.save();
+    ctx.beginPath();
+    roundRect(ctx, panel.x, panel.y, panel.w, panel.h, 40);
+    ctx.clip();
     ctx.beginPath();
     proj.forEach((p, i) => {
       const s = at(p);

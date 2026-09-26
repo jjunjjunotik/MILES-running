@@ -628,6 +628,9 @@
       if (!this.data.rivalLand) this.data.rivalLand = [];
       // Saved before the map could show real imagery.
       if (!this.data.mapStyle) this.data.mapStyle = 'dark';
+      // The light basemap was withdrawn when its tiles started coming back as
+      // watermarks; whoever had chosen it gets Street, the light one left.
+      if (this.data.mapStyle === 'light') this.data.mapStyle = 'osm';
       // Saved before the home picture could be swiped.
       if (typeof this.data.heroBg !== 'number') this.data.heroBg = 0;
       // "You" was neon lime; it is chalk now. Runs and crew rosters saved

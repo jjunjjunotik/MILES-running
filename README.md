@@ -257,10 +257,12 @@ Conversion to km/mi happens only at the display edge, in `Units`.
 
 ### The map
 
-The basemap is real: standard OpenStreetMap tiles, served by CARTO's dark
-style, which needs no API key and is dark enough that a route drawn over it
-still reads. **You → Map** switches between `Real` and `Drawn`, and the choice
-is remembered.
+The basemap is real and needs no API key: Esri's Dark Gray Canvas by default,
+dark enough that a route drawn over it still reads, standard OpenStreetMap
+tiles as `Street`, or OpenTopoMap as `Topo`. **You → Map** switches between
+`Dark`, `Street`, `Topo` and `Drawn`, and the choice is remembered. (Dark was
+CARTO's until CARTO started answering keyless requests with a watermark
+instead of a map.) The record card draws the run on the same map.
 
 `Drawn` is the original procedurally generated city, seeded so it looks the
 same every time. It is also the automatic fallback: if tiles are blocked,

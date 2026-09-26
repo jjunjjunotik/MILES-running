@@ -49,7 +49,7 @@
       this._raf = null;
       this._resize();
 
-      if (typeof ResizeObserver !== 'undefined') {
+      if (typeof ResizeObserver !== 'undefined' && !this.opts.size) {
         this._ro = new ResizeObserver(() => { this._resize(); this.draw(); });
         this._ro.observe(canvas);
       }
@@ -67,8 +67,10 @@
     }
 
     _resize() {
-      const rect = this.canvas.getBoundingClientRect();
-      const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+      // An off-screen map (the record card's) has no box on the page to
+      // measure, so it is told its size and density instead.
+      const rect = this.opts.size ? { width: this.opts.size.w, height: this.opts.size.h } : this.canvas.getBoundingClientRect();
+      const dpr = this.opts.dpr || Math.min(window.devicePixelRatio || 1, 2.5);
       const w = Math.max(1, Math.round(rect.width * dpr));
       const h = Math.max(1, Math.round(rect.height * dpr));
       if (this.canvas.width !== w || this.canvas.height !== h) {
