@@ -181,47 +181,60 @@
     },
 
     /**
-     * The picture for a card that has no route or photo to show — a crew, a
-     * run mode. Drawn as the contour lines of a hill on a survey map, in one
-     * ink: a runner reads ground, and it keeps the card to one colour instead
-     * of two glowing blobs and a few speed lines, which is what every
-     * generated sports app reaches for.
+     * Contour lines of a hill, as on a survey map, stroked in one ink into a
+     * box of a canvas that is already sized. It is the one motif behind every
+     * drawn surface in the app — the start cards, the crew, the record card —
+     * so they read as made by the same hand. `look` sets the line alphas and
+     * the stroke width for the scale the box is drawn at.
      */
-    band(canvas, options) {
-      const opts = options || {};
-      const { ctx, w, h } = fit(canvas);
-      const rand = rng(opts.seed || 11);
-      const ink = opts.from || '#ff6a1f';
-
-      ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = '#12110f';
-      ctx.fillRect(0, 0, w, h);
-
+    contours(ctx, box, ink, seed, look) {
+      const rand = rng(seed || 11);
+      const { x, y, w, h } = box;
+      const L = Object.assign({ line: 0.2, index: 0.42, width: 1 }, look || {});
       // One summit, off-centre, and the rings of ground falling away from it.
-      const cx = w * (0.62 + rand() * 0.3);
-      const cy = h * (0.18 + rand() * 0.5);
+      const cx = x + w * (0.62 + rand() * 0.3);
+      const cy = y + h * (0.18 + rand() * 0.5);
       const waves = [0, 1, 2].map(() => ({ f: 2 + Math.floor(rand() * 3), p: rand() * Math.PI * 2, a: 0.05 + rand() * 0.07 }));
       const step = Math.max(w, h) * 0.075;
       const rings = Math.ceil(Math.hypot(w, h) / step) + 2;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(x, y, w, h);
+      ctx.clip();
       ctx.lineJoin = 'round';
       ctx.strokeStyle = ink;
       for (let k = 1; k <= rings; k++) {
         const base = k * step;
-        ctx.globalAlpha = k % 5 === 0 ? 0.42 : 0.2;   // every fifth an index line
-        ctx.lineWidth = k % 5 === 0 ? 1.5 : 1;
+        ctx.globalAlpha = k % 5 === 0 ? L.index : L.line;   // every fifth an index line
+        ctx.lineWidth = (k % 5 === 0 ? 1.5 : 1) * L.width;
         ctx.beginPath();
         for (let i = 0; i <= 96; i++) {
           const t = (i / 96) * Math.PI * 2;
           let r = base;
           waves.forEach((wv) => { r += base * wv.a * Math.sin(wv.f * t + wv.p + k * 0.23); });
-          const x = cx + Math.cos(t) * r * 1.25;
-          const y = cy + Math.sin(t) * r;
-          if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+          const px = cx + Math.cos(t) * r * 1.25;
+          const py = cy + Math.sin(t) * r;
+          if (i) ctx.lineTo(px, py); else ctx.moveTo(px, py);
         }
         ctx.closePath();
         ctx.stroke();
       }
-      ctx.globalAlpha = 1;
+      ctx.restore();
+    },
+
+    /**
+     * The picture for a card that has no route or photo to show — a crew, a
+     * run mode: the contours above, in the card's one ink. It used to be two
+     * glowing blobs and a few speed lines, which is what every generated
+     * sports app reaches for.
+     */
+    band(canvas, options) {
+      const opts = options || {};
+      const { ctx, w, h } = fit(canvas);
+      ctx.clearRect(0, 0, w, h);
+      ctx.fillStyle = '#12110f';
+      ctx.fillRect(0, 0, w, h);
+      this.contours(ctx, { x: 0, y: 0, w, h }, opts.from || '#f2642a', opts.seed || 11);
       this._grain(ctx, w, h, (opts.seed || 11) + 3);
       return { ctx, w, h };
     },

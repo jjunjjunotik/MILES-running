@@ -2,6 +2,10 @@
    MILES · record card
    The shareable artefact of a run: route, headline numbers, territory and
    the duel result, drawn to a 1080×1350 canvas and exportable as a PNG.
+
+   It is the app's own page, not a poster in another style: the same warm
+   ground, the same two faces, the run kind's own colour, and the route laid
+   over the survey contours that sit behind every drawn card in the app.
    ========================================================================== */
 
 (function (M) {
@@ -11,21 +15,59 @@
 
   const W = 1080;
   const H = 1350;
-  const PAD = 76;
+  const PAD = 80;
 
-  /* Colourways for the card. The default per run kind is free; choosing a
-     different one is what Supporter buys. */
-  const THEMES = {
-    lime:    { accent: '#c8ff2e', accent2: '#2fe0ff' },
-    violet:  { accent: '#a855f7', accent2: '#26dafe' },
-    magenta: { accent: '#ff3d8b', accent2: '#ffb020' },
-    amber:   { accent: '#ffb020', accent2: '#c8ff2e' },
+  /* The app's surfaces and type colours (tokens.css). A canvas cannot read
+     CSS variables, so they are restated here — change them together. */
+  const INK = {
+    ground: '#12110f',                  // the drawn cards' ground (visual.js)
+    panel:  '#1b1a17',                  // --ink-700
+    hi:     '#f4efe7',                  // --text-hi
+    mid:    '#c9c1b5',                  // --text-mid
+    lo:     '#a59d91',                  // --text-lo
+    line:   'rgba(243, 236, 224, 0.12)',
+    plate:  'rgba(18, 17, 15, 0.9)',
   };
 
-  const THEME_NAMES = { lime: 'Lime', violet: 'Violet', magenta: 'Magenta', amber: 'Amber' };
+  const SANS = '"Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+  const NUM = '"Barlow Condensed", "Arial Narrow", sans-serif';
 
-  const FONT = '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif';
-  const MONO = '"SF Mono", "JetBrains Mono", "Roboto Mono", ui-monospace, monospace';
+  // A canvas has no word-spacing to lean on, and Instrument Sans sets its
+  // spaces tight: a plain " · " ran the words either side into the dot.
+  const SEP = '\u2005·\u2005';
+
+  /** The largest size up to `size` at which `text` fits in `max` pixels. */
+  function fitFont(ctx, text, weight, size, family, max) {
+    let px = size;
+    ctx.font = `${weight} ${px}px ${family}`;
+    while (px > 24 && ctx.measureText(text).width > max) {
+      px -= 4;
+      ctx.font = `${weight} ${px}px ${family}`;
+    }
+    return px;
+  }
+
+  /* Colourways. With none chosen the card wears its run kind's colour — the
+     one that kind wears everywhere else in the app (state.js KINDS). Choosing
+     another is what Supporter buys. `ink` is the same hue, lifted so it still
+     reads as small type. These were four neons with a second neon each. */
+  const THEMES = {
+    chalk:  { accent: '#f1ead9', ink: '#f1ead9' },
+    flame:  { accent: '#f2642a', ink: '#ff9a6c' },
+    violet: { accent: '#a855f7', ink: '#c4a2fb' },
+    rose:   { accent: '#e8587a', ink: '#f2879f' },
+  };
+
+  const THEME_NAMES = { chalk: 'Chalk', flame: 'Flame', violet: 'Violet', rose: 'Rose' };
+
+  /* The faces the card is set in. A canvas only draws a web font the page
+     has already loaded, and on a first run nothing on screen may have asked
+     for the italic wordmark yet — so the first paint can fall back, and the
+     card is painted again once they arrive. */
+  const FACES = [
+    `italic 800 64px ${NUM}`, `700 100px ${NUM}`,
+    `600 30px ${SANS}`, `700 30px ${SANS}`,
+  ];
 
   function roundRect(ctx, x, y, w, h, r) {
     if (ctx.roundRect) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r); return; }
@@ -38,77 +80,56 @@
     ctx.closePath();
   }
 
-  /** Letter-spaced text, drawn manually so it renders the same everywhere. */
-  function tracked(ctx, text, x, y, spacing) {
-    let cursor = x;
-    for (const ch of text) {
-      ctx.fillText(ch, cursor, y);
-      cursor += ctx.measureText(ch).width + spacing;
-    }
-    return cursor - spacing - x;
-  }
-
-  function trackedWidth(ctx, text, spacing) {
-    let w = 0;
-    for (const ch of text) w += ctx.measureText(ch).width + spacing;
-    return w - spacing;
-  }
-
   /**
    * Draws the card for an activity.
    * @param {HTMLCanvasElement} canvas
    * @param {object} activity
-   * @param {object} [options] – { theme, athlete, rank }
+   * @param {object} [options] – { theme, athlete, rank, totalArea }
    */
   function renderCard(canvas, activity, options) {
     const opts = options || {};
     const kind = activity.kind || 'free';
-    const theme = THEMES[opts.theme || (kind === 'territory' ? 'violet' : kind === 'race' ? 'magenta' : 'lime')];
+    const K = M.KINDS[kind] || M.KINDS.free;
+    const theme = THEMES[opts.theme] || { accent: K.accent, ink: K.ink };
+    const seed = Math.floor((activity.startedAt || 7000) / 1000) % 9973;
     canvas.width = W;
     canvas.height = H;
     const ctx = canvas.getContext('2d');
-
-    /* --- Backdrop -------------------------------------------------------- */
-    const bg = ctx.createLinearGradient(0, 0, W * 0.4, H);
-    bg.addColorStop(0, '#0c1219');
-    bg.addColorStop(1, '#05070a');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, W, H);
-
-    const glow = ctx.createRadialGradient(W * 0.78, H * 0.12, 0, W * 0.78, H * 0.12, W * 0.85);
-    glow.addColorStop(0, theme.accent + '3a');
-    glow.addColorStop(1, 'transparent');
-    ctx.fillStyle = glow;
-    ctx.fillRect(0, 0, W, H);
-
-    /* --- Header ---------------------------------------------------------- */
-    ctx.fillStyle = '#f2f6fa';
-    ctx.font = `800 40px ${FONT}`;
     ctx.textBaseline = 'alphabetic';
-    tracked(ctx, 'MILES', PAD, PAD + 40, 11);
+    ctx.textAlign = 'left';
 
-    const KIND_LABEL = { free: 'RUN', territory: 'TERRITORY', race: 'RACE' };
-    const label = KIND_LABEL[kind] || 'RUN';
-    // Measure the wordmark in the font it was actually drawn in, or the badge
-    // lands on top of it.
-    ctx.font = `800 40px ${FONT}`;
-    const badgeX = PAD + trackedWidth(ctx, 'MILES', 11) + 30;
-    ctx.font = `800 26px ${FONT}`;
-    const labelW = trackedWidth(ctx, label, 4) + 44;
-    roundRect(ctx, badgeX, PAD + 12, labelW, 44, 22);
-    ctx.fillStyle = theme.accent;
-    ctx.fill();
-    ctx.fillStyle = '#05070a';
-    tracked(ctx, label, badgeX + 22, PAD + 41, 4);
+    /* --- Ground ---------------------------------------------------------- */
+    ctx.fillStyle = INK.ground;
+    ctx.fillRect(0, 0, W, H);
+
+    /* --- Header: the wordmark, what kind of run, when --------------------
+       Set as the app sets it: the leaning condensed MILES, and the kind as a
+       small outlined tag in sentence case rather than a neon pill. -------- */
+    ctx.fillStyle = INK.hi;
+    ctx.font = `italic 800 64px ${NUM}`;
+    ctx.fillText('MILES', PAD - 2, PAD + 52);
+    const markW = ctx.measureText('MILES').width;
+
+    ctx.font = `700 26px ${SANS}`;
+    const tagW = ctx.measureText(K.badge).width + 32;
+    const tagX = PAD + markW + 26;
+    roundRect(ctx, tagX, PAD + 10, tagW, 46, 8);
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = theme.ink;
+    ctx.globalAlpha = 0.6;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = theme.ink;
+    ctx.fillText(K.badge, tagX + 16, PAD + 42);
 
     const date = new Date(activity.startedAt).toLocaleDateString('en-US', {
       weekday: 'short', month: 'short', day: 'numeric',
     });
     const time = new Date(activity.startedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
-    ctx.font = `600 24px ${FONT}`;
-    ctx.fillStyle = '#7d8b9d';
+    ctx.font = `600 26px ${SANS}`;
+    ctx.fillStyle = INK.lo;
     ctx.textAlign = 'right';
-    ctx.fillText(`${date} · ${time}`, W - PAD, PAD + 38);
+    ctx.fillText(`${date}${SEP}${time}`, W - PAD, PAD + 42);
     ctx.textAlign = 'left';
 
     /* --- The one number this run was about --------------------------------
@@ -122,131 +143,171 @@
         ? { value: Units.areaText(activity.claimedArea), unit: Units.areaLabel(), caption: 'Claimed by closing the loop' }
         : { value: Units.distText(activity.distance), unit: Units.distLabel(), caption: kind === 'territory' ? 'No loop closed — no land taken' : activity.title || 'Run' };
 
-    ctx.fillStyle = '#5f6d7e';
-    ctx.font = `700 24px ${FONT}`;
-    tracked(ctx, headline.caption.toUpperCase(), PAD, PAD + 122, 3);
+    ctx.fillStyle = INK.mid;
+    ctx.font = `600 32px ${SANS}`;
+    ctx.fillText(headline.caption, PAD, 238);
 
-    ctx.fillStyle = '#ffffff';
-    ctx.font = `800 176px ${MONO}`;
-    ctx.fillText(headline.value, PAD - 6, PAD + 292);
-    const distW = ctx.measureText(headline.value).width;
+    // A long distance steps down in size rather than running off the card.
+    ctx.font = `700 56px ${SANS}`;
+    const unitW = ctx.measureText(headline.unit).width;
+    fitFont(ctx, headline.value, 700, 264, NUM, W - PAD * 2 - unitW - 20);
+    ctx.fillStyle = INK.hi;
+    ctx.fillText(headline.value, PAD - 8, 452);
+    const valueW = ctx.measureText(headline.value).width;
 
-    ctx.fillStyle = theme.accent;
-    ctx.font = `800 50px ${FONT}`;
-    ctx.fillText(headline.unit, PAD + distW + 14, PAD + 292);
+    ctx.fillStyle = INK.mid;
+    ctx.font = `700 56px ${SANS}`;
+    ctx.fillText(headline.unit, PAD - 8 + valueW + 20, 452);
 
-    /* --- Route ------------------------------------------------------------ */
-    const panel = { x: PAD, y: PAD + 360, w: W - PAD * 2, h: 520 };
+    /* --- The ground it covered ---------------------------------------------
+       A panel of survey contours in the run's colour, with the route laid
+       over it the way a map lays a line: a dark casing under a solid stroke.
+       It used to glow, which is what a neon line on black always does. --- */
+    const panel = { x: PAD, y: 500, w: W - PAD * 2, h: 510 };
     roundRect(ctx, panel.x, panel.y, panel.w, panel.h, 40);
-    ctx.fillStyle = 'rgba(255,255,255,0.035)';
+    ctx.fillStyle = INK.panel;
     ctx.fill();
+    ctx.save();
+    roundRect(ctx, panel.x, panel.y, panel.w, panel.h, 40);
+    ctx.clip();
+    M.Visual.contours(ctx, panel, theme.accent, seed, { line: 0.1, index: 0.22, width: 2.2 });
+    ctx.restore();
+    roundRect(ctx, panel.x, panel.y, panel.w, panel.h, 40);
     ctx.lineWidth = 2;
-    ctx.strokeStyle = 'rgba(255,255,255,0.09)';
+    ctx.strokeStyle = INK.line;
     ctx.stroke();
 
-    drawRoute(ctx, activity, panel, theme);
-
-    /* --- Outcome badge ---------------------------------------------------- */
-    const badge = kind === 'territory'
-      ? (activity.claimedArea > 0 ? { text: 'LOOP CLOSED · LAND TAKEN', fill: 'rgba(168, 85, 247, 0.92)' } : { text: 'LOOP NOT CLOSED', fill: 'rgba(255, 255, 255, 0.14)' })
+    /* --- What came of it --------------------------------------------------
+       One line on a dark plate in the panel's corner, the way the app labels
+       its own map: a square of colour and the words, in sentence case. The
+       route is fitted above the plate, so the plate never covers either end
+       of it. ------------------------------------------------------------- */
+    const outcome = kind === 'territory'
+      ? (activity.claimedArea > 0 ? { text: `Loop closed${SEP}land taken`, color: theme.ink } : { text: 'Loop not closed', color: INK.lo })
       : kind === 'race'
-        ? { text: activity.finished ? `CROSSED THE LINE ${ordinal(activity.placing).toUpperCase()}` : 'DID NOT FINISH', fill: activity.placing === 1 ? 'rgba(46, 230, 168, 0.92)' : 'rgba(255, 61, 139, 0.92)' }
+        ? (activity.finished ? { text: `Crossed the line ${ordinal(activity.placing)}`, color: theme.ink } : { text: 'Did not finish', color: INK.lo })
         : null;
 
-    if (badge) {
-      ctx.font = `800 24px ${FONT}`;
-      const bw = trackedWidth(ctx, badge.text, 3) + 52;
-      roundRect(ctx, panel.x + 26, panel.y + panel.h - 74, bw, 50, 25);
-      ctx.fillStyle = badge.fill;
+    drawRoute(ctx, activity, panel, theme, outcome ? 86 : 0);
+
+    if (outcome) {
+      ctx.font = `700 26px ${SANS}`;
+      const ow = ctx.measureText(outcome.text).width + 76;
+      const ox = panel.x + 28;
+      const oy = panel.y + panel.h - 28 - 58;
+      roundRect(ctx, ox, oy, ow, 58, 12);
+      ctx.fillStyle = INK.plate;
       ctx.fill();
-      ctx.fillStyle = '#ffffff';
-      tracked(ctx, badge.text, panel.x + 52, panel.y + panel.h - 40, 3);
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = INK.line;
+      ctx.stroke();
+      ctx.fillStyle = outcome.color;
+      ctx.fillRect(ox + 22, oy + 23, 12, 12);
+      ctx.fillText(outcome.text, ox + 50, oy + 38);
     }
 
     /* --- Stat row ---------------------------------------------------------
        Whatever the headline took, distance always appears here, so the three
-       cells read the same way on every card. --------------------------- */
+       cells read the same way on every card. Laid out like the app's own
+       figures: the number, its unit beside it, and a plain word under it,
+       with a hairline between the columns. -------------------------------- */
     const stats = [
-      { label: 'DISTANCE', value: Units.distText(activity.distance), suffix: Units.distLabel() },
-      { label: 'TIME', value: clock(activity.duration) },
-      { label: 'PACE', value: Units.paceText(activity.duration / Math.max(1, activity.distance)), suffix: Units.paceLabel() },
+      { label: 'Distance', value: Units.distText(activity.distance), unit: Units.distLabel() },
+      { label: 'Time', value: clock(activity.duration) },
+      { label: 'Pace', value: Units.paceText(activity.duration / Math.max(1, activity.distance)), unit: Units.paceLabel() },
     ];
 
-    const statY = panel.y + panel.h + 108;
     const colW = (W - PAD * 2) / stats.length;
     stats.forEach((s, i) => {
-      const x = PAD + colW * i;
-      ctx.fillStyle = '#6c7b8d';
-      ctx.font = `800 22px ${FONT}`;
-      tracked(ctx, s.label, x, statY - 52, 4);
-
-      ctx.fillStyle = '#ffffff';
-      ctx.font = `700 62px ${MONO}`;
-      ctx.fillText(s.value, x, statY);
-      if (s.suffix) {
-        const vw = ctx.measureText(s.value).width;
-        ctx.fillStyle = '#7d8b9d';
-        ctx.font = `700 26px ${FONT}`;
-        ctx.fillText(s.suffix, x + vw + 10, statY);
+      const x = PAD + colW * i + (i ? 32 : 0);
+      if (i) {
+        ctx.fillStyle = INK.line;
+        ctx.fillRect(PAD + colW * i, 1062, 2, 130);
       }
+      // A ten-hour run's clock still fits its column.
+      ctx.font = `600 28px ${SANS}`;
+      const uw = s.unit ? ctx.measureText(s.unit).width + 10 : 0;
+      fitFont(ctx, s.value, 700, 96, NUM, colW - (i ? 32 : 0) - 24 - uw);
+      ctx.fillStyle = INK.hi;
+      ctx.fillText(s.value, x, 1140);
+      if (s.unit) {
+        const vw = ctx.measureText(s.value).width;
+        ctx.fillStyle = INK.mid;
+        ctx.font = `600 28px ${SANS}`;
+        ctx.fillText(s.unit, x + vw + 10, 1140);
+      }
+      ctx.fillStyle = INK.lo;
+      ctx.font = `600 28px ${SANS}`;
+      ctx.fillText(s.label, x, 1188);
     });
 
-    /* --- Footer: duel result or athlete ---------------------------------- */
-    const footY = H - PAD - 46;
-    roundRect(ctx, PAD, footY - 44, W - PAD * 2, 92, 30);
-    ctx.fillStyle = 'rgba(255,255,255,0.05)';
-    ctx.fill();
+    /* --- Footer: who ran it, and what it came to --------------------------- */
+    ctx.fillStyle = INK.line;
+    ctx.fillRect(PAD, 1232, W - PAD * 2, 2);
 
-    const athlete = opts.athlete || 'You';
-    ctx.fillStyle = theme.accent;
-    ctx.font = `800 30px ${FONT}`;
-    ctx.fillText(athlete, PAD + 34, footY + 10);
+    ctx.fillStyle = theme.ink;
+    ctx.fillRect(PAD, 1270, 14, 14);
+    ctx.fillStyle = INK.hi;
+    ctx.font = `700 32px ${SANS}`;
+    ctx.fillText(opts.athlete || 'You', PAD + 30, 1288);
 
     let right = '';
-    let rightColor = '#9dabbd';
     if (kind === 'race' && activity.placing) {
       const beat = activity.fieldSize - activity.placing;
       right = activity.placing === 1
-        ? `WON · BEAT ${beat}`
-        : `${ordinal(activity.placing).toUpperCase()} OF ${activity.fieldSize}`;
-      rightColor = activity.placing === 1 ? '#2ee6a8' : '#ff8ab6';
+        ? `Won${SEP}beat ${beat}`
+        : `${ordinal(activity.placing)} of ${activity.fieldSize}`;
     } else if (kind === 'territory') {
-      right = `${Units.areaText(opts.totalArea || activity.claimedArea)} ${Units.areaLabel()} HELD`;
-      rightColor = '#b79dfb';
+      right = `${Units.areaText(opts.totalArea || activity.claimedArea)} ${Units.areaLabel()} held`;
     } else if (opts.rank) {
-      right = opts.rank.toUpperCase();
+      right = opts.rank;
     }
     ctx.textAlign = 'right';
-    ctx.fillStyle = rightColor;
-    ctx.font = `800 28px ${FONT}`;
-    ctx.fillText(right, W - PAD - 34, footY + 10);
+    ctx.fillStyle = INK.mid;
+    ctx.font = `600 30px ${SANS}`;
+    ctx.fillText(right, W - PAD, 1288);
     ctx.textAlign = 'left';
+
+    // The same fine grain that sits over the app, so the card is paper too.
+    M.Visual._grain(ctx, W, H, seed + 3);
+
+    // A face that had not loaded yet was drawn in its fallback: paint again
+    // once they are in. Once only, so a face that never arrives cannot loop.
+    if (!opts._afterFonts && document.fonts && document.fonts.load) {
+      const missing = FACES.filter((f) => { try { return !document.fonts.check(f); } catch (e) { return false; } });
+      if (missing.length) {
+        Promise.all(missing.map((f) => document.fonts.load(f)))
+          .then(() => renderCard(canvas, activity, Object.assign({}, opts, { _afterFonts: true })), () => {});
+      }
+    }
 
     return canvas;
   }
 
-  function drawRoute(ctx, activity, panel, theme) {
+  /** `reserve` keeps that many pixels clear at the foot of the panel. */
+  function drawRoute(ctx, activity, panel, theme, reserve) {
     const route = activity.route || [];
     if (route.length < 2) {
-      ctx.fillStyle = '#4b5768';
-      ctx.font = `600 26px ${FONT}`;
+      ctx.fillStyle = INK.lo;
+      ctx.font = `600 30px ${SANS}`;
       ctx.textAlign = 'center';
       ctx.fillText('No GPS trace', panel.x + panel.w / 2, panel.y + panel.h / 2);
       ctx.textAlign = 'left';
       return;
     }
 
-    const inner = 64;
+    const inner = 72;
     const origin = route[0];
     const proj = route.map((p) => Geo.project(p, origin));
     const minX = Math.min.apply(null, proj.map((p) => p.x));
     const maxX = Math.max.apply(null, proj.map((p) => p.x));
     const minY = Math.min.apply(null, proj.map((p) => p.y));
     const maxY = Math.max.apply(null, proj.map((p) => p.y));
+    const room = panel.h - (reserve || 0);
     const scale = Math.min((panel.w - inner * 2) / Math.max(1, maxX - minX),
-                           (panel.h - inner * 2) / Math.max(1, maxY - minY));
+                           (room - inner * 2) / Math.max(1, maxY - minY));
     const ox = panel.x + (panel.w - (maxX - minX) * scale) / 2 - minX * scale;
-    const oy = panel.y + (panel.h - (maxY - minY) * scale) / 2 - minY * scale;
+    const oy = panel.y + (room - (maxY - minY) * scale) / 2 - minY * scale;
     const at = (p) => ({ x: p.x * scale + ox, y: p.y * scale + oy });
 
     ctx.save();
@@ -259,30 +320,39 @@
     // A closed loop is land: fill it before stroking the route.
     if (activity.claimedArea > 0) {
       ctx.closePath();
-      ctx.fillStyle = 'rgba(168, 85, 247, 0.26)';
+      ctx.globalAlpha = 0.22;
+      ctx.fillStyle = theme.accent;
       ctx.fill();
+      ctx.globalAlpha = 1;
     }
 
     ctx.lineJoin = ctx.lineCap = 'round';
-    ctx.strokeStyle = theme.accent + '40';
-    ctx.lineWidth = 26;
+    ctx.strokeStyle = INK.ground;
+    ctx.lineWidth = 22;
     ctx.stroke();
     ctx.strokeStyle = theme.accent;
     ctx.lineWidth = 9;
     ctx.stroke();
 
-    // Start and finish pins.
+    // Start is a ring, finish is a dot — the two ends told apart by shape,
+    // not by a second colour.
     const start = at(proj[0]);
     const end = at(proj[proj.length - 1]);
-    ctx.fillStyle = '#05070a';
-    ctx.strokeStyle = theme.accent;
     ctx.lineWidth = 6;
-    [start, end].forEach((pt, i) => {
-      ctx.beginPath();
-      ctx.arc(pt.x, pt.y, i === 0 ? 15 : 12, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    });
+    ctx.strokeStyle = theme.accent;
+    ctx.fillStyle = INK.ground;
+    ctx.beginPath();
+    ctx.arc(start.x, start.y, 16, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(end.x, end.y, 15, 0, Math.PI * 2);
+    ctx.fillStyle = INK.ground;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(end.x, end.y, 10, 0, Math.PI * 2);
+    ctx.fillStyle = theme.accent;
+    ctx.fill();
     ctx.restore();
   }
 
