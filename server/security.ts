@@ -1,5 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import fs from "node:fs";
+import { appleEnabled, googleEnabled } from "./oauth.js";
 
 /**
  * 이 파일의 목적은 하나다: API 키가 새거나, 키로 돈이 새지 않게 하는 것.
@@ -77,30 +78,76 @@ export function auditCredentials(envPath = ".env"): string[] {
 }
 
 /** 브라우저 앱에 필요한 최소한의 보안 헤더. */
+/**
+ * 소셜 로그인을 켰을 때만 제공자의 스크립트·프레임·팝업을 허용한다.
+ * 켜지 않았다면 CSP 는 자기 출처만 허용하는 그대로다.
+ *
+ * 구글: Google Identity Services 문서가 요구하는 출처(accounts.google.com/gsi/).
+ * 애플: Sign in with Apple JS 스크립트와 인증 창(appleid.apple.com).
+ * 두 제공자 모두 팝업 창에서 결과를 돌려주므로, 팝업과의 연결을 끊는
+ * COOP same-origin 대신 same-origin-allow-popups 를 쓴다.
+ */
+export function buildContentSecurityPolicy(options: {
+  google: boolean;
+  apple: boolean;
+}): string {
+  const script = ["'self'"];
+  const style = ["'self'", "'unsafe-inline'"];
+  const connect = ["'self'"];
+  const frame: string[] = [];
+
+  if (options.google) {
+    script.push("https://accounts.google.com/gsi/client");
+    style.push("https://accounts.google.com/gsi/style");
+    connect.push("https://accounts.google.com/gsi/");
+    frame.push("https://accounts.google.com/gsi/");
+  }
+  if (options.apple) {
+    script.push("https://appleid.cdn-apple.com");
+    connect.push("https://appleid.apple.com");
+    frame.push("https://appleid.apple.com");
+  }
+
+  return [
+    "default-src 'self'",
+    // 번들은 자기 출처에서만. 인라인 스타일은 React 인라인 style 때문에 허용한다.
+    `script-src ${script.join(" ")}`,
+    `style-src ${style.join(" ")}`,
+    "img-src 'self' blob: data:",
+    // 글꼴은 직접 호스팅한 파일만 받는다.
+    "font-src 'self'",
+    `connect-src ${connect.join(" ")}`,
+    `frame-src ${frame.length ? frame.join(" ") : "'none'"}`,
+    "form-action 'none'",
+    "frame-ancestors 'none'",
+    "base-uri 'none'",
+    "object-src 'none'",
+  ].join("; ");
+}
+
 export function securityHeaders(
   _req: Request,
   res: Response,
   next: NextFunction,
 ): void {
+  const google = googleEnabled();
+  const apple = appleEnabled();
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
-  res.setHeader("Referrer-Policy", "no-referrer");
-  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  // 구글 로그인은 요청을 보낸 출처를 보고 허용 여부를 정한다. 소셜 로그인을 켰을 때만
+  // 출처(도메인)까지만 보내고, 경로나 쿼리는 보내지 않는다.
+  res.setHeader(
+    "Referrer-Policy",
+    google || apple ? "strict-origin-when-cross-origin" : "no-referrer",
+  );
+  res.setHeader(
+    "Cross-Origin-Opener-Policy",
+    google || apple ? "same-origin-allow-popups" : "same-origin",
+  );
   res.setHeader("Permissions-Policy", "geolocation=(), microphone=()");
   res.setHeader(
     "Content-Security-Policy",
-    [
-      "default-src 'self'",
-      // 번들은 자기 출처에서만. 인라인 스타일은 React 인라인 style 때문에 허용한다.
-      "script-src 'self'",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' blob: data:",
-      "connect-src 'self'",
-      "form-action 'none'",
-      "frame-ancestors 'none'",
-      "base-uri 'none'",
-      "object-src 'none'",
-    ].join("; "),
+    buildContentSecurityPolicy({ google, apple }),
   );
   next();
 }
