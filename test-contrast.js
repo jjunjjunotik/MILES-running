@@ -13,7 +13,9 @@ const { chromium } = require('playwright');
 // gradient over it. These are measured in a second pass instead, against every
 // colour stop of the gradient they actually sit on, so the list below is an
 // exception to the method, never an exemption from the standard.
-const GRADIENT = /wordmark|avatar|start-name|start-sub|start-arrow|rank-badge|day-chip|bubble--me|tier-pips|btn--pro/;
+// The wordmark, avatars, start cards and Pro button used to be here; they are
+// flat colour now and are measured the ordinary way, against what they sit on.
+const GRADIENT = /rank-badge|day-chip|bubble--me|tier-pips/;
 
 const AUDIT = `(() => {
   const parse = (c) => {

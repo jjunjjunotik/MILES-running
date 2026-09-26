@@ -89,7 +89,7 @@
           id: uid(),
           name: M.State.data.profile.name,
           initials: M.State.data.profile.initials,
-          color: '#c8ff2e',
+          color: '#f1ead9',
         });
         Live.startBots(this.rivals, home);
       }
@@ -240,7 +240,7 @@
       const telemetry = {
         name: M.State.data.profile.name,
         initials: M.State.data.profile.initials,
-        color: '#c8ff2e',
+        color: '#f1ead9',
         distance: this.state.distance,
         duration: this.state.duration,
         currentPace: this.state.currentPace * 1000,
@@ -315,7 +315,7 @@
   function resultsFor(s, field) {
     const mine = {
       name: 'You', me: true, initials: M.State.data.profile.initials,
-      color: '#c8ff2e', distance: s.distance, finishedAt: s.finishedAt,
+      color: '#f1ead9', distance: s.distance, finishedAt: s.finishedAt,
     };
     const entries = field.map((p) => ({
       name: p.name, me: false, initials: p.initials, color: p.color,

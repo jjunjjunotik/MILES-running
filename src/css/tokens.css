@@ -4,45 +4,78 @@
    from here; nothing below this file hard-codes a colour.
    ========================================================================== */
 
+/* Two faces, both shipped with the app so it looks the same offline:
+   Instrument Sans for everything you read, Barlow Condensed for the numbers —
+   the narrow, upright figures of a race bib and a stadium clock, where the
+   monospace fallback used to make every distance look like a line of code. */
+@font-face {
+  font-family: "Instrument Sans";
+  src: url("../fonts/instrument-sans.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("../fonts/barlow-condensed-600.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("../fonts/barlow-condensed-700.woff2") format("woff2");
+  font-weight: 700 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Barlow Condensed";
+  src: url("../fonts/barlow-condensed-700-italic.woff2") format("woff2");
+  font-weight: 700 900;
+  font-style: italic;
+  font-display: swap;
+}
+
 :root {
   /* --- Base surfaces (dark-first: running happens at dawn and dusk) ------ */
-  --ink-900: #05070a;
-  --ink-800: #0a0e14;
-  --ink-700: #0f151d;
-  --ink-600: #151d27;
-  --ink-500: #1d2733;
-  --ink-400: #2a3644;
-  --line:    rgba(255, 255, 255, 0.08);
-  --line-strong: rgba(255, 255, 255, 0.16);
+  /* One grey family, warmed toward the brand: asphalt at dusk rather than
+     the blue-black of a code editor. */
+  --ink-900: #0e0d0c;
+  --ink-800: #151412;
+  --ink-700: #1b1a17;
+  --ink-600: #23211e;
+  --ink-500: #2d2a26;
+  --ink-400: #3b3833;
+  --line:    rgba(243, 236, 224, 0.09);
+  --line-strong: rgba(243, 236, 224, 0.18);
 
   /* --- Text -------------------------------------------------------------
      Three levels, each measured against the surfaces it actually sits on, not
      chosen by eye. Every one clears WCAG AA (4.5:1) at the sizes the app uses
      it, including 11 px labels on the lightest card. --------------------- */
-  --text-hi:  #f2f6fa;
-  --text-mid: #bcc8d5;
-  --text-lo:  #97a4b4;
+  --text-hi:  #f4efe7;
+  --text-mid: #c9c1b5;
+  --text-lo:  #a59d91;
 
   /* --- Brand ------------------------------------------------------------
      Three colours with three jobs, and they never swap:
 
        flame   the brand, and every primary action. Fixed.
        violet  territory and the game around it.
-       lime    you — your route, your land, your name in a field of rivals.
+       chalk   you — your route, your land, your name in a field of rivals.
+               (The token keeps its old name, --lime; it was neon lime.)
 
      `--accent` below is a fourth thing and not a brand colour: it is the
      intensity ramp, which moves from ember to apex with weekly volume. It
      drives atmosphere (glow, aurora, the tier bar) and must never be used for
      a button, or the primary action would change colour as you trained. */
-  --flame:    #ff6a1f;
-  --flame-2:  #ffa23a;
-  --flame-dim:#c14a0f;
-  --flame-ink:#ffab6b;   /* flame, legible as small type */
+  --flame:    #f2642a;
+  --flame-2:  #f2642a;   /* no second stop: the brand is one flat colour */
+  --flame-dim:#b8461a;
+  --flame-ink:#ff9a6c;   /* flame, legible as small type */
 
-  --lime:    #c8ff2e;   /* MILES signature — you, your pace, your land     */
-  --lime-dim:#8fbb15;
+  --lime:    #f1ead9;   /* you: a chalk line among coloured rivals        */
+  --lime-dim:#b9b09f;
   --cyan:    #2fe0ff;   /* data, telemetry, live signal                    */
-  --magenta: #ff3d8b;   /* your rival in a duo                             */
+  --magenta: #e8587a;   /* your rival in a duo                             */
   --amber:   #ffb020;   /* quests, rank, reward                            */
   --violet:  #a855f7;   /* territory — owner slot 1, validated all-pairs    */
 
@@ -51,7 +84,7 @@
      11 px type, and a chip's own background lifts the surface underneath it.
      These are the tints to write with; the plain tokens above are for shapes. */
   --violet-ink:  #c4a2fb;
-  --magenta-ink: #ff7aae;
+  --magenta-ink: #f2879f;
   --cyan-ink:    #7ceaff;
   --amber-ink:   #ffc457;
   --ok-ink:      #6ff0c4;
@@ -70,10 +103,12 @@
   --energy-lift: calc(1px + 5px * var(--energy));
 
   /* --- Radius & spacing -------------------------------------------------- */
-  --r-sm: 12px;
-  --r-md: 18px;
-  --r-lg: 24px;
-  --r-xl: 32px;
+  /* Tighter than they were. Everything at 24-32px read as a bubble; a card
+     is a surface with corners, and the radius steps down as things nest. */
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 22px;
   --r-pill: 999px;
 
   --s-1: 4px;
@@ -100,8 +135,8 @@
      A real ladder rather than a cluster: the difference between a screen
      title and a caption should be obvious at arm's length, which it is not
      when everything sits between 11 and 19px. ---------------------------- */
-  --font-ui: "Inter", "SF Pro Text", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-num: "SF Mono", "JetBrains Mono", "Roboto Mono", ui-monospace, monospace;
+  --font-ui: "Instrument Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-num: "Barlow Condensed", "Arial Narrow", sans-serif-condensed, sans-serif;
 
   --t-hero:    clamp(62px, 19vw, 86px);   /* the one number a screen is about */
   --t-display: 32px;                      /* screen titles                    */
@@ -116,14 +151,14 @@
      Not everything is a box. Level 0 is the page itself and most content
      lives there with nothing around it; level 1 is a card that earns its
      edges; level 2 is a hero that carries a picture. ---------------------- */
-  --surface-1: linear-gradient(168deg, rgba(255,255,255,0.055), rgba(255,255,255,0.022));
-  --surface-2: rgba(255, 255, 255, 0.03);
-  --hairline:  rgba(255, 255, 255, 0.07);
+  --surface-1: #1b1a17;
+  --surface-2: rgba(243, 236, 224, 0.03);
+  --hairline:  rgba(243, 236, 224, 0.08);
 
   /* --- Elevation --------------------------------------------------------- */
-  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --shadow-2: 0 8px 24px rgba(0, 0, 0, 0.45);
-  --shadow-3: 0 20px 60px rgba(0, 0, 0, 0.6);
+  --shadow-1: 0 1px 2px rgba(8, 5, 2, 0.45);
+  --shadow-2: 0 10px 28px rgba(8, 5, 2, 0.5);
+  --shadow-3: 0 24px 60px rgba(8, 5, 2, 0.6);
 }
 
 /* Intensity tiers. Each tier re-points the accent ramp so the app visibly
@@ -132,9 +167,11 @@
    changes character as weekly volume climbs — a heat ramp from a low ember
    through to a violet-white apex. No tier is ever grey: the lowest rung
    should still feel like something worth stoking. */
-:root[data-tier="ember"] { --accent: #ff8a4c; --accent-2: #ffb020; }
-:root[data-tier="spark"] { --accent: #ffc63d; --accent-2: #c8ff2e; }
-:root[data-tier="blaze"] { --accent: #c8ff2e; --accent-2: #6ee7ff; }
-:root[data-tier="surge"] { --accent: #2fe0ff; --accent-2: #c8ff2e; }
-:root[data-tier="storm"] { --accent: #ff3d8b; --accent-2: #2fe0ff; }
-:root[data-tier="apex"]  { --accent: #a855f7; --accent-2: #ff3d8b; }
+/* One family now, the way metal heats: ember orange to white-hot. Six
+   unrelated neons made the app a different product at every tier. */
+:root[data-tier="ember"] { --accent: #e8783f; --accent-2: #e8783f; }
+:root[data-tier="spark"] { --accent: #ec9443; --accent-2: #ec9443; }
+:root[data-tier="blaze"] { --accent: #eeae52; --accent-2: #eeae52; }
+:root[data-tier="surge"] { --accent: #f0c46e; --accent-2: #f0c46e; }
+:root[data-tier="storm"] { --accent: #f2d898; --accent-2: #f2d898; }
+:root[data-tier="apex"]  { --accent: #f6e8c6; --accent-2: #f6e8c6; }

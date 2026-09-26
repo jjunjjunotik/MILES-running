@@ -160,9 +160,9 @@
       ctx.lineWidth = 9;
       ctx.stroke();
       ctx.globalAlpha = 0.85;
-      ctx.strokeStyle = stroke || '#c8ff2e';
+      ctx.strokeStyle = stroke || '#f1ead9';
       ctx.lineWidth = 3;
-      ctx.shadowColor = stroke || '#c8ff2e';
+      ctx.shadowColor = stroke || '#f1ead9';
       ctx.shadowBlur = 14;
       ctx.stroke();
       ctx.restore();
@@ -181,49 +181,47 @@
     },
 
     /**
-     * An abstract band for a card that wants a picture but has no route to
-     * show — a crew, a rank, a plan. Two hues sweeping through each other.
+     * The picture for a card that has no route or photo to show — a crew, a
+     * run mode. Drawn as the contour lines of a hill on a survey map, in one
+     * ink: a runner reads ground, and it keeps the card to one colour instead
+     * of two glowing blobs and a few speed lines, which is what every
+     * generated sports app reaches for.
      */
     band(canvas, options) {
       const opts = options || {};
       const { ctx, w, h } = fit(canvas);
       const rand = rng(opts.seed || 11);
-      const a = opts.from || '#ff6a1f';
-      const b = opts.to || '#a855f7';
+      const ink = opts.from || '#ff6a1f';
 
       ctx.clearRect(0, 0, w, h);
-      ctx.fillStyle = '#080c12';
+      ctx.fillStyle = '#12110f';
       ctx.fillRect(0, 0, w, h);
 
-      [[a, 0.62], [b, 0.55]].forEach(([colour, alpha], i) => {
-        const cx = w * (i ? 0.78 : 0.24) + (rand() - 0.5) * w * 0.1;
-        const cy = h * (i ? 0.72 : 0.3);
-        const r = Math.max(w, h) * (0.55 + rand() * 0.25);
-        const grd = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
-        grd.addColorStop(0, colour);
-        grd.addColorStop(1, 'rgba(0,0,0,0)');
-        ctx.globalAlpha = alpha;
-        ctx.fillStyle = grd;
-        ctx.fillRect(0, 0, w, h);
-      });
-      ctx.globalAlpha = 1;
-
-      // A few motion lines, so it reads as sport rather than wallpaper.
-      ctx.save();
-      ctx.globalAlpha = 0.14;
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineCap = 'round';
-      for (let i = 0; i < 7; i++) {
-        const y = h * (0.12 + rand() * 0.8);
-        const len = w * (0.18 + rand() * 0.5);
-        const x = rand() * (w - len);
-        ctx.lineWidth = 1 + rand() * 2;
+      // One summit, off-centre, and the rings of ground falling away from it.
+      const cx = w * (0.62 + rand() * 0.3);
+      const cy = h * (0.18 + rand() * 0.5);
+      const waves = [0, 1, 2].map(() => ({ f: 2 + Math.floor(rand() * 3), p: rand() * Math.PI * 2, a: 0.05 + rand() * 0.07 }));
+      const step = Math.max(w, h) * 0.075;
+      const rings = Math.ceil(Math.hypot(w, h) / step) + 2;
+      ctx.lineJoin = 'round';
+      ctx.strokeStyle = ink;
+      for (let k = 1; k <= rings; k++) {
+        const base = k * step;
+        ctx.globalAlpha = k % 5 === 0 ? 0.42 : 0.2;   // every fifth an index line
+        ctx.lineWidth = k % 5 === 0 ? 1.5 : 1;
         ctx.beginPath();
-        ctx.moveTo(x, y);
-        ctx.lineTo(x + len, y - h * 0.06);
+        for (let i = 0; i <= 96; i++) {
+          const t = (i / 96) * Math.PI * 2;
+          let r = base;
+          waves.forEach((wv) => { r += base * wv.a * Math.sin(wv.f * t + wv.p + k * 0.23); });
+          const x = cx + Math.cos(t) * r * 1.25;
+          const y = cy + Math.sin(t) * r;
+          if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y);
+        }
+        ctx.closePath();
         ctx.stroke();
       }
-      ctx.restore();
+      ctx.globalAlpha = 1;
       this._grain(ctx, w, h, (opts.seed || 11) + 3);
       return { ctx, w, h };
     },

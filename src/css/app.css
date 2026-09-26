@@ -16,6 +16,9 @@ html, body {
   background: var(--ink-900);
   color: var(--text-hi);
   font-family: var(--font-ui);
+  /* Instrument Sans sets its spaces tight; at 600-700 weight on a dark
+     ground, words and separators ran into each other ("Tier 1·Startline"). */
+  word-spacing: 0.12em;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior: none;
 }
@@ -26,13 +29,13 @@ body {
   justify-content: center;
 }
 
-button { font-family: inherit; color: inherit; cursor: pointer; border: none; background: none; }
+button { font-family: inherit; color: inherit; word-spacing: inherit; cursor: pointer; border: none; background: none; }
 
 /* Every icon in the app is a stroked path. Square ends and mitred corners are
    what make an icon set read as hard; rounding them softens the whole UI for
    the cost of one rule. */
 svg { stroke-linecap: round; stroke-linejoin: round; }
-h1, h2, h3, h4 { margin: 0; font-weight: 800; letter-spacing: -0.02em; }
+h1, h2, h3, h4 { margin: 0; font-weight: 700; letter-spacing: -0.015em; text-wrap: balance; }
 p { margin: 0; }
 
 /* --- Phone shell --------------------------------------------------------- */
@@ -54,50 +57,18 @@ p { margin: 0; }
   .phone { border-radius: 42px; border: 1px solid var(--line); }
 }
 
-/* The living backdrop. Its speed and reach are driven by --energy, so a
-   heavy training week literally makes the app breathe faster. */
-.aurora {
+/* Paper, not glow. One fixed layer of fine grain over the whole shell takes
+   the flat digital sheen off the dark ground. It replaced a drifting aurora
+   and speed streaks — the two most recognisable marks of a generated UI. */
+.phone::after {
+  content: "";
   position: absolute;
-  inset: -30%;
-  z-index: 0;
+  inset: 0;
+  z-index: 50;
   pointer-events: none;
-  opacity: calc(0.25 + 0.6 * var(--energy));
-  background:
-    radial-gradient(38% 30% at 20% 12%, var(--accent) 0%, transparent 62%),
-    radial-gradient(34% 26% at 84% 26%, var(--accent-2) 0%, transparent 64%),
-    radial-gradient(46% 34% at 50% 96%, var(--accent) 0%, transparent 70%);
-  filter: blur(calc(28px + 26px * var(--energy)));
-  animation: drift var(--energy-speed) ease-in-out infinite alternate;
-}
-
-@keyframes drift {
-  from { transform: translate3d(-4%, -2%, 0) scale(1); }
-  to   { transform: translate3d(5%, 3%, 0) scale(1.12); }
-}
-
-/* Speed streaks — only earn their place at higher tiers. */
-.streaks { position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: var(--energy); }
-.streaks i {
-  position: absolute;
-  height: 1px;
-  width: 34%;
-  background: linear-gradient(90deg, transparent, var(--accent), transparent);
-  opacity: 0.5;
-  animation: streak calc(2.6s + 2s * (1 - var(--energy))) linear infinite;
-}
-.streaks i:nth-child(1) { top: 16%; animation-delay: 0s; }
-.streaks i:nth-child(2) { top: 39%; animation-delay: 0.7s; }
-.streaks i:nth-child(3) { top: 63%; animation-delay: 1.3s; }
-.streaks i:nth-child(4) { top: 81%; animation-delay: 2s; }
-
-@keyframes streak {
-  from { transform: translateX(-40%); opacity: 0; }
-  40%  { opacity: 0.55; }
-  to   { transform: translateX(320%); opacity: 0; }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .aurora, .streaks i { animation: none; }
+  opacity: 0.07;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
 /* --- Screen stack -------------------------------------------------------- */
@@ -130,43 +101,42 @@ p { margin: 0; }
   padding: var(--s-5) 0 var(--s-3);
 }
 
+/* Set like the name on a race shirt: heavy, condensed, leaning into the run.
+   It was spaced-out capitals in a gradient. */
 .wordmark {
-  font-size: 20px;
+  font-family: var(--font-num);
+  font-style: italic;
+  font-size: 30px;
   font-weight: 800;
-  letter-spacing: 0.24em;
-  background: linear-gradient(100deg, var(--text-hi), var(--accent));
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
+  letter-spacing: -0.01em;
+  line-height: 1;
+  color: var(--text-hi);
 }
 
 .avatar {
   width: 36px; height: 36px;
   border-radius: var(--r-pill);
   display: grid; place-items: center;
-  font-size: 13px; font-weight: 800;
-  background: linear-gradient(140deg, var(--accent), var(--accent-2));
+  font-size: 13px; font-weight: 700;
+  background: var(--text-hi);
   color: var(--ink-900);
 }
 
 /* --- Cards --------------------------------------------------------------- */
 
 .card {
-  background: linear-gradient(170deg, rgba(255,255,255,0.055), rgba(255,255,255,0.02));
+  background: var(--surface-1);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
   padding: var(--s-4);
-  backdrop-filter: blur(14px);
 }
 
 .card--tight { padding: var(--s-3); border-radius: var(--r-md); }
 
 .card-title {
-  font-size: 11.5px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: var(--t-small);
   color: var(--text-lo);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 /* --- Segmented control --------------------------------------------------- */
@@ -175,31 +145,29 @@ p { margin: 0; }
   display: inline-flex;
   padding: 3px;
   gap: 2px;
-  background: rgba(255,255,255,0.05);
+  background: rgba(14, 13, 12, 0.6);
   border: 1px solid var(--line);
-  border-radius: var(--r-pill);
+  border-radius: var(--r-md);
 }
 .seg button {
-  font-size: 11.5px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  color: var(--text-lo);
+  font-size: var(--t-small);
+  font-weight: 600;
+  color: var(--text-mid);
   /* A segment is thumb-sized. Its neighbours are flush against it, so there
      is no gap to mis-tap into and the group as a whole clears 44px. */
   min-height: var(--tap-group);
   display: inline-flex; align-items: center; justify-content: center;
   padding: 0 14px;
-  border-radius: var(--r-pill);
+  border-radius: var(--r-sm);
   transition: color 0.15s ease, background 0.15s ease;
 }
 /* A selected control is a control, so it wears the brand rather than the
    intensity ramp — otherwise the switch you just pressed changes colour
    depending on how far you ran this week. */
 .seg button[aria-pressed="true"] {
-  background: linear-gradient(135deg, var(--flame-2), var(--flame));
-  color: #2a1000;
-  font-weight: 800;
+  background: var(--text-hi);
+  color: var(--ink-900);
+  font-weight: 700;
 }
 
 /* --- Buttons ------------------------------------------------------------- */
@@ -209,25 +177,30 @@ p { margin: 0; }
   align-items: center;
   justify-content: center;
   gap: var(--s-2);
-  border-radius: var(--r-pill);
+  border-radius: var(--r-md);
   min-height: var(--tap);
   padding: 12px 20px;
-  font-weight: 800;
-  font-size: 14px;
-  letter-spacing: 0.03em;
-  background: rgba(255,255,255,0.07);
+  font-weight: 600;
+  font-size: 15px;
+  letter-spacing: 0;
+  background: rgba(243, 236, 224, 0.07);
   border: 1px solid var(--line-strong);
-  transition: transform 0.12s ease, background 0.15s ease;
+  transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
 }
-.btn:active { transform: scale(0.97); }
+.btn:hover { background: rgba(243, 236, 224, 0.11); }
+.btn:active { transform: translateY(1px) scale(0.99); }
+.btn:focus-visible, .seg button:focus-visible, .tabbar button:focus-visible {
+  outline: 2px solid var(--text-hi); outline-offset: 2px;
+}
 /* A primary action is the brand, fixed. It used to take the intensity ramp,
    which meant the main button changed colour as the runner's week grew. */
 .btn--primary {
-  background: linear-gradient(135deg, var(--flame-2), var(--flame));
-  color: #2a1000;
+  background: var(--flame);
+  color: #1f0b02;
   border-color: transparent;
-  font-weight: 800;
+  font-weight: 700;
 }
+.btn--primary:hover { background: #f5723c; }
 .btn--ghost { background: transparent; }
 .btn--danger { background: rgba(255,89,100,0.14); border-color: rgba(255,89,100,0.4); color: #ffb4b9; }
 .btn--block { width: 100%; }
@@ -239,17 +212,18 @@ p { margin: 0; }
 
 .stat-value {
   font-family: var(--font-num);
-  font-weight: 800;
-  letter-spacing: -0.03em;
+  font-weight: 700;
+  letter-spacing: 0;
   font-variant-numeric: tabular-nums;
 }
 
+/* Labels in sentence case at reading size. Tracked capitals under every
+   number is the dashboard-template look; "km / week" reads as well and louder
+   than "KM / WEEK" does at 12px. */
 .stat-label {
-  font-size: var(--t-micro);
-  letter-spacing: 0.07em;
-  text-transform: uppercase;
+  font-size: var(--t-small);
   color: var(--text-lo);
-  font-weight: 800;
+  font-weight: 600;
 }
 
 /* --- Bottom navigation --------------------------------------------------- */
@@ -261,9 +235,8 @@ p { margin: 0; }
   grid-template-columns: repeat(5, 1fr);
   gap: var(--s-1);
   padding: 10px var(--s-3) calc(var(--s-3) + env(safe-area-inset-bottom));
-  background: rgba(5, 7, 10, 0.82);
+  background: rgba(14, 13, 12, 0.94);
   border-top: 1px solid var(--line);
-  backdrop-filter: blur(20px);
 }
 
 .tabbar button {
@@ -274,15 +247,14 @@ p { margin: 0; }
   padding: 6px 0;
   border-radius: var(--r-md);
   color: var(--text-lo);
-  font-size: var(--t-label);
-  font-weight: 700;
-  letter-spacing: 0.005em;
+  font-size: 13px;
+  font-weight: 600;
   min-height: 56px;              /* a comfortable target, not a cramped one */
   gap: 5px;
   transition: color 0.15s ease;
 }
 .tabbar button svg { width: 26px; height: 26px; stroke: currentColor; fill: none; stroke-width: 1.7; }
-.tabbar button[aria-selected="true"] { font-weight: 800; }
+.tabbar button[aria-selected="true"] { font-weight: 700; }
 /* The selected tab wears the brand, not the intensity ramp: where you are in
    the app should not change colour as you train. */
 .tabbar button[aria-selected="true"] { color: var(--flame-ink); }
@@ -309,15 +281,15 @@ p { margin: 0; }
   padding: 12px 18px;
   /* A pill stops reading as one when a message runs to two lines. */
   border-radius: var(--r-lg);
-  background: rgba(12, 16, 22, 0.95);
+  background: #23211e;
   border: 1px solid var(--line-strong);
   box-shadow: var(--shadow-2);
   font-size: var(--t-small);
-  font-weight: 700;
+  font-weight: 600;
   line-height: 1.4;
   animation: toast-in 0.28s cubic-bezier(0.2, 1, 0.3, 1);
 }
-.toast b { color: var(--accent); }
+.toast b { color: var(--flame-ink); font-weight: 700; }
 .toast--reward { border-color: var(--amber); }
 .toast--reward b { color: var(--amber); }
 
@@ -332,8 +304,7 @@ p { margin: 0; }
   position: absolute;
   inset: 0;
   z-index: 30;
-  background: rgba(3, 5, 8, 0.72);
-  backdrop-filter: blur(6px);
+  background: rgba(8, 6, 4, 0.72);
   display: flex;
   align-items: flex-end;
   animation: fade 0.2s ease;
@@ -357,7 +328,7 @@ p { margin: 0; }
 /* Stacks above another sheet, and above the toasts. */
 .sheet-scrim--top { z-index: 45; }
 
-.ask-title { font-size: 19px; font-weight: 800; letter-spacing: -0.02em; }
+.ask-title { font-size: 19px; font-weight: 700; letter-spacing: -0.02em; }
 .ask-body { font-size: 13.5px; line-height: 1.55; color: var(--text-mid); }
 
 .sheet-grip {
@@ -379,7 +350,7 @@ p { margin: 0; }
 /* The smallest type carries the most weight: light strokes on a dark ground
    bloom and thin out, so 11px needs more of it than 20px does. Leading goes
    up with the weight, or the heavier lines close the gaps between them. */
-.muted { color: var(--text-mid); font-size: var(--t-small); font-weight: 700; line-height: 1.5; }
+.muted { color: var(--text-mid); font-size: var(--t-small); font-weight: 600; line-height: 1.5; text-wrap: pretty; }
 .tiny { font-size: var(--t-micro); font-weight: 700; color: var(--text-lo); line-height: 1.5; }
 .truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -388,34 +359,33 @@ p { margin: 0; }
   align-items: center;
   gap: 6px;
   padding: 5px 10px;
-  border-radius: var(--r-pill);
-  background: rgba(255,255,255,0.06);
+  border-radius: var(--r-sm);
+  background: rgba(243, 236, 224, 0.06);
   border: 1px solid var(--line);
-  font-size: 11px;
-  font-weight: 800;
-  letter-spacing: 0.04em;
+  font-size: var(--t-micro);
+  font-weight: 700;
 }
-.chip--live { border-color: rgba(47,224,255,0.45); color: var(--cyan); }
+.chip--live { border-color: rgba(242,100,42,0.5); color: var(--flame-ink); }
 .chip--live::before {
   content: "";
   width: 6px; height: 6px;
   border-radius: 50%;
-  background: var(--cyan);
+  background: var(--flame);
   animation: pulse 1.4s ease-in-out infinite;
 }
 @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
 
 .bar {
   height: 6px;
-  border-radius: var(--r-pill);
-  background: rgba(255,255,255,0.08);
+  border-radius: 2px;
+  background: rgba(243, 236, 224, 0.1);
   overflow: hidden;
 }
 .bar > i {
   display: block;
   height: 100%;
-  border-radius: var(--r-pill);
-  background: linear-gradient(90deg, var(--accent), var(--accent-2));
+  border-radius: 2px;
+  background: var(--flame);
   transition: width 0.5s cubic-bezier(0.2, 1, 0.3, 1);
 }
 
@@ -426,18 +396,18 @@ p { margin: 0; }
   padding: 11px 13px;
   border-radius: var(--r-md);
   border: 1px solid var(--line-strong);
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(8, 6, 4, 0.35);
   color: var(--text-hi);
   font-family: inherit;
   /* 16px, not 14: iOS Safari zooms the whole page into any field smaller
      than that the moment it is focused, and does not zoom back out. */
   font-size: 16px;
   min-height: var(--tap);
-  font-weight: 700;
+  font-weight: 600;
   -webkit-appearance: none;
   appearance: none;
 }
-.input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.input:focus-visible { outline: 2px solid var(--flame); outline-offset: 1px; }
 .input::placeholder { color: var(--text-lo); font-weight: 600; }
 
 select.input {
@@ -451,12 +421,9 @@ select.input {
 select.input option { background: var(--ink-700); color: var(--text-hi); }
 
 .field-label {
-  /* 10px sat under the app's own legibility floor. */
-  font-size: 12px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--text-lo);
-  font-weight: 800;
+  font-size: var(--t-small);
+  color: var(--text-mid);
+  font-weight: 600;
 }
 
 .empty {

@@ -233,8 +233,9 @@ one you are on: `GPS` or `SIM`.
 ```
 index.html            Markup for all seven screens
 src/css/tokens.css    Design tokens — the single source of visual truth
-src/css/app.css       Shell, energy backdrop, shared components
+src/css/app.css       Shell, grain, shared components
 src/css/screens.css   Per-screen layout
+src/fonts/            Instrument Sans (text), Barlow Condensed (numbers); OFL
 src/js/core.js        Units, geometry, storage, event bus
 src/js/state.js       Data model: activities, territory, quests, ranks, crews
 src/js/crew.js        Crews: discovery, membership, captain's tools

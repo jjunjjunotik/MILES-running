@@ -320,7 +320,7 @@
       slides.forEach((slide, i) => {
         if (!slide.dataset.photo) return;
         M.Visual.photo(slide, slide.dataset.photo,
-          { seed: 90 + i, from: '#ff6a1f', to: '#a855f7' });
+          { seed: 90 + i, from: '#f2642a' });
       });
 
       const count = slides.length;
@@ -482,14 +482,14 @@
           at: last ? last.startedAt : Date.now(),
           route: last ? last.route : null,
           seed: 4021,
-          stroke: '#c8ff2e',                 // lime: the route is yours
+          stroke: '#f1ead9',                 // lime: the route is yours
         });
       }
-      // The two start cards: flame for the solo run, magenta for the race.
+      // The two start cards: the brand's ink for the solo run, chalk for the race.
       const solo = $('.start--solo .start-canvas');
       const duo = $('.start--duo .start-canvas');
-      if (solo) M.Visual.band(solo, { seed: 31, from: '#ff6a1f', to: '#a855f7' });
-      if (duo) M.Visual.band(duo, { seed: 77, from: '#ff3d8b', to: '#2fe0ff' });
+      if (solo) M.Visual.band(solo, { seed: 31, from: '#f2642a' });
+      if (duo) M.Visual.band(duo, { seed: 77, from: '#d9d0c1' });
     },
 
     renderHome() {
@@ -558,7 +558,7 @@
       const s = State.data;
       const board = $('#friendBoard');
       board.innerHTML = '';
-      const me = { name: 'You', initials: s.profile.initials, color: '#c8ff2e', weekly: Stats.weekly(s).distance, me: true };
+      const me = { name: 'You', initials: s.profile.initials, color: '#f1ead9', weekly: Stats.weekly(s).distance, me: true };
       const rows = s.friends.concat([me]).sort((a, b) => b.weekly - a.weekly);
       const top = rows[0].weekly || 1;
 
@@ -630,7 +630,7 @@
       State.data.friends.forEach((f) => {
         const picked = this.pendingRivals.some((r) => r.id === f.id);
         const btn = el('button', { class: 'friend', type: 'button', 'aria-pressed': String(picked) }, [
-          el('span', { class: 'friend-avatar', style: `background:${f.color}`, text: f.initials }),
+          el('span', { class: 'friend-avatar', style: `--c:${f.color}`, text: f.initials }),
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
             el('span', { style: 'font-weight:800;font-size:14px', text: f.name }),
             el('span', { class: 'tiny', text: `${Units.paceText(f.pace / 1000)} ${Units.paceLabel()} · ${Units.distText(f.weekly)} ${Units.distLabel()} this week` }),
@@ -982,7 +982,7 @@
       }));
 
       field.push({
-        name: 'You', initials: State.data.profile.initials, color: '#c8ff2e', me: true,
+        name: 'You', initials: State.data.profile.initials, color: '#f1ead9', me: true,
         distance: Math.min(state.distance, target),
         finishedAt: state.finishedAt,
       });
@@ -1659,7 +1659,7 @@
       });
       const swatches = el('div', { class: 'swatch-row' });
       const paint = () => $$('.swatch', swatches).forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.color === colour)));
-      M.OWNER_COLORS.concat(['#c8ff2e', '#ff5964']).forEach((c) => {
+      M.OWNER_COLORS.concat(['#f1ead9', '#ff5964']).forEach((c) => {
         swatches.appendChild(el('button', {
           class: 'swatch', type: 'button', 'data-color': c, style: `background:${c}`,
           'aria-label': c, onclick: () => { colour = c; paint(); },
@@ -1835,7 +1835,7 @@
 
       const heroCanvas = el('canvas', { class: 'crew-hero-canvas', 'aria-hidden': 'true' });
       requestAnimationFrame(() => M.Visual.band(heroCanvas, {
-        seed: crew.id ? crew.id.length * 17 + 5 : 9, from: crew.color, to: '#ff6a1f',
+        seed: crew.id ? crew.id.length * 17 + 5 : 9, from: crew.color,
       }));
 
       return el('section', { class: 'crew-hero' }, [
@@ -2330,7 +2330,7 @@
       if (isLeader && crew.requests.length) {
         parts.push(section(`Join requests · ${crew.requests.length}`, crew.requests.map((person) =>
           el('div', { class: 'request' }, [
-            el('span', { class: 'friend-avatar', style: `background:${person.color}`, text: person.initials }),
+            el('span', { class: 'friend-avatar', style: `--c:${person.color}`, text: person.initials }),
             el('div', { class: 'stack grow', style: 'gap:3px;min-width:0' }, [
               el('span', { class: 'person-name', text: person.name }),
               // Two lines on purpose: as one, it broke wherever it ran out of
@@ -2370,7 +2370,7 @@
       crew.members.slice().sort((a, b) => (a.role === 'leader' ? -1 : b.role === 'leader' ? 1 : b.weekly - a.weekly)).forEach((member) => {
         const isMe = member.id === 'me';
         const row = el('div', { class: 'member' }, [
-          el('span', { class: 'friend-avatar', style: `background:${member.color}`, text: member.initials }),
+          el('span', { class: 'friend-avatar', style: `--c:${member.color}`, text: member.initials }),
           el('div', { class: 'stack grow', style: 'gap:3px;min-width:0' }, [
             el('span', {
               class: 'person-name' + (isMe ? ' person-name--me' : ''),
@@ -2473,7 +2473,7 @@
 
       const rows = others.map((member) => {
         const row = el('button', { class: 'friend', type: 'button' }, [
-          el('span', { class: 'friend-avatar', style: `background:${member.color}`, text: member.initials }),
+          el('span', { class: 'friend-avatar', style: `--c:${member.color}`, text: member.initials }),
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
             el('span', { class: 'person-name', text: member.name }),
             el('span', { class: 'person-meta', text: `${Units.distText(member.weekly)} ${Units.distLabel()} this week` }),
@@ -2522,7 +2522,7 @@
 
       body.appendChild(el('div', { class: 'stack sheet-stack' }, [
         el('div', { class: 'sheet-head' }, [
-          el('span', { class: 'friend-avatar friend-avatar--big', style: `background:${member.color}`, text: member.initials }),
+          el('span', { class: 'friend-avatar friend-avatar--big', style: `--c:${member.color}`, text: member.initials }),
           el('div', { class: 'sheet-head-text' }, [
             el('h3', { class: 'sheet-title', text: member.name }),
             el('span', { class: 'sheet-sub', text: `${M.Crew.ROLES[member.role]} · joined ${relTime(member.joinedAt)}` }),
@@ -2841,7 +2841,7 @@
       list.innerHTML = '';
 
       const mine = s.activities.map((a) => ({
-        activity: a, who: s.profile.name, initials: s.profile.initials, color: '#c8ff2e', me: true,
+        activity: a, who: s.profile.name, initials: s.profile.initials, color: '#f1ead9', me: true,
       }));
       const theirs = this.friendActivities();
       const items = mine.concat(theirs).sort((a, b) => b.activity.startedAt - a.activity.startedAt).slice(0, 14);
@@ -2856,7 +2856,7 @@
         const canvas = el('canvas');
         const card = el('article', { class: 'feed-card' }, [
           el('div', { class: 'feed-head' }, [
-            el('span', { class: 'friend-avatar', style: `background:${item.color}`, text: item.initials }),
+            el('span', { class: 'friend-avatar', style: `--c:${item.color}`, text: item.initials }),
             el('div', { class: 'stack grow', style: 'gap:2px' }, [
               el('span', { class: 'feed-who', text: item.who }),
               el('span', { class: 'tiny', text: `${a.title} · ${relTime(a.startedAt)}` }),
@@ -2888,7 +2888,7 @@
         ]);
         list.appendChild(card);
         requestAnimationFrame(() => M.drawRouteThumb(canvas, a.route, {
-          stroke: item.me ? '#c8ff2e' : item.color,
+          stroke: item.me ? '#f1ead9' : item.color,
           fill: a.claimedArea ? 'rgba(168,85,247,0.25)' : null,
           pad: 10, width: 2.4,
         }));
@@ -2901,7 +2901,7 @@
         return el('span', {
           class: 'chip',
           style: `border-color:${k.accent}55;color:${k.ink}`,
-          text: a.kind === 'race' && a.placing ? (won ? 'WON' : M.ordinal(a.placing)) : k.badge,
+          text: a.kind === 'race' && a.placing ? (won ? 'Won' : M.ordinal(a.placing)) : k.badge,
         });
       }
 
@@ -3096,7 +3096,7 @@
 
       friends.forEach((f) => {
         list.appendChild(el('div', { class: 'friend' }, [
-          el('span', { class: 'friend-avatar', style: `background:${f.color}`, text: f.initials }),
+          el('span', { class: 'friend-avatar', style: `--c:${f.color}`, text: f.initials }),
           el('div', { class: 'stack grow', style: 'gap:3px' }, [
             el('span', { style: 'font-weight:800;font-size:14px', text: f.name }),
             el('span', { class: 'tiny', text: `${Units.paceText(f.pace / 1000)} ${Units.paceLabel()}` }),

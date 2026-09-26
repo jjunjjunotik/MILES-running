@@ -534,7 +534,7 @@
         id: 'me',
         name: state.profile.name,
         initials: state.profile.initials,
-        color: '#c8ff2e',
+        color: '#f1ead9',
         role: role || 'member',
         joinedAt: Date.now(),
         weekly: M.Stats.weekly(state).distance,

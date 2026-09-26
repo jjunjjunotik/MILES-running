@@ -289,8 +289,8 @@
     _drawGround() {
       const ctx = this.ctx;
       const g = ctx.createLinearGradient(0, 0, 0, this.h);
-      g.addColorStop(0, '#0d131b');
-      g.addColorStop(1, '#080c12');
+      g.addColorStop(0, '#171613');
+      g.addColorStop(1, '#100f0d');
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, this.w, this.h);
     }
@@ -350,7 +350,7 @@
       const dim = M.Tiles.dim();
       if (dim > 0) {
         ctx.save();
-        ctx.fillStyle = `rgba(8, 11, 16, ${dim})`;
+        ctx.fillStyle = `rgba(16, 14, 12, ${dim})`;
         ctx.fillRect(0, 0, this.w, this.h);
         ctx.restore();
       }
@@ -383,7 +383,7 @@
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       const w = ctx.measureText(label).width + 14;
-      ctx.fillStyle = 'rgba(8, 11, 16, 0.85)';
+      ctx.fillStyle = 'rgba(16, 14, 12, 0.85)';
       roundRect(ctx, c.x - w / 2, c.y - 9, w, 18, 9);
       ctx.fill();
       ctx.fillStyle = '#ffc457';
@@ -411,7 +411,7 @@
       ctx.save();
       ctx.lineCap = 'butt';
       ctx.lineWidth = 3;
-      ctx.strokeStyle = 'rgba(8, 11, 16, 0.75)';
+      ctx.strokeStyle = 'rgba(16, 14, 12, 0.75)';
       ctx.beginPath();
       ctx.moveTo(x, y); ctx.lineTo(x + px, y);
       ctx.moveTo(x, y - 4); ctx.lineTo(x, y + 4);
@@ -422,7 +422,7 @@
       ctx.stroke();
       ctx.font = '700 10px ui-sans-serif, system-ui, sans-serif';
       ctx.textBaseline = 'bottom';
-      ctx.fillStyle = 'rgba(8, 11, 16, 0.75)';
+      ctx.fillStyle = 'rgba(16, 14, 12, 0.75)';
       ctx.fillText(label, x + 1, y - 6);
       ctx.fillText(label, x - 1, y - 6);
       ctx.fillStyle = 'rgba(226, 232, 240, 0.92)';
@@ -440,7 +440,7 @@
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
       const w = ctx.measureText(text).width;
-      ctx.fillStyle = 'rgba(8, 11, 16, 0.55)';
+      ctx.fillStyle = 'rgba(16, 14, 12, 0.55)';
       ctx.fillRect(this.w - w - 10, this.h - 15, w + 10, 15);
       ctx.fillStyle = 'rgba(226, 232, 240, 0.75)';
       ctx.fillText(text, this.w - 5, this.h - 3);
@@ -491,7 +491,7 @@
           const px = ((k * BLOCK) - (isVertical ? cx : cy)) / this.mpp;
           ctx.beginPath();
           ctx.lineWidth = avenue ? Math.max(1.6, 13 / this.mpp) : Math.max(0.7, 6 / this.mpp);
-          ctx.strokeStyle = avenue ? 'rgba(255,255,255,0.115)' : 'rgba(255,255,255,0.05)';
+          ctx.strokeStyle = avenue ? 'rgba(243,236,224,0.1)' : 'rgba(243,236,224,0.045)';
           const span = reach / this.mpp;
           if (isVertical) { ctx.moveTo(px, -span); ctx.lineTo(px, span); }
           else { ctx.moveTo(-span, px); ctx.lineTo(span, px); }
@@ -545,7 +545,7 @@
         ctx.globalAlpha = 1;
 
         ctx.lineJoin = ctx.lineCap = 'round';
-        ctx.strokeStyle = 'rgba(8, 12, 18, 0.9)';
+        ctx.strokeStyle = 'rgba(16, 14, 12, 0.9)';
         ctx.lineWidth = mine ? 5 : 4;
         ctx.stroke();
 
@@ -623,8 +623,8 @@
 
         // Lime means "you" everywhere else in the app, so it means it here too;
         // everyone else's initials wear their own plot colour.
-        ctx.fillStyle = crew ? (crew.me ? '#c8ff2e' : crew.color)
-          : mine ? '#c8ff2e' : (t.color || '#f2f6fa');
+        ctx.fillStyle = crew ? (crew.me ? '#f1ead9' : crew.color)
+          : mine ? '#f1ead9' : (t.color || '#f2f6fa');
         ctx.fillText(label, cx, cy + 0.5);
       });
 
@@ -637,7 +637,7 @@
       const ctx = this.ctx;
       ctx.save();
       ctx.setLineDash([5, 6]);
-      ctx.strokeStyle = 'rgba(255, 61, 139, 0.85)';
+      ctx.strokeStyle = 'rgba(232, 88, 122, 0.85)';
       ctx.lineWidth = 3;
       ctx.lineJoin = ctx.lineCap = 'round';
       ctx.beginPath();
@@ -662,10 +662,10 @@
         if (i === 0) ctx.moveTo(s.x, s.y); else ctx.lineTo(s.x, s.y);
       });
 
-      ctx.strokeStyle = 'rgba(200, 255, 46, 0.28)';
+      ctx.strokeStyle = 'rgba(241, 234, 217, 0.3)';
       ctx.lineWidth = 11;
       ctx.stroke();
-      ctx.strokeStyle = '#c8ff2e';
+      ctx.strokeStyle = '#f1ead9';
       ctx.lineWidth = 3.4;
       ctx.stroke();
 
@@ -673,10 +673,10 @@
       const s0 = this.toScreen(pts[0]);
       ctx.beginPath();
       ctx.arc(s0.x, s0.y, 5.5, 0, Math.PI * 2);
-      ctx.fillStyle = '#0b0f15';
+      ctx.fillStyle = '#13120f';
       ctx.fill();
       ctx.lineWidth = 2.4;
-      ctx.strokeStyle = '#c8ff2e';
+      ctx.strokeStyle = '#f1ead9';
       ctx.stroke();
       ctx.restore();
     }
@@ -688,10 +688,10 @@
         const s = this.toScreen(r.position);
         ctx.beginPath();
         ctx.arc(s.x, s.y, 8, 0, Math.PI * 2);
-        ctx.fillStyle = r.color || '#ff3d8b';
+        ctx.fillStyle = r.color || '#e8587a';
         ctx.fill();
         ctx.lineWidth = 2;
-        ctx.strokeStyle = 'rgba(8, 11, 16, 0.9)';
+        ctx.strokeStyle = 'rgba(16, 14, 12, 0.9)';
         ctx.stroke();
         ctx.fillStyle = '#fff';
         ctx.font = '700 9px ' + getComputedStyle(document.body).fontFamily;
@@ -710,15 +710,15 @@
 
       ctx.beginPath();
       ctx.arc(s.x, s.y, 10 + t * 20, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(200, 255, 46, ${0.22 * (1 - t)})`;
+      ctx.fillStyle = `rgba(241, 234, 217, ${0.22 * (1 - t)})`;
       ctx.fill();
 
       ctx.beginPath();
       ctx.arc(s.x, s.y, 7, 0, Math.PI * 2);
-      ctx.fillStyle = '#c8ff2e';
+      ctx.fillStyle = '#f1ead9';
       ctx.fill();
       ctx.lineWidth = 2.5;
-      ctx.strokeStyle = 'rgba(8, 11, 16, 0.95)';
+      ctx.strokeStyle = 'rgba(16, 14, 12, 0.95)';
       ctx.stroke();
     }
   }
@@ -727,7 +727,7 @@
      Small route sketches for record cards and the feed. --------------------- */
 
   function drawRouteThumb(canvas, route, options) {
-    const opts = Object.assign({ stroke: '#c8ff2e', fill: null, pad: 8, width: 2.5 }, options || {});
+    const opts = Object.assign({ stroke: '#f1ead9', fill: null, pad: 8, width: 2.5 }, options || {});
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     const rect = canvas.getBoundingClientRect();
     const w = rect.width || canvas.width || 96;

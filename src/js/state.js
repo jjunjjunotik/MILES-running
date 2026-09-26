@@ -50,9 +50,9 @@
   // `accent` draws shapes; `ink` writes words. A stroke colour that reads at
   // 2 px does not necessarily read at 11 px on a chip's lifted background.
   const KINDS = {
-    free:      { key: 'free',      name: 'Free Run',      badge: 'RUN',       accent: '#c8ff2e', ink: '#c8ff2e' },
-    territory: { key: 'territory', name: 'Territory Run', badge: 'TERRITORY', accent: '#a855f7', ink: '#c4a2fb' },
-    race:      { key: 'race',      name: 'Race',          badge: 'RACE',      accent: '#ff3d8b', ink: '#ff7aae' },
+    free:      { key: 'free',      name: 'Free Run',      badge: 'Run',       accent: '#f1ead9', ink: '#f1ead9' },
+    territory: { key: 'territory', name: 'Territory Run', badge: 'Territory', accent: '#a855f7', ink: '#c4a2fb' },
+    race:      { key: 'race',      name: 'Race',          badge: 'Race',      accent: '#e8587a', ink: '#f2879f' },
   };
 
   /** A race holds you plus up to four others. */
@@ -630,6 +630,11 @@
       if (!this.data.mapStyle) this.data.mapStyle = 'dark';
       // Saved before the home picture could be swiped.
       if (typeof this.data.heroBg !== 'number') this.data.heroBg = 0;
+      // "You" was neon lime; it is chalk now. Runs and crew rosters saved
+      // with the old colour would otherwise keep drawing in it.
+      const LIME = '#c8ff2e';
+      (this.data.activities || []).forEach((a) => { if (a.color === LIME) a.color = KINDS.free.accent; });
+      (this.data.crews || []).forEach((c) => (c.members || []).forEach((m) => { if (m.color === LIME) m.color = KINDS.free.accent; }));
       // Saved before there was anything to buy.
       if (!this.data.pro) this.data.pro = { plan: null, trialEndsAt: null };
       // Saved before rank-ups were announced. Start from where they already
