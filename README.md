@@ -446,9 +446,9 @@ entitlement needs a server, and `Pro.verify()` in `src/js/pro.js` is the single
 function that has to change when there is one: it asks the backend, caches the
 answer, and nothing above it moves.
 
-There are two paid tiers. **Supporter** (₩2,900/mo, ₩24,000/yr) is expression:
+There are two paid tiers. **Supporter** ($2.99/mo, $29.99/yr) is expression:
 naming and colouring your own plots, and the record card's colourways.
-**Pro** (₩4,900/mo, ₩39,000/yr) adds everything below, and contains Supporter.
+**Pro** ($4.99/mo, $49.99/yr) adds everything below, and contains Supporter.
 A 14-day trial of Pro needs no card.
 
 Every gate names a capability in `Pro.FEATURES` rather than testing a tier, so

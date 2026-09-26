@@ -40,11 +40,13 @@
      want to back the app and mark their ground without the analysis. */
   const TIERS = { free: 0, supporter: 1, pro: 2 };
 
+  // Prices are in US dollars, stored in cents so no amount is ever a float.
+  // A year is ten months' price: "two months free" is the arithmetic, not a slogan.
   const PLANS = {
-    supporter_monthly: { id: 'supporter_monthly', tier: 'supporter', name: 'Supporter', price: 2900, period: 'month', label: '₩2,900 / mo' },
-    supporter_yearly:  { id: 'supporter_yearly',  tier: 'supporter', name: 'Supporter', price: 24000, period: 'year', label: '₩24,000 / yr', note: 'Two months free, paid once' },
-    pro_monthly:       { id: 'pro_monthly',       tier: 'pro',       name: 'Pro',       price: 4900, period: 'month', label: '₩4,900 / mo' },
-    pro_yearly:        { id: 'pro_yearly',        tier: 'pro',       name: 'Pro',       price: 39000, period: 'year', label: '₩39,000 / yr', note: 'Two months free, paid once' },
+    supporter_monthly: { id: 'supporter_monthly', tier: 'supporter', name: 'Supporter', price: 299, currency: 'USD', period: 'month', label: '$2.99 / mo' },
+    supporter_yearly:  { id: 'supporter_yearly',  tier: 'supporter', name: 'Supporter', price: 2999, currency: 'USD', period: 'year', label: '$29.99 / yr', note: 'Two months free, paid once' },
+    pro_monthly:       { id: 'pro_monthly',       tier: 'pro',       name: 'Pro',       price: 499, currency: 'USD', period: 'month', label: '$4.99 / mo' },
+    pro_yearly:        { id: 'pro_yearly',        tier: 'pro',       name: 'Pro',       price: 4999, currency: 'USD', period: 'year', label: '$49.99 / yr', note: 'Two months free, paid once' },
   };
 
   /**

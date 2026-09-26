@@ -1324,7 +1324,9 @@
       const from = M.Pro.firstClaimAt(s);
       if (!isFinite(from)) return;
       const at = this.scrubAt || Date.now();
-      $('#tmDate').textContent = new Date(at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+      // 'en-US', not the phone's own locale: the app is in English, and a Korean
+      // phone was printing this one date as "2026년 9월 26일" beside English copy.
+      $('#tmDate').textContent = new Date(at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
       $('#tmHeld').textContent = `${Units.areaText(M.Pro.heldAt(s, at))} ${Units.areaLabel()} held`;
     },
 
