@@ -164,6 +164,12 @@ const AUDIT = `(() => {
     collect(await page.evaluate(AUDIT));
   }
 
+  // The finish screen: the record card's own controls, under the card.
+  await page.evaluate(`document.querySelectorAll('.sheet-scrim').forEach(s => s.hidden = true)`);
+  await page.evaluate(() => MILES.UI.showCardPreview(MILES.State.data.activities.find((a) => a.kind === 'free' && a.distance > 10000)));
+  await page.waitForTimeout(450);
+  collect(await page.evaluate(AUDIT));
+
   // Gradient-backed text, measured against every stop of its own gradient.
   const lum = (c) => {
     const f = (v) => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };

@@ -921,24 +921,91 @@
      * kind is free — what Supporter buys is choosing a different one, so the
      * card you share is yours rather than the app's.
      */
+    /**
+     * Draws the record card and the controls that lay it out. The layout,
+     * the numbers and the two toggles are the runner's own and are kept, so
+     * the next card comes out the way they left this one. Colourways are what
+     * Supporter buys; the default per run kind is free.
+     */
     paintCard(activity, athlete) {
+      const design = State.data.cardDesign;
       // Never the kind's own colour a second time under another name:
       // "Default" and "Chalk" on a free run were the same card.
       const offered = M.cardThemesFor(activity.kind);
       if (this.cardTheme && offered.indexOf(this.cardTheme) < 0) this.cardTheme = null;
+      const templates = M.cardTemplatesFor(activity);
+      const template = templates.indexOf(design.template) >= 0 ? design.template : 'map';
+      const stats = M.cardPickStats(activity, design.stats);
+      const lines = Stats.highlights(State.data, activity);
+      const hasProfile = M.cardHasProfile(activity);
+
       M.renderCard($('#cardCanvas'), activity, {
         athlete,
         rank: Stats.rank(State.data).current.name,
         totalArea: Stats.totalArea(State.data),
         theme: this.cardTheme || undefined,
+        template,
+        stats,
+        highlights: design.highlights ? lines : [],
+        profile: design.profile,
       });
+      $('#recordCard').dataset.template = template;
+
+      const repaint = () => this.paintCard(activity, athlete);
+      const keep = (patch) => {
+        Object.assign(State.data.cardDesign, patch);
+        State.save();
+        repaint();
+      };
+
+      const layouts = $('#cardTemplates');
+      layouts.innerHTML = '';
+      templates.forEach((key) => layouts.appendChild(el('button', {
+        type: 'button', text: M.CARD_TEMPLATES[key], 'aria-pressed': String(key === template),
+        onclick: () => keep({ template: key }),
+      })));
+
+      // Picking a fourth number lets go of the oldest; the last one cannot be
+      // let go of, because a card with no numbers is not a record.
+      const chips = $('#cardStats');
+      chips.innerHTML = '';
+      M.cardStatsFor(activity).forEach(({ key, label }) => {
+        const on = stats.indexOf(key) >= 0;
+        chips.appendChild(el('button', {
+          class: 'chip design-chip', type: 'button', 'aria-pressed': String(on), text: label,
+          onclick: () => {
+            let next = stats.slice();
+            if (on) {
+              if (next.length === 1) return;
+              next = next.filter((k) => k !== key);
+            } else {
+              next.push(key);
+              if (next.length > 3) next.shift();
+            }
+            keep({ stats: next });
+          },
+        }));
+      });
+
+      // The note says exactly what the highlights will put on the card.
+      const highlightsOn = design.highlights;
+      $('#cardHighlightsRow').hidden = template === 'sticker';
+      $('#cardHighlights').setAttribute('aria-checked', String(highlightsOn));
+      $('#cardHighlights').onclick = () => keep({ highlights: !highlightsOn });
+      $('#cardHighlightsNote').textContent = lines.length
+        ? lines.slice(0, 2).join(' · ')
+        : 'Nothing on this run beat an earlier one';
+
+      $('#cardProfileRow').hidden = !hasProfile || (template !== 'map' && template !== 'splits');
+      $('#cardProfile').setAttribute('aria-checked', String(design.profile));
+      $('#cardProfile').onclick = () => keep({ profile: !design.profile });
 
       const seg = $('#cardThemes');
       seg.innerHTML = '';
       const unlocked = M.Pro.can('cardThemes');
       seg.appendChild(el('button', {
         type: 'button', text: 'Default', 'aria-pressed': String(!this.cardTheme),
-        onclick: () => { this.cardTheme = null; this.paintCard(activity, athlete); },
+        onclick: () => { this.cardTheme = null; repaint(); },
       }));
       offered.forEach((key) => {
         seg.appendChild(el('button', {
@@ -947,7 +1014,7 @@
           onclick: () => {
             if (!unlocked) return this.openPro('cardThemes');
             this.cardTheme = key;
-            this.paintCard(activity, athlete);
+            repaint();
           },
         }, [
           el('span', { text: M.CARD_THEMES[key] }),
@@ -1158,15 +1225,25 @@
       if (!splits.length) return;
       const slowest = Math.max.apply(null, splits.map((sp) => sp.seconds));
       const fastest = Math.min.apply(null, splits.map((sp) => sp.seconds));
+      // A long run's list would push the card's own controls a screen away
+      // from the card, so it opens on the first five and the rest are a tap
+      // away.
+      const folded = splits.length > 6 && this.splitsOpen !== activity.id;
+      const shown = folded ? splits.slice(0, 5) : splits;
       host.appendChild(el('section', { class: 'splits' }, [
         el('h3', { class: 'splits-title', text: 'Splits' }),
-        el('div', { class: 'splits-rows' }, splits.map((sp) => el('div', {
+        el('div', { class: 'splits-rows' }, shown.map((sp) => el('div', {
           class: 'split', 'data-best': String(sp.seconds === fastest && splits.length > 1),
         }, [
           el('span', { class: 'split-km', text: `${sp.km} km` }),
           el('span', { class: 'split-bar' }, [el('i', { style: `width:${clamp((sp.seconds / slowest) * 100, 8, 100)}%` })]),
           el('span', { class: 'split-time stat-value', text: clock(sp.seconds) }),
         ]))),
+        folded ? el('button', {
+          class: 'btn btn--ghost btn--block btn--sm', type: 'button',
+          text: `Show all ${splits.length} splits`,
+          onclick: () => { this.splitsOpen = activity.id; this.renderSplits(activity); },
+        }) : null,
       ]));
     },
 

@@ -277,5 +277,25 @@ window.MILES = window.MILES || {};
     },
   };
 
-  Object.assign(M, { $, $$, el, clamp, lerp, uid, rng, Units, Geo, Store, Bus, clock, relTime, startOfWeek, startOfMonth, M_PER_MI });
+  /* --- Climbing -----------------------------------------------------------
+     GPS altitude wanders by a few metres from one fix to the next. Adding up
+     every rise would turn a flat riverside run into a hill climb, so a climb
+     only counts once it clears CLIMB_STEP above the level it last settled at,
+     and a drop of the same size resets that level. The tracker applies the
+     same rule fix by fix; this is it over a whole list of altitudes. ------ */
+  const CLIMB_STEP = 3;
+
+  function climbOf(alts, step) {
+    const t = step === undefined ? CLIMB_STEP : step;
+    let base = null;
+    let gain = 0;
+    alts.forEach((a) => {
+      if (typeof a !== 'number' || !isFinite(a)) return;
+      if (base === null) { base = a; return; }
+      if (a - base >= t) { gain += a - base; base = a; } else if (base - a >= t) base = a;
+    });
+    return gain;
+  }
+
+  Object.assign(M, { $, $$, el, clamp, lerp, uid, rng, Units, Geo, Store, Bus, clock, relTime, startOfWeek, startOfMonth, M_PER_MI, CLIMB_STEP, climbOf });
 })(window.MILES);

@@ -272,7 +272,7 @@
 /* Equal columns whatever the count: a two-option row filled two of four and
    left the rest of the bar empty. */
 .seg--block { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; }
-.seg--block button { padding: 0 4px; font-size: 12px; min-height: var(--tap-group); }
+.seg--block button { padding: 0 4px; font-size: 13px; min-height: var(--tap-group); }
 
 .run-controls { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: var(--s-3); padding-bottom: var(--s-4); }
 
@@ -1583,8 +1583,6 @@
 .hero .delta--up, .delta--up { color: var(--text-hi); }
 .history-badge { font-family: var(--font-ui); }
 .history-value { font-size: 20px; font-weight: 700; letter-spacing: 0; }
-/* The colourways sit under the card, not against it. */
-#cardThemes { margin-top: var(--s-3); }
 
 /* --- Splits, under the record card ----------------------------------------
    Kilometre, a bar against the slowest one, the time. The quickest split is
@@ -1603,3 +1601,33 @@
 .split-bar i { display: block; height: 100%; border-radius: 2px; background: rgba(243, 236, 224, 0.42); }
 .split[data-best="true"] .split-bar i { background: var(--flame); }
 .split-time { font-size: 22px; text-align: right; color: var(--text-hi); }
+
+/* --- Make the card yours ---------------------------------------------------
+   Layout, numbers, two switches and the colour, under the splits. Each group
+   is a label over its control; the switches are rows like the settings. */
+.card-design { display: flex; flex-direction: column; gap: var(--s-5); margin-top: var(--s-6); }
+.card-design-title { font-size: var(--t-title); }
+.design-field { display: flex; flex-direction: column; gap: 10px; }
+.design-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.design-chip { font-size: var(--t-small); font-weight: 600; color: var(--text-mid); border-color: var(--line-strong); }
+.design-chip[aria-pressed="true"] { color: var(--text-hi); border-color: var(--flame); background: rgba(242, 100, 42, 0.12); }
+.design-chip[aria-pressed="true"]::before { content: ""; width: 8px; height: 8px; background: var(--flame); flex: none; }
+.design-toggle {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--s-4);
+  padding-block: 4px;
+}
+.design-toggle-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.design-toggle .tiny { font-size: var(--t-small); font-weight: 600; }
+
+/* A sticker is saved with no background; the preview shows that with the
+   checkerboard every image editor uses for "transparent". */
+.record-card[data-template="sticker"] {
+  background-color: #2a2825;
+  background-image:
+    linear-gradient(45deg, #36332f 25%, transparent 25%),
+    linear-gradient(-45deg, #36332f 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #36332f 75%),
+    linear-gradient(-45deg, transparent 75%, #36332f 75%);
+  background-size: 20px 20px;
+  background-position: 0 0, 0 10px, 10px -10px, -10px 0;
+}

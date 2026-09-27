@@ -95,6 +95,8 @@ const STOPS = [
   ['soloSheet', `MILES.UI.openSheet('#soloSheet')`],
   ['duoSheet', `MILES.UI.openRaceLobby()`],
   ['proSheet', `MILES.UI.openPro()`],
+  // The record card and the controls that lay it out.
+  ['finish', `MILES.UI.showCardPreview(MILES.State.data.activities.find((a) => a.kind === 'free' && a.distance > 10000))`],
   // The captain's side of the crew. Founding one comes first: after it, there
   // is a crew and the form is no longer offered.
   ['crewCreate', `MILES.Pro.startTrial(MILES.State.data); MILES.UI.openCreateCrew()`],

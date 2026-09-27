@@ -51,6 +51,8 @@
         distance: 0,
         duration: 0,
         elevation: 0,
+        altBase: null,         // the level the last counted climb settled at
+        altFixes: 0,           // fixes that came with an altitude
         route: [],
         splits: [],
         paused: false,
@@ -103,6 +105,9 @@
       try {
         this._watchId = navigator.geolocation.watchPosition(
           (pos) => {
+            // Anything the simulator climbed before the first real fix was
+            // made up; the real run's climb starts from here.
+            if (this.state.source !== 'gps') this.state.elevation = 0;
             this.state.source = 'gps';
             this._push({ lat: pos.coords.latitude, lng: pos.coords.longitude }, pos.coords.altitude);
           },
@@ -166,7 +171,10 @@
     /** Adds a fix to the route, rejecting jitter and impossible jumps. */
     _push(latlng, altitude, knownStep) {
       const route = this.state.route;
+      const hasAlt = typeof altitude === 'number' && isFinite(altitude);
+      if (hasAlt) latlng.alt = Math.round(altitude * 10) / 10;
       if (!route.length) {
+        if (hasAlt) this._climb(altitude);
         route.push(latlng);
         this.state.startPoint = latlng;
         Bus.emit('run:position', this.state);
@@ -182,7 +190,12 @@
       const before = this.state.distance;
       route.push(latlng);
       this.state.distance += step;
-      this.state.elevation += Math.max(0, Math.sin(this.state.distance / 320) * 0.9);
+      // The climb comes from the phone's altitude. It used to be a sine of the
+      // distance for every run, real ones included, so the card's "Elevation
+      // gain" was invented. Only the simulator, which has no altitude to
+      // give, still makes one up.
+      if (hasAlt) this._climb(altitude);
+      else if (this.state.source === 'sim') this.state.elevation += Math.max(0, Math.sin(this.state.distance / 320) * 0.9);
 
       // Split every whole kilometre, converted for display later.
       const kmBefore = Math.floor(before / 1000);
@@ -194,6 +207,15 @@
       }
 
       Bus.emit('run:position', this.state);
+    },
+
+    /** Counts a climb once it clears the step (see climbOf in core.js). */
+    _climb(altitude) {
+      const s = this.state;
+      s.altFixes++;
+      if (s.altBase === null) { s.altBase = altitude; return; }
+      if (altitude - s.altBase >= M.CLIMB_STEP) { s.elevation += altitude - s.altBase; s.altBase = altitude; }
+      else if (s.altBase - altitude >= M.CLIMB_STEP) s.altBase = altitude;
     },
 
     _advanceField(dt) {
@@ -278,7 +300,9 @@
         title: titleFor(s),
         distance: s.distance,
         duration: s.duration,
-        elevation: Math.round(s.elevation),
+        // A real run whose phone never reported altitude has no climb to
+        // show; null says "unknown" where 0 would say "flat".
+        elevation: s.source === 'gps' && !s.altFixes ? null : Math.round(s.elevation),
         route,
         splits: s.splits,
         loopClosed: !!closure,

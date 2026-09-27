@@ -70,6 +70,8 @@ const STOPS = [
   ['soloSheet', `MILES.UI.openSheet('#soloSheet')`],
   ['duoSheet', `MILES.UI.openRaceLobby()`],
   ['proSheet', `MILES.UI.openPro()`],
+  // The record card and the controls that lay it out.
+  ['finish', `MILES.UI.showCardPreview(MILES.State.data.activities.find((a) => a.kind === 'free' && a.distance > 10000))`],
   ['crewCreate', `MILES.Pro.startTrial(MILES.State.data); MILES.UI.openCreateCrew()`, CREW_FLOOR],
   ['crewCaptain', `${CAPTAIN}; MILES.UI.go('crew')`, CREW_FLOOR],
   ['crewSheet', `MILES.UI.openCrewSheet(${CAPTAIN})`, CREW_FLOOR],

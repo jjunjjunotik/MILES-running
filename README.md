@@ -59,7 +59,7 @@ To put this on a real network, replace `_send` and the channel wiring in
 |---|---|
 | **Home** | Weekly / monthly volume with a KM ⇄ MI switch, intensity tier, map with your location, Territory and Quest tiles, and the two start buttons |
 | **Run** | Live map, distance, pace, a third cell that answers whatever the current run kind is asking, and the live race standings |
-| **Finish** | The record card, the race result table, and what the run earned |
+| **Finish** | The record card — laid out by the runner as Map, Poster, Splits or Sticker, with the numbers they pick and highlights the app finds — the splits, the race result table, and what the run earned |
 | **Land** | Every claim in the neighbourhood, yours and your rivals', with standings |
 | **Quests** | Ten quests, XP, and six ranks from Rookie to Apex |
 | **Feed** | Strava-style activity cards with route thumbnails |
@@ -294,7 +294,7 @@ whichever basemap is underneath.
 
 ## Tests
 
-Fifteen checks live in the repo root. The first is plain Node; the rest drive the
+Sixteen checks live in the repo root. The first is plain Node; the rest drive the
 real app in headless Chromium and need Playwright, which the app itself does
 not — `npm i playwright`, or run with `NODE_PATH` pointing at an install that
 has it. The three marked `:8765` want `python3 -m http.server 8765` running.
@@ -315,6 +315,7 @@ node test-touch.js        every control is big enough to hit with a thumb
 node test-type.js         nothing renders below the legibility floor
 node test-hero.js         the home picture swipes, and nothing a swipe could break does
 node test-crew.js         a captain's crew screen: one job per block, nothing shown twice
+node test-card.js         the record card: every layout fits, and says only what is true
 ```
 
 `test-tiles.js` serves its own tiles from a throwaway HTTP server, so it needs
