@@ -15,6 +15,11 @@ const path = require('path');
   page.on('console', (m) => {
     if (m.type() === 'error' && !/Failed to load resource/.test(m.text())) errors.push('CONSOLE: ' + m.text());
   });
+  // The demo history is seeded around "now", so the XP a fresh install starts
+  // with — and whether one territory run is enough to rank up — depends on
+  // the day of the week. The clock is set to the Saturday afternoon these
+  // steps were written against, and then runs normally.
+  await page.clock.install({ time: new Date('2026-09-26T15:00:00') });
   await page.goto('file://' + path.resolve(__dirname, 'index.html'));
   await page.evaluate(() => { try { localStorage.removeItem('miles.v1'); } catch (e) { /* ignore */ } });
   await page.reload();

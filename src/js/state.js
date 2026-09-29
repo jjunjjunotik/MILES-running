@@ -320,12 +320,18 @@
 
     plan.forEach((p) => {
       const dayStart = weekStart + p.day * 864e5;
-      const startedAt = dayStart + (6 + Math.floor(rand() * 13)) * 3600e3;
-      if (startedAt > Date.now()) return;
+      let startedAt = dayStart + (6 + Math.floor(rand() * 13)) * 3600e3;
 
       const isLoop = p.kind === 'territory';
       const paceSec = 300 + rand() * 90;                      // 5:00–6:30 per km
       const duration = Math.round((p.dist / 1000) * paceSec);
+      // Today's run is drawn for a random hour, and used to be dropped when
+      // that hour had not come yet — so the same fresh install had a
+      // different week, different quests and different XP depending on the
+      // time it was opened. It moves earlier in the day instead, finished by
+      // now; only in the first minutes after midnight is there no room for it.
+      if (startedAt + duration * 1000 > Date.now()) startedAt = Date.now() - duration * 1000 - 20 * 60e3;
+      if (startedAt < dayStart) return;
       const route = syntheticRoute(home, p.dist, isLoop, rand);
       const act = {
         id: uid(),
