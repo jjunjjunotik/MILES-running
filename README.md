@@ -74,9 +74,9 @@ Three, and only three — the three things the app measures:
 
 | | Counts |
 |---|---|
-| **Cover the ground** | every kilometre the crew runs this week |
-| **Take ground** | new land the crew claims |
-| **Take it off somebody** | ground the crew cuts out of runners outside it |
+| **Distance run** | every kilometre the crew runs this week |
+| **Land claimed** | new land the crew claims |
+| **Land taken** | land the crew takes from runners outside it |
 
 **Headcount is the difficulty.** Each mission has a per-member target and the
 ask is that times the crew's size, so a crew of twelve is asked for twelve

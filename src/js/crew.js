@@ -75,20 +75,22 @@
    */
   const MISSION_XP = 280;
 
+  // Named for what they count. "Cover the ground" and "Take ground" read as
+  // the same mission; one is distance and the other is land.
   const MISSIONS = {
     distance: {
-      key: 'distance', name: 'Cover the ground', unit: 'dist',
-      note: 'Every kilometre, added up',
+      key: 'distance', name: 'Distance run', unit: 'dist',
+      note: 'The whole crew, added up',
       perMember: Math.round(PER_WEEK.distance * ASK), xp: MISSION_XP,
     },
     claimed: {
-      key: 'claimed', name: 'Take ground', unit: 'area',
-      note: 'New land claimed this week',
+      key: 'claimed', name: 'Land claimed', unit: 'area',
+      note: 'Claimed by closing loops',
       perMember: Math.round(PER_WEEK.claimed * ASK), xp: MISSION_XP,
     },
     taken: {
-      key: 'taken', name: 'Take it off somebody', unit: 'area',
-      note: 'Ground cut out of other runners',
+      key: 'taken', name: 'Land taken', unit: 'area',
+      note: 'Taken from other runners',
       perMember: Math.round(PER_WEEK.taken * ASK), xp: MISSION_XP,
     },
   };
