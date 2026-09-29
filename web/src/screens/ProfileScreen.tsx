@@ -27,8 +27,6 @@ export function ProfileScreen({
   user,
   settings,
   records,
-  demoMode,
-  provider,
   onChangeSettings,
   onChanged,
   onDeleteAll,
@@ -38,8 +36,6 @@ export function ProfileScreen({
   user: AuthUser | null;
   settings: Settings;
   records: NailRecord[];
-  demoMode: boolean;
-  provider: string | null;
   onChangeSettings: (settings: Settings) => void;
   onChanged: () => Promise<void> | void;
   onDeleteAll: () => Promise<void>;
@@ -283,22 +279,14 @@ export function ProfileScreen({
         </section>
 
         <section className="sec">
-          <h3 className="sec-title">개인정보 처리</h3>
+          <h3 className="sec-title">개인정보</h3>
           <QA
             title="사진은 이 기기에만 남아요"
-            body="손톱 사진은 분석할 때만 서버를 거치고 저장되지 않아요. 사진은 이 브라우저 저장소에 사용자별로 나뉘어 보관되고, 로그인했다면 분석 결과만 계정에 저장돼요."
+            body="손톱 사진은 분석할 때만 쓰고 서버에 저장하지 않아요."
           />
           <QA
             title="내 기록은 나만 봐요"
-            body="기록을 읽고 지우는 모든 요청은 로그인한 본인의 것인지 서버에서 먼저 확인해요. 다른 사람의 기록은 아이디를 알아도 열리지 않아요."
-          />
-          <QA
-            title="메타데이터를 지우고 보내요"
-            body="업로드 전에 사진을 다시 저장해 촬영 위치, 기기, 시각 정보를 없애고, 긴 변을 1280px 이하로 줄여서 보내요."
-          />
-          <QA
-            title="분석 키는 서버에만 있어요"
-            body="분석에 쓰는 키는 서버 환경변수에만 두고 브라우저로 내려보내지 않아요."
+            body="기록은 본인만 보고 지울 수 있어요."
           />
         </section>
 
@@ -307,15 +295,7 @@ export function ProfileScreen({
           <QA title="진단하지 않아요" body={DISCLAIMER_LONG} />
           <QA
             title="관찰 지표는 무엇인가요?"
-            body="사진 속 손톱 겉모습이 얼마나 고르게 보이는지를 0에서 100 사이로 나타낸 참고 수치예요. 의학적 지표가 아니고, 같은 환경에서 찍은 사진끼리 변화를 비교할 때만 의미가 있어요."
-          />
-          <QA
-            title="분석은 어떻게 이뤄지나요?"
-            body={
-              demoMode
-                ? "지금은 서버에 분석 키가 없어서 데모 모드로 동작해요. 실제 분석 대신 샘플 결과를 보여 드려요."
-                : `사진은 서버를 거쳐 ${provider ?? "외부"} 이미지 분석 모델에 전달되고, 정해진 6개 항목의 관찰 결과만 정해진 형식으로 돌려받아요. 분석 키는 서버에만 있고 이 화면으로 내려오지 않아요.`
-            }
+            body="사진 속 손톱 겉모습이 얼마나 고르게 보이는지를 0에서 100 사이로 나타낸 참고 수치예요. 건강 점수가 아니고, 같은 환경에서 찍은 사진끼리 비교할 때만 의미가 있어요."
           />
         </section>
 

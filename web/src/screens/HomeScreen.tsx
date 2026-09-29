@@ -152,15 +152,6 @@ export function HomeScreen({
             </li>
             <li className="row">
               <div className="row-main">
-                <div className="row-title">위치 정보는 지우고 보내요</div>
-                <div className="row-sub">
-                  업로드 전에 사진을 다시 저장해서 촬영 위치나 기기 정보 같은
-                  메타데이터를 없애요.
-                </div>
-              </div>
-            </li>
-            <li className="row">
-              <div className="row-main">
                 <div className="row-title">언제든 지울 수 있어요</div>
                 <div className="row-sub">
                   프로필에서 사진만, 또는 기록 전체를 한 번에 지울 수 있어요.

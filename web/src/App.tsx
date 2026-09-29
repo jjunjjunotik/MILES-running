@@ -81,7 +81,6 @@ export function App() {
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [result, setResult] = useState<ResultView | null>(null);
   const [demoMode, setDemoMode] = useState(false);
-  const [provider, setProvider] = useState<string | null>(null);
   /** 프로필에서 직접 열었을 때만 보이는 로그인 화면 */
   const [showAuth, setShowAuth] = useState(false);
   const [online, setOnline] = useState(
@@ -151,7 +150,6 @@ export function App() {
       void health().then((info) => {
         if (!info || cancelled) return;
         setDemoMode(!info.configured && info.demoAvailable);
-        setProvider(info.configured ? (info.provider ?? null) : null);
       });
 
       // 서버 없이 도는 단일 HTML 데모: 계정이라는 개념 자체가 없다.
@@ -427,8 +425,6 @@ export function App() {
                 onChanged={refreshRecords}
                 onDeleteAll={removeAllRecords}
                 onSignOut={signOut}
-                demoMode={demoMode}
-                provider={provider}
               />
             )}
           </>
