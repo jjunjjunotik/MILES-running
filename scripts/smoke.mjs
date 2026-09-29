@@ -38,16 +38,16 @@ await page.waitForTimeout(600);
 
 // 온보딩만 건너뛰면 바로 쓸 수 있다. 로그인은 선택이라 여기서는 하지 않는다.
 // 첫 화면이 뜰 때까지 기다린 뒤 판단한다. 개발 서버는 모듈을 처음 변환하느라 느릴 수 있다.
-const skip = page.locator("text=건너뛰기");
-await skip.or(page.locator("text=손톱 스캔 시작하기")).first().waitFor({ timeout: 20000 });
+const skip = page.locator("text=Skip");
+await skip.or(page.locator('button:has-text("Scan a nail")')).first().waitFor({ timeout: 20000 });
 if ((await skip.count()) > 0) {
   await skip.click();
   await page.waitForTimeout(500);
 }
-await page.waitForSelector("text=손톱 스캔 시작하기", { timeout: 20000 });
+await page.waitForSelector('button:has-text("Scan a nail")', { timeout: 20000 });
 await shot(page, "01-home.png");
 
-await page.click("text=손톱 스캔 시작하기");
+await page.click('button:has-text("Scan a nail")');
 await page.waitForTimeout(400);
 await shot(page, "02-scan.png");
 
@@ -76,13 +76,13 @@ fs.writeFileSync(photo, Buffer.from(bytes));
 
 await page.setInputFiles('input[type="file"]:not([capture])', photo);
 await page.waitForTimeout(600);
-await page.click("text=왼손");
-await page.click("text=약지");
-await page.fill("textarea", "스모크 테스트 메모");
+await page.click("text=Left hand");
+await page.click('text="Ring"');
+await page.fill("textarea", "Smoke test note");
 await shot(page, "03-scan-ready.png");
 
-await page.click("text=분석 시작");
-await page.waitForSelector("text=항목별 관찰", { timeout: 60000 });
+await page.click('button:has-text("Analyze")');
+await page.waitForSelector("text=By area", { timeout: 60000 });
 await page.waitForTimeout(800);
 await shot(page, "04-result.png");
 
@@ -92,12 +92,12 @@ if (findingCount === 0) {
   problems.push("특이 사항 카드가 렌더되지 않았습니다.");
 } else {
   for (const label of [
-    "이런 모습을 만들 수 있는 상태",
-    "사진만으로는 이 중 어느 쪽인지 가릴 수 없어요.",
-    "위험 신호 점검",
-    "이렇게 해 보세요",
-    "이런 변화가 보이면 다시 진료를",
-    "다시 볼 시점",
+    "Conditions that can look like this",
+    "This scan can't tell these apart.",
+    "Warning sign check",
+    "What to do",
+    "See a doctor if you notice",
+    "Check again",
   ]) {
     if ((await page.locator(`.finding >> text=${label}`).count()) === 0) {
       problems.push(`특이 사항 카드에 "${label}" 이 없습니다.`);
@@ -108,12 +108,12 @@ if (findingCount === 0) {
   await shot(page, "04b-findings.png");
 }
 
-await page.click(".metric-head >> text=색상");
+await page.click(".metric-head >> text=Color");
 await page.waitForTimeout(400);
 await shot(page, "05-result-expanded.png");
 
-await page.click("text=카드 공유하기");
-await page.waitForSelector('img[alt="공유용 요약 카드 미리보기"]', {
+await page.click('button:has-text("Share card")');
+await page.waitForSelector('img[alt="Preview of the summary share card"]', {
   timeout: 20000,
 });
 await page.waitForTimeout(400);
@@ -121,33 +121,33 @@ await shot(page, "09-share-sheet.png");
 
 const download = await Promise.all([
   page.waitForEvent("download", { timeout: 20000 }).catch(() => null),
-  page.click("text=저장 · 공유"),
+  page.click("text=Save or share"),
 ]).then(([event]) => event);
 if (download) {
   await download.saveAs(path.join(OUT, "share-card.png"));
 } else {
   problems.push("공유 카드 저장이 발생하지 않았습니다.");
 }
-await page.click("text=닫기");
+await page.click('.sheet >> text="Close"');
 await page.waitForTimeout(300);
 
 // 두 번째 기록을 만들어 추이와 기록 화면을 확인한다.
-await page.click("text=다른 손톱도 스캔하기");
+await page.click("text=Scan another nail");
 await page.waitForTimeout(400);
 await page.setInputFiles('input[type="file"]:not([capture])', photo);
 await page.waitForTimeout(600);
-await page.click("text=분석 시작");
-await page.waitForSelector("text=항목별 관찰", { timeout: 60000 });
+await page.click('button:has-text("Analyze")');
+await page.waitForSelector("text=By area", { timeout: 60000 });
 
-await page.click(".tabbar >> text=기록");
+await page.click(".tabbar >> text=History");
 await page.waitForTimeout(700);
 await shot(page, "06-history.png");
 
-await page.click(".tabbar >> text=프로필");
+await page.click(".tabbar >> text=Profile");
 await page.waitForTimeout(500);
 await shot(page, "07-profile.png");
 
-await page.click(".tabbar >> text=홈");
+await page.click(".tabbar >> text=Home");
 await page.waitForTimeout(700);
 await shot(page, "08-home-trend.png");
 

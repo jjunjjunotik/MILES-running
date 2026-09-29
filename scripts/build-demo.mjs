@@ -9,8 +9,8 @@
  *
  * 분석 요청은 네트워크로 나가지 않고 샘플 결과로 대체된다(VITE_STANDALONE_DEMO=1).
  *
- * 글꼴: 앱은 글꼴 파일을 직접 호스팅하지만, 한 파일에 한글 글꼴을 모두 넣으면 수 MB가
- * 된다. 데모는 Artifact 가 허용하는 Google Fonts 에서 같은 글꼴을 불러온다.
+ * 글꼴: 앱은 글꼴 파일을 직접 호스팅하지만, 한 파일에 글꼴을 모두 넣으면 파일이 크게
+ * 불어난다. 데모는 Artifact 가 허용하는 Google Fonts 에서 같은 글꼴을 불러온다.
  */
 import { build } from "vite";
 import react from "@vitejs/plugin-react";
@@ -24,7 +24,7 @@ const TMP_DIR = path.join(OUT_DIR, ".build");
 const FONT_LINKS = [
   '<link rel="preconnect" href="https://fonts.googleapis.com" referrerpolicy="no-referrer">',
   '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin referrerpolicy="no-referrer">',
-  '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans+KR:wght@400;600&display=swap" referrerpolicy="no-referrer">',
+  '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;600&display=swap" referrerpolicy="no-referrer">',
 ].join("\n");
 
 /** 직접 호스팅용 글꼴 CSS 를 빈 CSS 로 바꿔 끼운다. */

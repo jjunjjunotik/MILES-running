@@ -68,14 +68,14 @@ export function ProfileScreen({
       const count = await importScans(found);
       setImported(
         count > 0
-          ? `이 기기에 있던 기록 ${count}건을 계정으로 가져왔어요.`
-          : "가져올 새 기록이 없었어요.",
+          ? `Moved ${count} ${count === 1 ? "scan" : "scans"} from this device to your account.`
+          : "There were no new scans to move.",
       );
       setLocalCount(0);
       await onChanged();
     } catch (err) {
       setImported(
-        err instanceof ServerError ? err.message : "기록을 가져오지 못했어요.",
+        err instanceof ServerError ? err.message : "We couldn't move your scans.",
       );
     } finally {
       setBusy(false);
@@ -94,12 +94,12 @@ export function ProfileScreen({
           await clearScopedImages();
           await clearServerImages();
         }
-        setDone("저장된 사진을 모두 지웠어요. 분석 기록은 그대로 있어요.");
+        setDone("All saved photos were deleted. Your scan history is still here.");
         await onChanged();
       } else if (action === "all") {
         await clearScopedImages();
         await onDeleteAll();
-        setDone("모든 기록과 사진을 지웠어요.");
+        setDone("All scans and photos were deleted.");
       } else {
         // 비밀번호가 없는 소셜 계정은 이메일을 그대로 적어 확인한다.
         await deleteAccount(
@@ -115,12 +115,12 @@ export function ProfileScreen({
         setError(
           err instanceof ServerError
             ? err.message
-            : "계정을 삭제하지 못했어요.",
+            : "We couldn't delete your account.",
         );
         setBusy(false);
         return;
       }
-      setDone("삭제하지 못했어요. 잠시 후 다시 시도해 주세요.");
+      setDone("Delete didn't work. Please try again in a moment.");
     } finally {
       setBusy(false);
       if (action !== "account") setPending(null);
@@ -129,36 +129,36 @@ export function ProfileScreen({
 
   return (
     <>
-      <TopBar title="프로필" />
+      <TopBar title="Profile" />
       <main className="screen">
         {user ? (
           <section className="account">
             <div style={{ minWidth: 0 }}>
-              <div className="name">{user.displayName || "이름 없음"}</div>
+              <div className="name">{user.displayName || "No name"}</div>
               <div className="sub">{user.email}</div>
             </div>
             <button
               className="btn btn-secondary btn-sm"
               onClick={() => void onSignOut()}
             >
-              로그아웃
+              Log out
             </button>
           </section>
         ) : !STANDALONE_DEMO ? (
           <section className="account">
             <div>
-              <div className="name">이 기기에 저장 중</div>
+              <div className="name">Saving on this device</div>
               <div className="sub">
-                계정을 만들면 다른 기기에서도 기록을 볼 수 있어요.
+                Create an account to see your history on other devices.
               </div>
             </div>
             {onSignIn && (
               <button
                 className="btn btn-primary btn-sm signin-btn"
                 onClick={onSignIn}
-                aria-label="로그인 또는 계정 만들기"
+                aria-label="Log in or create an account"
               >
-                로그인
+                Log in
               </button>
             )}
           </section>
@@ -166,17 +166,17 @@ export function ProfileScreen({
 
         {localCount > 0 && (
           <div className="import-box">
-            <div className="t">이 기기에 남아 있는 기록 {localCount}건</div>
+            <div className="t">{localCount} {localCount === 1 ? "scan" : "scans"} saved on this device</div>
             <p>
-              계정을 만들기 전에 저장한 기록이에요. 계정으로 가져오면 다른
-              기기에서도 볼 수 있어요.
+              These were saved before you had an account. Move them to your
+              account to see them on other devices.
             </p>
             <button
               className="btn btn-primary btn-sm"
               onClick={() => void importLocal()}
               disabled={busy}
             >
-              계정으로 가져오기
+              Move to account
             </button>
           </div>
         )}
@@ -189,7 +189,7 @@ export function ProfileScreen({
 
         <section className="sec" style={{ marginTop: 28 }}>
           <label className="field-label" htmlFor="nickname">
-            닉네임 <span className="opt">(선택)</span>
+            Nickname <span className="opt">(optional)</span>
           </label>
           <input
             id="nickname"
@@ -202,37 +202,37 @@ export function ProfileScreen({
             }
           />
           <p className="field-help">
-            결과 화면과 공유 카드에 표시돼요.
-            {user ? " 계정에 저장되어 다른 기기에서도 이어져요." : ""}
+            Shown on your results and share cards.
+            {user ? " Saved to your account, so it follows you to other devices." : ""}
           </p>
         </section>
 
         <section className="sec">
-          <h3 className="sec-title">기록 요약</h3>
+          <h3 className="sec-title">Your history</h3>
           <ul className="list">
             <li className="row">
               <div className="row-main">
-                <div className="row-title">분석 기록</div>
-                <div className="row-sub">지금까지 저장된 관찰 결과</div>
+                <div className="row-title">Scans</div>
+                <div className="row-sub">Results saved so far</div>
               </div>
-              <span className="row-end num">{records.length}건</span>
+              <span className="row-end num">{records.length}</span>
             </li>
             <li className="row">
               <div className="row-main">
-                <div className="row-title">저장된 사진</div>
-                <div className="row-sub">이 기기 안에만 보관돼요</div>
+                <div className="row-title">Saved photos</div>
+                <div className="row-sub">Kept on this device only</div>
               </div>
-              <span className="row-end num">{photoCount}장</span>
+              <span className="row-end num">{photoCount}</span>
             </li>
           </ul>
         </section>
 
         <section className="sec">
-          <h3 className="sec-title">설정</h3>
+          <h3 className="sec-title">Settings</h3>
           <div className="list">
             <ToggleRow
-              label="분석한 사진 저장하기"
-              sub="끄면 결과만 남고 사진은 기기에 저장하지 않아요."
+              label="Save analyzed photos"
+              sub="When off, only results are kept and photos aren't saved."
               on={settings.keepPhotos}
               onToggle={() =>
                 onChangeSettings({
@@ -242,8 +242,8 @@ export function ProfileScreen({
               }
             />
             <ToggleRow
-              label="결과 항목 펼쳐 보기"
-              sub="결과 화면에서 항목 설명을 처음부터 펼쳐 둬요."
+              label="Expand result details"
+              sub="Show each area's details open on the result screen."
               on={settings.expandByDefault}
               onToggle={() =>
                 onChangeSettings({
@@ -256,18 +256,18 @@ export function ProfileScreen({
         </section>
 
         <section className="sec">
-          <h3 className="sec-title">내 데이터</h3>
+          <h3 className="sec-title">Your data</h3>
           <div className="list">
             <button className="row" onClick={() => setPending("photos")}>
               <div className="row-main">
-                <div className="row-title">사진만 삭제</div>
-                <div className="row-sub">분석 기록은 남기고 사진만 지워요</div>
+                <div className="row-title">Delete photos only</div>
+                <div className="row-sub">Keeps your scan history, removes the photos</div>
               </div>
             </button>
             <button className="row danger" onClick={() => setPending("all")}>
               <div className="row-main">
-                <div className="row-title">전체 기록 삭제</div>
-                <div className="row-sub">모든 분석 결과와 사진을 지워요</div>
+                <div className="row-title">Delete all history</div>
+                <div className="row-sub">Removes every result and photo</div>
               </div>
             </button>
           </div>
@@ -279,38 +279,38 @@ export function ProfileScreen({
         </section>
 
         <section className="sec">
-          <h3 className="sec-title">개인정보</h3>
+          <h3 className="sec-title">Privacy</h3>
           <QA
-            title="사진은 이 기기에만 남아요"
-            body="손톱 사진은 분석할 때만 쓰고 서버에 저장하지 않아요."
+            title="Photos stay on this device"
+            body="Nail photos are used only for analysis and are never stored on our server."
           />
           <QA
-            title="내 기록은 나만 봐요"
-            body="기록은 본인만 보고 지울 수 있어요."
+            title="Only you see your history"
+            body="Only you can view or delete your scans."
           />
         </section>
 
         <section className="sec">
-          <h3 className="sec-title">이 앱에 대해</h3>
-          <QA title="진단하지 않아요" body={DISCLAIMER_LONG} />
+          <h3 className="sec-title">About</h3>
+          <QA title="Not a diagnosis" body={DISCLAIMER_LONG} />
           <QA
-            title="관찰 지표는 무엇인가요?"
-            body="사진 속 손톱 겉모습이 얼마나 고르게 보이는지를 0에서 100 사이로 나타낸 참고 수치예요. 건강 점수가 아니고, 같은 환경에서 찍은 사진끼리 비교할 때만 의미가 있어요."
+            title="What is the observation index?"
+            body="A reference number from 0 to 100 for how even the nail looks in the photo. It is not a health score, and it only means something when comparing photos taken in similar conditions."
           />
         </section>
 
         {user && (
           <section className="sec">
-            <h3 className="sec-title">계정</h3>
+            <h3 className="sec-title">Account</h3>
             <div className="list">
               <button
                 className="row danger"
                 onClick={() => setPending("account")}
               >
                 <div className="row-main">
-                  <div className="row-title">계정 삭제</div>
+                  <div className="row-title">Delete account</div>
                   <div className="row-sub">
-                    계정과 모든 분석 기록이 지워져요. 되돌릴 수 없어요.
+                    Removes your account and all scans. This can't be undone.
                   </div>
                 </div>
               </button>
@@ -325,10 +325,10 @@ export function ProfileScreen({
         <Sheet
           label={
             pending === "photos"
-              ? "사진 삭제"
+              ? "Delete photos"
               : pending === "all"
-                ? "전체 기록 삭제"
-                : "계정 삭제"
+                ? "Delete all history"
+                : "Delete account"
           }
           onClose={() => {
             if (busy) return;
@@ -339,25 +339,25 @@ export function ProfileScreen({
         >
           <h3>
             {pending === "photos"
-              ? "저장된 사진을 모두 지울까요?"
+              ? "Delete all saved photos?"
               : pending === "all"
-                ? "모든 기록을 지울까요?"
-                : "계정을 삭제할까요?"}
+                ? "Delete all history?"
+                : "Delete your account?"}
           </h3>
           <p>
             {pending === "photos"
-              ? `이 기기에 저장된 사진 ${photoCount}장이 지워져요. 분석 결과는 그대로 남아요.`
+              ? `${photoCount} ${photoCount === 1 ? "photo" : "photos"} on this device will be deleted. Your results stay.`
               : pending === "all"
-                ? `분석 기록 ${records.length}건과 사진이 모두 지워져요. 되돌릴 수 없어요.`
-                : "계정과 모든 분석 기록, 이 기기의 사진이 함께 지워져요. 되돌릴 수 없어요."}
+                ? `${records.length} ${records.length === 1 ? "scan" : "scans"} and their photos will be deleted. This can't be undone.`
+                : "Your account, all scans and the photos on this device will be deleted. This can't be undone."}
           </p>
 
           {pending === "account" && (
             <div className="mt-16">
               <label className="field-label" htmlFor="confirm-delete">
                 {user?.hasPassword
-                  ? "확인을 위해 비밀번호를 입력해 주세요"
-                  : `확인을 위해 ${user?.email} 을(를) 그대로 입력해 주세요`}
+                  ? "Enter your password to confirm"
+                  : `Type ${user?.email} to confirm`}
               </label>
               <input
                 id="confirm-delete"
@@ -384,14 +384,14 @@ export function ProfileScreen({
               }}
               disabled={busy}
             >
-              취소
+              Cancel
             </button>
             <button
               className="btn btn-danger"
               disabled={busy}
               onClick={() => void run(pending)}
             >
-              삭제
+              Delete
             </button>
           </div>
         </Sheet>

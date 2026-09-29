@@ -56,16 +56,16 @@ export function MetricList({
               <div>
                 <div className="metric-inner">
                   <div>
-                    <h5>사진에서 보이는 것</h5>
+                    <h5>What the photo shows</h5>
                     <p>{metric.observation}</p>
                   </div>
                   <div>
-                    <h5>일반적인 정보</h5>
+                    <h5>General information</h5>
                     <p>{metric.explanation}</p>
                   </div>
                   <div className="scope">
-                    <div>확인 정도: {CONFIDENCE_LABELS[metric.confidence]}</div>
-                    <div>살펴본 범위: {METRIC_DESCRIPTIONS[metric.key]}</div>
+                    <div>Visibility: {CONFIDENCE_LABELS[metric.confidence]}</div>
+                    <div>What we looked at: {METRIC_DESCRIPTIONS[metric.key]}</div>
                   </div>
                 </div>
               </div>

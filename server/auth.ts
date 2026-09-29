@@ -113,24 +113,24 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 
 export function normalizeEmail(value: unknown): string {
   if (typeof value !== "string") {
-    throw new AuthError(400, "bad_request", "이메일을 입력해 주세요.");
+    throw new AuthError(400, "bad_request", "Please enter your email.");
   }
   const email = value.trim().toLowerCase();
   if (!EMAIL_RE.test(email) || email.length > 254) {
-    throw new AuthError(400, "bad_request", "이메일 형식을 확인해 주세요.");
+    throw new AuthError(400, "bad_request", "Please check your email address.");
   }
   return email;
 }
 
 export function checkPassword(value: unknown): string {
   if (typeof value !== "string") {
-    throw new AuthError(400, "bad_request", "비밀번호를 입력해 주세요.");
+    throw new AuthError(400, "bad_request", "Please enter your password.");
   }
   if (value.length < 8) {
-    throw new AuthError(400, "weak_password", "비밀번호는 8자 이상으로 만들어 주세요.");
+    throw new AuthError(400, "weak_password", "Use at least 8 characters for your password.");
   }
   if (value.length > 200) {
-    throw new AuthError(400, "bad_request", "비밀번호가 너무 깁니다.");
+    throw new AuthError(400, "bad_request", "That password is too long.");
   }
   return value;
 }
@@ -240,7 +240,7 @@ export function requireUser(req: Request, res: Response, next: NextFunction): vo
     res.status(401).json({
       ok: false,
       code: "unauthorized",
-      error: "로그인이 필요합니다.",
+      error: "Please log in.",
     });
     return;
   }
@@ -258,7 +258,7 @@ export function createAccount(
     .prepare("SELECT id FROM profiles WHERE email = ?")
     .get(email) as { id: string } | undefined;
   if (existing) {
-    throw new AuthError(409, "email_taken", "이미 가입된 이메일입니다.");
+    throw new AuthError(409, "email_taken", "An account with this email already exists.");
   }
 
   const id = crypto.randomUUID();
@@ -317,7 +317,7 @@ export function linkSocialAccount(input: {
     throw new AuthError(
       400,
       "no_email",
-      "로그인 제공자에서 이메일을 받지 못했습니다. 이메일로 가입해 주세요.",
+      "We didn't receive an email address from that sign-in provider. Please sign up with email.",
     );
   }
 
@@ -331,7 +331,7 @@ export function linkSocialAccount(input: {
       throw new AuthError(
         409,
         "email_taken",
-        "이미 가입된 이메일입니다. 기존 방법으로 로그인해 주세요.",
+        "An account with this email already exists. Please log in the way you did before.",
       );
     }
     db()
@@ -392,7 +392,7 @@ export function authenticate(email: string, password: string): AuthUser {
   const ok = verifyPassword(password, stored);
 
   if (!row || !ok) {
-    throw new AuthError(401, "invalid_credentials", "이메일 또는 비밀번호가 올바르지 않습니다.");
+    throw new AuthError(401, "invalid_credentials", "Incorrect email or password.");
   }
   return toUser(row);
 }

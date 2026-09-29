@@ -74,13 +74,13 @@ export function AuthScreen({
           .then((user) => onSignedIn(user, false))
           .catch((err) =>
             setError(
-              err instanceof ServerError ? err.message : "구글 로그인에 실패했어요.",
+              err instanceof ServerError ? err.message : "Google sign-in failed.",
             ),
           )
           .finally(() => setBusy(false));
       },
     }).catch(() =>
-      setError("구글 로그인을 불러오지 못했어요. 이메일로 계속해 주세요."),
+      setError("Google sign-in couldn't load. Please continue with email."),
     );
   }, [providers, onSignedIn]);
 
@@ -97,7 +97,7 @@ export function AuthScreen({
       setError(
         err instanceof ServerError
           ? err.message
-          : "애플 로그인이 취소되었거나 실패했어요.",
+          : "Apple sign-in was cancelled or failed.",
       );
     } finally {
       setBusy(false);
@@ -121,7 +121,7 @@ export function AuthScreen({
       setError(
         err instanceof ServerError
           ? err.message
-          : "로그인 중 문제가 생겼습니다. 잠시 후 다시 시도해 주세요.",
+          : "Something went wrong while signing in. Please try again in a moment.",
       );
     } finally {
       setBusy(false);
@@ -132,7 +132,7 @@ export function AuthScreen({
     <main className="screen auth">
       <div className="flow-top">
         {onBack ? (
-          <button className="icon-btn" onClick={onBack} aria-label="돌아가기" style={{ marginLeft: -10 }}>
+          <button className="icon-btn" onClick={onBack} aria-label="Back" style={{ marginLeft: -10 }}>
             <BackIcon size={22} />
           </button>
         ) : (
@@ -143,11 +143,11 @@ export function AuthScreen({
       </div>
 
       <h2 className="auth-title">
-        {mode === "login" ? "로그인" : "계정 만들기"}
+        {mode === "login" ? "Log in" : "Create account"}
       </h2>
       <p className="auth-lede">
-        기록이 계정에 저장되어 기기를 바꿔도 이어져요. 로그인하지 않아도 앱은
-        그대로 쓸 수 있어요.
+        Your history is saved to your account and follows you to new devices.
+        You can keep using the app without logging in.
       </p>
 
       <div className="social">
@@ -160,18 +160,18 @@ export function AuthScreen({
             disabled={busy}
           >
             <AppleLogoIcon size={19} weight="fill" />
-            Apple로 계속하기
+            Continue with Apple
           </button>
         )}
 
         {(providers?.google || providers?.apple) && !emailOpen && (
           <>
-            <div className="divider">또는</div>
+            <div className="divider">or</div>
             <button
               className="btn btn-secondary"
               onClick={() => setEmailOpen(true)}
             >
-              이메일로 계속하기
+              Continue with email
             </button>
           </>
         )}
@@ -188,7 +188,7 @@ export function AuthScreen({
           {mode === "signup" && (
             <div>
               <label className="field-label" htmlFor="auth-name">
-                이름 또는 닉네임 <span className="opt">(선택)</span>
+                Name or nickname <span className="opt">(optional)</span>
               </label>
               <input
                 id="auth-name"
@@ -199,13 +199,13 @@ export function AuthScreen({
                 autoComplete="nickname"
                 maxLength={40}
               />
-              <p className="field-help">결과 화면에 표시돼요.</p>
+              <p className="field-help">Shown on your results.</p>
             </div>
           )}
 
           <div>
             <label className="field-label" htmlFor="auth-email">
-              이메일
+              Email
             </label>
             <input
               id="auth-email"
@@ -221,7 +221,7 @@ export function AuthScreen({
 
           <div>
             <label className="field-label" htmlFor="auth-password">
-              비밀번호
+              Password
             </label>
             <input
               id="auth-password"
@@ -235,7 +235,7 @@ export function AuthScreen({
               aria-describedby="auth-password-help"
             />
             <p className="field-help" id="auth-password-help">
-              8자 이상
+              At least 8 characters
             </p>
           </div>
 
@@ -247,10 +247,10 @@ export function AuthScreen({
 
           <button className="btn btn-primary" type="submit" disabled={busy}>
             {busy
-              ? "잠시만요"
+              ? "One moment"
               : mode === "login"
-                ? "로그인"
-                : "가입하고 시작하기"}
+                ? "Log in"
+                : "Create account"}
           </button>
 
           <button
@@ -263,20 +263,20 @@ export function AuthScreen({
             }}
           >
             {mode === "login"
-              ? "계정이 없으신가요? 가입하기"
-              : "이미 계정이 있으신가요? 로그인"}
+              ? "No account? Sign up"
+              : "Already have an account? Log in"}
           </button>
         </form>
       )}
 
       <div className="auth-foot">
         <p className="fineprint" style={{ margin: 0 }}>
-          비밀번호는 서버에 원문으로 저장되지 않아요. 손톱 사진은 계정이 아니라
-          이 기기의 브라우저 안에만 보관돼요. {DISCLAIMER_SHORT}
+          Passwords are never stored as plain text. Nail photos stay in this
+          browser, not in your account. {DISCLAIMER_SHORT}
         </p>
         {onBack && (
           <button className="link link-quiet" onClick={onBack}>
-            로그인하지 않고 계속 쓰기
+            Continue without an account
           </button>
         )}
       </div>

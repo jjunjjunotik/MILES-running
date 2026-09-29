@@ -88,7 +88,7 @@ export function LibraryScreen() {
     return (
       <>
         <TopBar
-          title="건강 정보"
+          title="Learn"
           left={
             <button
               className="icon-btn"
@@ -96,7 +96,7 @@ export function LibraryScreen() {
                 setOpenSlug(null);
                 setBody(null);
               }}
-              aria-label="목록으로"
+              aria-label="Back to list"
             >
               <BackIcon size={22} />
             </button>
@@ -127,12 +127,12 @@ export function LibraryScreen() {
 
   return (
     <>
-      <TopBar title="건강 정보" />
+      <TopBar title="Learn" />
       <main className="screen">
         <div className="search mt-8">
           <SearchIcon size={18} />
           <label htmlFor="library-search" className="sr-only">
-            건강 정보 검색
+            Search guides
           </label>
           <input
             id="library-search"
@@ -140,17 +140,17 @@ export function LibraryScreen() {
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="궁금한 내용 검색"
+            placeholder="Search guides"
           />
         </div>
 
-        <div className="chips scroll mt-12" role="group" aria-label="분류">
+        <div className="chips scroll mt-12" role="group" aria-label="Categories">
           <button
             className="chip"
             aria-pressed={filter === "all"}
             onClick={() => setFilter("all")}
           >
-            전체
+            All
           </button>
           {ARTICLE_CATEGORIES.map((category) => (
             <button
@@ -167,8 +167,8 @@ export function LibraryScreen() {
         {shown.length === 0 ? (
           <Empty
             icon={<SearchIcon size={26} />}
-            title="찾는 내용이 없어요"
-            body="다른 단어로 검색하거나 분류를 바꿔 보세요."
+            title="No matching guides"
+            body="Try a different word or another category."
           />
         ) : (
           <ul className="article-list">

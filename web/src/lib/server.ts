@@ -77,7 +77,7 @@ async function request<T>(
   init: RequestInit = {},
 ): Promise<T> {
   if (STANDALONE_DEMO) {
-    throw new ServerError("데모 빌드에서는 서버 기능을 쓸 수 없습니다.", "demo", 0);
+    throw new ServerError("Server features aren't available in the demo build.", "demo", 0);
   }
 
   let response: Response;
@@ -92,7 +92,7 @@ async function request<T>(
     });
   } catch {
     throw new ServerError(
-      "서버에 연결하지 못했습니다. 네트워크를 확인해 주세요.",
+      "Couldn't reach the server. Please check your connection.",
       "network",
       0,
     );
@@ -108,7 +108,7 @@ async function request<T>(
   if (!response.ok || (body as { ok?: boolean })?.ok === false) {
     const payload = (body ?? {}) as { error?: string; code?: string };
     throw new ServerError(
-      payload.error ?? "요청을 처리하지 못했습니다.",
+      payload.error ?? "The request couldn't be completed.",
       payload.code ?? "server_error",
       response.status,
     );

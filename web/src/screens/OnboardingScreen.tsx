@@ -8,28 +8,28 @@ import { CheckIcon } from "../components/Icons";
  */
 const SLIDES = [
   {
-    title: "손톱 사진 한 장으로 시작해요",
-    body: "촬영하거나 앨범에서 고르면, 분석 모델이 사진에 보이는 손톱의 겉모습을 항목별로 정리해요.",
+    title: "Start with one photo of a nail",
+    body: "Take a photo or pick one from your library, and an analysis model describes how the nail looks, area by area.",
     points: [
-      "색상, 표면, 줄무늬, 갈라짐, 두께와 모양, 주변 피부를 살펴봐요",
-      "눈에 띄는 특징은 이름과 지켜볼 변화까지 함께 알려 드려요",
+      "Looks at color, surface, ridges, splitting, thickness and shape, and the surrounding skin",
+      "Anything that stands out comes with its name and the changes to watch for",
     ],
   },
   {
-    title: "진단이 아니라 정리예요",
-    body: "사진 한 장으로는 질병을 가릴 수 없어요. 이 앱은 여러 가능성을 나란히 보여 줄 뿐, 어느 하나로 확정하지 않아요.",
+    title: "A description, not a diagnosis",
+    body: "A single photo can't identify a disease. The app lays out possibilities side by side and never settles on one of them.",
     points: [
-      "병을 확정하거나 확률로 말하지 않아요",
-      "약이나 시술을 안내하지 않아요",
-      "확인이 필요해 보이면 진료를 권해요",
+      "No diagnoses and no disease probabilities",
+      "No medicines or treatments",
+      "Suggests seeing a doctor when something needs a closer look",
     ],
   },
   {
-    title: "사진은 기기 안에 남아요",
-    body: "손톱 사진은 분석할 때만 서버를 거치고 서버에 저장되지 않아요. 기록과 사진은 언제든 지울 수 있어요.",
+    title: "Your photos stay on your device",
+    body: "Photos pass through our server only for analysis and are never stored there. You can delete your history and photos anytime.",
     points: [
-      "사진은 이 기기의 브라우저 안에만 보관해요",
-      "공유 카드에는 사진이 들어가지 않아요",
+      "Photos are kept only in this browser",
+      "Share cards never include your photo",
     ],
   },
 ];
@@ -44,7 +44,7 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
       <div className="flow-top">
         <span className="wordmark">NailSense</span>
         <button className="link link-quiet" onClick={onDone}>
-          건너뛰기
+          Skip
         </button>
       </div>
 
@@ -55,7 +55,7 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
         aria-valuemin={1}
         aria-valuemax={SLIDES.length}
         aria-valuenow={index + 1}
-        aria-label="소개"
+        aria-label="Introduction"
       >
         {SLIDES.map((item, i) => (
           <span key={item.title} className={i <= index ? "on" : ""} />
@@ -83,7 +83,7 @@ export function OnboardingScreen({ onDone }: { onDone: () => void }) {
           className="btn btn-primary"
           onClick={() => (last ? onDone() : setIndex(index + 1))}
         >
-          {last ? "시작하기" : "다음"}
+          {last ? "Get started" : "Next"}
         </button>
       </div>
     </main>

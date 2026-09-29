@@ -29,7 +29,7 @@ function getClient(): GoogleGenAI {
     if (!apiKey) {
       throw new AnalyzeError(
         "no_api_key",
-        "GEMINI_API_KEY가 설정되지 않았습니다.",
+        "GEMINI_API_KEY is not set.",
       );
     }
     // GEMINI_BASE_URL 은 테스트나 사내 프록시를 거칠 때만 쓴다.
@@ -132,7 +132,7 @@ async function analyzeNailPhoto(input: AnalyzeInput): Promise<NailAnalysis> {
     if (blockReason) {
       throw new AnalyzeError(
         "declined",
-        "이 사진은 분석하지 않았습니다. 다른 사진으로 시도해 주세요.",
+        "This photo wasn't analyzed. Please try a different photo.",
       );
     }
 
@@ -140,13 +140,13 @@ async function analyzeNailPhoto(input: AnalyzeInput): Promise<NailAnalysis> {
     if (finishReason === "SAFETY" || finishReason === "PROHIBITED_CONTENT") {
       throw new AnalyzeError(
         "declined",
-        "이 사진은 분석하지 않았습니다. 다른 사진으로 시도해 주세요.",
+        "This photo wasn't analyzed. Please try a different photo.",
       );
     }
     if (finishReason === "MAX_TOKENS") {
       throw new AnalyzeError(
         "upstream_error",
-        "결과가 너무 길어 중간에 끊겼습니다. 다시 시도해 주세요.",
+        "The result was too long and got cut off. Please try again.",
       );
     }
 
@@ -159,7 +159,7 @@ async function analyzeNailPhoto(input: AnalyzeInput): Promise<NailAnalysis> {
   if (!text) {
     throw new AnalyzeError(
       "upstream_error",
-      "분석 결과를 받지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "No analysis result came back. Please try again in a moment.",
     );
   }
 
@@ -170,7 +170,7 @@ async function analyzeNailPhoto(input: AnalyzeInput): Promise<NailAnalysis> {
   } catch {
     throw new AnalyzeError(
       "upstream_error",
-      "분석 결과를 해석하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+      "The analysis result couldn't be read. Please try again in a moment.",
     );
   }
 
@@ -178,7 +178,7 @@ async function analyzeNailPhoto(input: AnalyzeInput): Promise<NailAnalysis> {
   if (!result.success) {
     throw new AnalyzeError(
       "upstream_error",
-      "분석 결과가 예상한 형식이 아닙니다. 잠시 후 다시 시도해 주세요.",
+      "The analysis result wasn't in the expected format. Please try again in a moment.",
     );
   }
 
@@ -190,36 +190,40 @@ function toAnalyzeError(err: unknown): AnalyzeError {
     if (err.status === 429) {
       return new AnalyzeError(
         "rate_limited",
-        "요청이 많아 잠시 대기가 필요합니다. 잠시 후 다시 시도해 주세요.",
+        "Too many requests right now. Please try again in a moment.",
       );
     }
     if (err.status === 401 || err.status === 403) {
-      return new AnalyzeError("no_api_key", "GEMINI_API_KEY를 확인해 주세요.");
+      return new AnalyzeError("no_api_key", "Please check GEMINI_API_KEY.");
     }
     if (err.status === 503 || err.status === 500 || err.status === 502) {
       // 여기까지 왔다는 것은 재시도를 다 쓰고도 계속 혼잡했다는 뜻이다.
+      // 모델을 바꾸라는 안내는 운영자에게만 보인다.
+      console.warn(
+        `[gemini] ${MODEL} 이 계속 혼잡합니다. 이어지면 .env 의 GEMINI_MODEL 을 다른 모델로 바꿔 보세요. (npm run models 로 목록 확인)`,
+      );
       return new AnalyzeError(
         "upstream_error",
-        "지금 Gemini 가 혼잡해 분석하지 못했습니다. 잠시 후 다시 시도해 주세요. 계속 이러면 .env 의 GEMINI_MODEL 을 다른 모델로 바꿔 보세요. (npm run models 로 목록 확인)",
+        "The analysis service is busy right now. Please try again in a moment.",
       );
     }
     if (err.status === 404) {
       // 쓸 수 있는 모델은 키와 지역에 따라 다르다. 추측하지 말고 확인하게 한다.
       return new AnalyzeError(
         "upstream_error",
-        `모델 "${MODEL}" 을 찾지 못했습니다. 터미널에서 npm run models 를 실행해 쓸 수 있는 모델을 확인한 뒤, .env 의 GEMINI_MODEL 에 적어 주세요.`,
+        `Model "${MODEL}" wasn't found. Run npm run models to see available models, then set GEMINI_MODEL in .env.`,
       );
     }
     // 상태 코드만 전한다. 응답 본문에는 키가 섞여 나올 수 있다.
     return new AnalyzeError(
       "upstream_error",
-      `분석 서버에서 오류가 발생했습니다. (${err.status})`,
+      `The analysis server returned an error. (${err.status})`,
     );
   }
 
   return new AnalyzeError(
     "upstream_error",
-    "분석 중 알 수 없는 오류가 발생했습니다.",
+    "Something went wrong during analysis.",
   );
 }
 

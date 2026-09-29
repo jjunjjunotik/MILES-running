@@ -64,16 +64,16 @@ export function HistoryScreen({
   if (records.length === 0) {
     return (
       <>
-        <TopBar title="기록" />
+        <TopBar title="History" />
         <main className="screen">
           <Empty
             icon={<HistoryIcon size={26} />}
-            title="기록이 비어 있어요"
-            body="분석할 때마다 날짜별로 쌓여서, 시간이 지나며 어떻게 달라지는지 비교할 수 있어요."
+            title="No history yet"
+            body="Each scan is saved by date, so you can compare how your nails change over time."
             action={
               <button className="btn btn-primary btn-sm" onClick={onStartScan}>
                 <CameraIcon size={18} />
-                첫 기록 만들기
+                Make your first scan
               </button>
             }
           />
@@ -84,16 +84,16 @@ export function HistoryScreen({
 
   return (
     <>
-      <TopBar title="기록" />
+      <TopBar title="History" />
       <main className="screen">
         {fingersInUse.length > 1 && (
-          <div className="chips scroll" role="group" aria-label="손가락별로 보기">
+          <div className="chips scroll" role="group" aria-label="Filter by finger">
             <button
               className="chip"
               aria-pressed={filter === "all"}
               onClick={() => setFilter("all")}
             >
-              전체
+              All
             </button>
             {fingersInUse.map((key) => (
               <button
@@ -111,7 +111,7 @@ export function HistoryScreen({
         {filtered.length >= 2 && (
           <section className="sec" style={{ marginTop: 28 }}>
             <h3 className="sec-title">
-              관찰 지표 추이
+              Observation index
               {filter !== "all" && (
                 <span className="count">{FINGER_LABELS[filter]}</span>
               )}
@@ -122,7 +122,7 @@ export function HistoryScreen({
 
         <section className="sec" style={filtered.length >= 2 ? undefined : { marginTop: 20 }}>
           <h3 className="sec-title">
-            전체 기록 <span className="count">{filtered.length}건</span>
+            All scans <span className="count">{filtered.length}</span>
           </h3>
           <ul className="history-list">
             {filtered.map((record, index) => {
@@ -163,14 +163,14 @@ export function HistoryScreen({
                   </button>
                   <div
                     className="history-reading"
-                    aria-label={`관찰 지표 ${Math.round(record.analysis.observationScore)}`}
+                    aria-label={`Observation index ${Math.round(record.analysis.observationScore)}`}
                   >
                     <Reading value={record.analysis.observationScore} small />
                     {delta !== null && <Delta value={delta} />}
                   </div>
                   <button
                     className="icon-btn"
-                    aria-label="이 기록 삭제"
+                    aria-label="Delete this scan"
                     onClick={() => setPendingDelete(record.id)}
                   >
                     <TrashIcon size={19} />
@@ -183,7 +183,7 @@ export function HistoryScreen({
 
         {failedScans.length > 0 && (
           <section className="sec">
-            <h3 className="sec-title">분석되지 않은 시도</h3>
+            <h3 className="sec-title">Scans that didn't finish</h3>
             <ul className="list">
               {failedScans.slice(0, 5).map((scan) => (
                 <li className="row" key={scan.id}>
@@ -196,22 +196,22 @@ export function HistoryScreen({
                       )}
                     </div>
                     <div className="row-sub">
-                      {scan.errorMessage ?? "분석이 끝나지 않았어요."}
+                      {scan.errorMessage ?? "The analysis didn't finish."}
                     </div>
                   </div>
                 </li>
               ))}
             </ul>
             <p className="fineprint">
-              사진이 흐리거나 손톱이 보이지 않으면 결과를 만들지 않아요. 다시
-              찍으면 새 기록으로 쌓여요.
+              We don't make a result when the photo is blurry or no nail is
+              visible. A new photo is saved as a new scan.
             </p>
           </section>
         )}
 
         <p className="fineprint-block">
-          관찰 지표는 사진끼리 비교하기 위한 참고 수치예요. 조명과 각도에 따라
-          값이 달라질 수 있으니, 비슷한 환경에서 찍은 사진끼리 비교해 주세요.
+          The observation index is a reference number for comparing photos. Light
+          and angle change it, so compare photos taken in similar conditions.
         </p>
       </main>
 
@@ -242,15 +242,16 @@ function ConfirmDelete({
   const [busy, setBusy] = useState(false);
 
   return (
-    <Sheet label="기록 삭제" onClose={() => !busy && onCancel()}>
-      <h3>이 기록을 지울까요?</h3>
+    <Sheet label="Delete scan" onClose={() => !busy && onCancel()}>
+      <h3>Delete this scan?</h3>
       <p>
-        {record ? `${formatDate(record.createdAt)} 기록` : "선택한 기록"}과
-        함께 저장된 사진이 이 기기에서 완전히 지워져요. 되돌릴 수 없어요.
+        {record ? `The scan from ${formatDate(record.createdAt)}` : "This scan"}{" "}
+        and its photo will be permanently deleted from this device. This can't
+        be undone.
       </p>
       <div className="btn-row mt-16">
         <button className="btn btn-secondary" onClick={onCancel} disabled={busy}>
-          취소
+          Cancel
         </button>
         <button
           className="btn btn-danger"
@@ -260,7 +261,7 @@ function ConfirmDelete({
             void onConfirm().finally(() => setBusy(false));
           }}
         >
-          삭제
+          Delete
         </button>
       </div>
     </Sheet>

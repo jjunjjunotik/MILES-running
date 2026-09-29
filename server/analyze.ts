@@ -47,8 +47,8 @@ export async function analyzeNailPhoto(
     throw new AnalyzeError(
       "no_api_key",
       provider.id === "gemini"
-        ? "GEMINI_API_KEY가 설정되지 않았습니다."
-        : "ANTHROPIC_API_KEY가 설정되지 않았습니다.",
+        ? "GEMINI_API_KEY is not set."
+        : "ANTHROPIC_API_KEY is not set.",
     );
   }
   return await provider.analyze(input);

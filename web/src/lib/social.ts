@@ -60,7 +60,7 @@ function loadScript(src: string): Promise<void> {
     script.onload = () => resolve();
     script.onerror = () => {
       loaded.delete(src);
-      reject(new Error("로그인 제공자를 불러오지 못했습니다."));
+      reject(new Error("Couldn't load the sign-in provider."));
     };
     document.head.appendChild(script);
   });
@@ -77,7 +77,7 @@ export async function mountGoogleButton(options: {
 }): Promise<void> {
   await loadScript(GOOGLE_SRC);
   const api = window.google?.accounts.id;
-  if (!api) throw new Error("구글 로그인을 불러오지 못했습니다.");
+  if (!api) throw new Error("Couldn't load Google sign-in.");
 
   api.initialize({
     client_id: options.clientId,
@@ -99,7 +99,7 @@ export async function mountGoogleButton(options: {
     size: "large",
     shape: "rectangular",
     text: "continue_with",
-    locale: "ko",
+    locale: "en",
     width: Math.min(options.parent.clientWidth || 320, 400),
   });
 }
@@ -111,7 +111,7 @@ export async function signInWithApplePopup(clientId: string): Promise<{
 }> {
   await loadScript(APPLE_SRC);
   const api = window.AppleID?.auth;
-  if (!api) throw new Error("애플 로그인을 불러오지 못했습니다.");
+  if (!api) throw new Error("Couldn't load Apple sign-in.");
 
   api.init({
     clientId,

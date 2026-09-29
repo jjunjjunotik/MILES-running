@@ -79,16 +79,16 @@ export function ResultScreen({
   if (!result) {
     return (
       <>
-        <TopBar title="결과" />
+        <TopBar title="Result" />
         <main className="screen">
           <Empty
             icon={<LibraryIcon size={26} />}
-            title="아직 볼 결과가 없어요"
-            body="손톱 사진을 한 장 분석하면 항목별 관찰 결과가 여기에 정리돼요."
+            title="No result yet"
+            body="Analyze a nail photo and the area-by-area result will show up here."
             action={
               <button className="btn btn-primary btn-sm" onClick={onStartScan}>
                 <CameraIcon size={18} />
-                스캔하러 가기
+                Scan a nail
               </button>
             }
           />
@@ -126,7 +126,7 @@ export function ResultScreen({
       cardBlob.current = blob;
       setCardUrl(URL.createObjectURL(blob));
     } catch {
-      setShareMessage("카드를 만들지 못했어요. 다시 시도해 주세요.");
+      setShareMessage("We couldn't make the card. Please try again.");
     } finally {
       setSharing(false);
     }
@@ -142,12 +142,12 @@ export function ResultScreen({
       }
       setShareMessage(
         how === "downloaded"
-          ? "카드 이미지를 저장했어요."
-          : "공유 시트를 열었어요.",
+          ? "Card image saved."
+          : "Share sheet opened.",
       );
     } catch {
       setShareMessage(
-        "이 환경에서는 바로 저장할 수 없어요. 이미지를 길게 눌러 저장해 주세요.",
+        "Saving isn't available here. Press and hold the image to save it.",
       );
     }
   }
@@ -155,10 +155,10 @@ export function ResultScreen({
   return (
     <>
       <TopBar
-        title="분석 결과"
+        title="Result"
         left={
           onClose ? (
-            <button className="icon-btn" onClick={onClose} aria-label="닫기">
+            <button className="icon-btn" onClick={onClose} aria-label="Close">
               <BackIcon size={22} />
             </button>
           ) : undefined
@@ -168,8 +168,8 @@ export function ResultScreen({
         {result.demo && (
           <div className="mt-8">
             <Notice tone="accent">
-              데모 모드로 만든 <strong>샘플 결과</strong>예요. 실제 사진을
-              분석한 내용이 아니에요.
+              This is a <strong>sample result</strong> from demo mode, not an
+              analysis of your photo.
             </Notice>
           </div>
         )}
@@ -178,11 +178,11 @@ export function ResultScreen({
           <div className="refer mt-12" role="note">
             <StethoscopeIcon size={20} />
             <div>
-              <div className="t">진료를 미루지 않는 편이 좋아요</div>
+              <div className="t">Don't put off seeing a doctor</div>
               <div className="b">
-                아래 특이 사항에서 눈여겨보는 신호가 보였어요. 사진으로는 그
-                이상을 가릴 수 없으니 피부과에서 직접 보여 주세요. 확정된 진단이
-                아니라 확인이 필요하다는 뜻이에요.
+                A warning sign showed up in the findings below. A photo can't
+                tell more than that, so show it to a dermatologist in person.
+                This isn't a diagnosis; it means it needs to be checked.
               </div>
             </div>
           </div>
@@ -193,7 +193,7 @@ export function ResultScreen({
             <img
               className="photo"
               src={result.imageUrl}
-              alt="분석에 사용한 손톱 사진"
+              alt="The nail photo that was analyzed"
             />
           )}
           <div>
@@ -203,11 +203,11 @@ export function ResultScreen({
             <h2 className="result-title">{analysis.headline}</h2>
           </div>
           <p className="result-summary">{analysis.summary}</p>
-          {result.note && <p className="memo">내 메모: {result.note}</p>}
+          {result.note && <p className="memo">Your note: {result.note}</p>}
         </header>
 
         <section className="sec">
-          <h3 className="sec-title">한눈에 보기</h3>
+          <h3 className="sec-title">At a glance</h3>
           <dl className="glance">
             {analysis.metrics.slice(0, 6).map((metric) => {
               const tone = STATUS_TONE[metric.status];
@@ -225,18 +225,18 @@ export function ResultScreen({
 
           <div className="index">
             <div className="index-row">
-              <span className="index-label">관찰 지표</span>
+              <span className="index-label">Observation index</span>
               <Reading value={analysis.observationScore} />
             </div>
             <p className="index-note">
               {delta !== null && (
                 <>
                   <Delta value={delta} />
-                  지난번 같은 부위 기록과 비교한 변화예요.{" "}
+                  Change since your last photo of this nail.{" "}
                 </>
               )}
-              사진 속 겉모습이 얼마나 고르게 보이는지 나타낸 참고 수치예요.
-              건강 점수가 아니에요.
+              A reference number for how even the nail looks in the photo. It
+              is not a health score.
             </p>
           </div>
 
@@ -247,10 +247,10 @@ export function ResultScreen({
               disabled={sharing}
             >
               <ShareIcon size={18} />
-              {sharing ? "만드는 중" : "카드 공유하기"}
+              {sharing ? "Making card" : "Share card"}
             </button>
             <button className="btn btn-secondary" onClick={onGoHistory}>
-              기록 보기
+              View history
             </button>
           </div>
           {shareMessage && (
@@ -259,29 +259,29 @@ export function ResultScreen({
             </p>
           )}
           <p className="fineprint">
-            공유 카드에는 손톱 사진이 들어가지 않고 요약만 담겨요.
+            The share card has a summary only, never your photo.
           </p>
         </section>
 
         <section className="sec">
           <h3 className="sec-title">
-            특이 사항
+            Findings
             {findings.length > 0 && (
-              <span className="count">{findings.length}건</span>
+              <span className="count">{findings.length}</span>
             )}
           </h3>
           <FindingList findings={findings} />
           {findings.length > 0 && (
             <p className="fineprint">
-              상태 이름은 이런 모습에서 함께 검토되는 것들을 나열한 목록이고,
-              그중 하나로 확정한 것이 아니에요. 사진으로는 가릴 수 없어서
-              진료실에서 확대경이나 검사로 확인해요.
+              The condition names are things usually considered for a look like
+              this, not a conclusion about any one of them. A photo can't tell
+              them apart; a clinic checks with magnification or tests.
             </p>
           )}
         </section>
 
         <section className="sec">
-          <h3 className="sec-title">항목별 관찰</h3>
+          <h3 className="sec-title">By area</h3>
           <MetricList
             metrics={analysis.metrics}
             expandByDefault={settings.expandByDefault}
@@ -289,16 +289,16 @@ export function ResultScreen({
         </section>
 
         <section className="sec">
-          <h3 className="sec-title">생활 관리 팁</h3>
+          <h3 className="sec-title">Everyday care tips</h3>
           <TipList tips={analysis.tips} />
           <p className="fineprint">
-            누구에게나 무리 없는 일반적인 관리 방법이에요. 특정 영양제나 치료를
-            권하지 않아요.
+            General care that suits most people. We don't recommend specific
+            supplements or treatments.
           </p>
         </section>
 
         <section className="sec">
-          <h3 className="sec-title">이럴 땐 전문가에게</h3>
+          <h3 className="sec-title">When to see a professional</h3>
           <ul className="consult-list">
             {analysis.consultSignals.map((signal) => (
               <li key={signal}>{signal}</li>
@@ -310,31 +310,31 @@ export function ResultScreen({
 
         <button className="btn btn-secondary mt-24" onClick={onStartScan}>
           <CameraIcon size={19} />
-          다른 손톱도 스캔하기
+          Scan another nail
         </button>
       </main>
 
       {cardUrl && (
-        <Sheet label="공유 카드" onClose={() => setCardUrl(null)}>
-          <h3>공유 카드</h3>
+        <Sheet label="Share card" onClose={() => setCardUrl(null)}>
+          <h3>Share card</h3>
           <img
             className="preview"
             src={cardUrl}
-            alt="공유용 요약 카드 미리보기"
+            alt="Preview of the summary share card"
           />
           <div className="btn-row mt-16">
             <button
               className="btn btn-secondary"
               onClick={() => setCardUrl(null)}
             >
-              닫기
+              Close
             </button>
             <button className="btn btn-primary" onClick={() => void saveCard()}>
               <DownloadIcon size={18} />
-              저장 · 공유
+              Save or share
             </button>
           </div>
-          <p className="fineprint">이미지를 길게 눌러 저장할 수도 있어요.</p>
+          <p className="fineprint">You can also press and hold the image to save it.</p>
         </Sheet>
       )}
     </>

@@ -5,7 +5,7 @@ import "./fonts";
 import "./styles.css";
 
 const container = document.getElementById("root");
-if (!container) throw new Error("#root 를 찾지 못했습니다.");
+if (!container) throw new Error("#root not found");
 
 createRoot(container).render(
   <StrictMode>

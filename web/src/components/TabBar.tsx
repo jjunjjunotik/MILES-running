@@ -9,11 +9,11 @@ import {
 } from "./Icons";
 
 const TABS: { key: Tab; label: string; Glyph: Icon }[] = [
-  { key: "home", label: "홈", Glyph: HomeIcon },
-  { key: "scan", label: "스캔", Glyph: ScanIcon },
-  { key: "history", label: "기록", Glyph: HistoryIcon },
-  { key: "library", label: "정보", Glyph: LibraryIcon },
-  { key: "profile", label: "프로필", Glyph: ProfileIcon },
+  { key: "home", label: "Home", Glyph: HomeIcon },
+  { key: "scan", label: "Scan", Glyph: ScanIcon },
+  { key: "history", label: "History", Glyph: HistoryIcon },
+  { key: "library", label: "Learn", Glyph: LibraryIcon },
+  { key: "profile", label: "Profile", Glyph: ProfileIcon },
 ];
 
 export function TabBar({
@@ -24,7 +24,7 @@ export function TabBar({
   onChange: (tab: Tab) => void;
 }) {
   return (
-    <nav className="tabbar" aria-label="주요 화면">
+    <nav className="tabbar" aria-label="Main">
       {TABS.map(({ key, label, Glyph }) => {
         const current = active === key;
         return (

@@ -329,7 +329,7 @@ export function App() {
       return (
         <main className="boot" aria-busy="true">
           <span className="wordmark">NailSense</span>
-          <span className="sr-only">불러오는 중</span>
+          <span className="sr-only">Loading</span>
         </main>
       );
     }
@@ -355,7 +355,7 @@ export function App() {
         {!online && (
           <div className="offline-bar" role="status">
             <OfflineIcon size={16} />
-            네트워크가 끊겼어요. 저장된 기록은 계속 볼 수 있어요.
+            You're offline. Saved records are still available.
           </div>
         )}
 

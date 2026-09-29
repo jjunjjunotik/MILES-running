@@ -146,7 +146,7 @@ export function Delta({ value }: { value: number }) {
     return (
       <span className="delta">
         <MinusIcon size={12} weight="bold" />
-        변화 없음
+        No change
       </span>
     );
   }
@@ -157,7 +157,7 @@ export function Delta({ value }: { value: number }) {
       ) : (
         <ArrowDownIcon size={12} weight="bold" />
       )}
-      <span className="sr-only">{value > 0 ? "올라감" : "내려감"}</span>
+      <span className="sr-only">{value > 0 ? "up" : "down"}</span>
       {Math.abs(value)}
     </span>
   );
@@ -233,7 +233,7 @@ export function Sheet({
 }
 
 export function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString("ko-KR", {
+  return new Date(timestamp).toLocaleDateString("en-US", {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -247,23 +247,26 @@ export function formatDateShort(timestamp: number): string {
 }
 
 export function formatToday(timestamp: number = Date.now()): string {
-  return new Date(timestamp).toLocaleDateString("ko-KR", {
+  return new Date(timestamp).toLocaleDateString("en-US", {
+    weekday: "long",
     month: "long",
     day: "numeric",
-    weekday: "long",
   });
 }
 
 export function formatRelative(timestamp: number): string {
   const diff = Date.now() - timestamp;
   const day = 24 * 60 * 60 * 1000;
-  if (diff < day) return "오늘";
-  if (diff < day * 2) return "어제";
-  if (diff < day * 7) return `${Math.floor(diff / day)}일 전`;
+  if (diff < day) return "Today";
+  if (diff < day * 2) return "Yesterday";
+  if (diff < day * 7) return `${Math.floor(diff / day)} days ago`;
   return formatDate(timestamp);
 }
 
-/** "왼손 약지" 처럼 부위를 한 번에 적는다. */
+/** 부위를 한 번에 적는다. "Left ring finger", "Right thumb" */
 export function partLabel(hand: "left" | "right", finger: string): string {
-  return `${hand === "left" ? "왼손" : "오른손"} ${finger}`;
+  const side = hand === "left" ? "Left" : "Right";
+  if (!finger) return `${side} hand`;
+  const name = finger.toLowerCase();
+  return `${side} ${name === "thumb" ? name : `${name} finger`}`;
 }

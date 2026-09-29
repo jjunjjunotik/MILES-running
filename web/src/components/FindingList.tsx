@@ -29,8 +29,8 @@ export function FindingList({ findings }: { findings: Finding[] }) {
     return (
       <Empty
         icon={<EyeIcon size={26} />}
-        title="이번 사진에서 따로 짚을 만한 특징은 없었어요"
-        body="사진에서 확인되는 범위 안에서의 이야기예요. 아래 항목별 관찰에서 6가지를 어떻게 봤는지 확인할 수 있어요."
+        title="Nothing in this photo stood out"
+        body="That only covers what the photo shows. See how each of the six areas looked under By area below."
       />
     );
   }
@@ -70,7 +70,7 @@ function FindingCard({ finding }: { finding: Finding }) {
       <div className="finding-top">
         <div>
           <div className="finding-kicker">
-            {METRIC_LABELS[finding.metric]} 항목
+            {METRIC_LABELS[finding.metric]}
           </div>
           <h4 className="finding-title">{finding.label}</h4>
         </div>
@@ -81,14 +81,14 @@ function FindingCard({ finding }: { finding: Finding }) {
 
       {patternNames.length > 0 && (
         <p className="terms">
-          <span className="k">이 모습을 부르는 이름</span>
+          <span className="k">Also called</span>
           {patternNames.join(", ")}
         </p>
       )}
 
       {possibilities.length > 0 && (
         <section className="fpart">
-          <h5>이런 모습을 만들 수 있는 상태</h5>
+          <h5>Conditions that can look like this</h5>
           <ol className="poss">
             {possibilities.map((item) => (
               <li key={item.name}>
@@ -106,7 +106,7 @@ function FindingCard({ finding }: { finding: Finding }) {
             <p className="limit">
               <InfoIcon size={15} />
               <span>
-                사진만으로는 이 중 어느 쪽인지 가릴 수 없어요.{" "}
+                This scan can't tell these apart.{" "}
                 {finding.cannotTell}
               </span>
             </p>
@@ -117,9 +117,9 @@ function FindingCard({ finding }: { finding: Finding }) {
       {signChecks.length > 0 && (
         <section className="fpart">
           <h5>
-            위험 신호 점검
+            Warning sign check
             {presentCount > 0 && (
-              <span className="tag tone-soon">{presentCount}개 보임</span>
+              <span className="tag tone-soon">{presentCount} seen</span>
             )}
           </h5>
           <ul className="signs">
@@ -127,7 +127,7 @@ function FindingCard({ finding }: { finding: Finding }) {
               <li key={check.sign} className={`sign ${SIGN_TONE[check.state]}`}>
                 <SignMark state={check.state} />
                 <div>
-                  <div>
+                  <div className="sign-line">
                     <span className="sign-name">{check.sign}</span>
                     <span className="sign-state">
                       {SIGN_STATE_LABELS[check.state]}
@@ -143,7 +143,7 @@ function FindingCard({ finding }: { finding: Finding }) {
 
       {nextSteps.length > 0 && (
         <section className="fpart">
-          <h5>이렇게 해 보세요</h5>
+          <h5>What to do</h5>
           <ol className="plan">
             {nextSteps.map((step) => (
               <li key={step}>
@@ -156,7 +156,7 @@ function FindingCard({ finding }: { finding: Finding }) {
 
       {watchFor.length > 0 && (
         <section className="fpart">
-          <h5>이런 변화가 보이면 다시 진료를</h5>
+          <h5>See a doctor if you notice</h5>
           <ul>
             {watchFor.map((signal) => (
               <li key={signal}>{signal}</li>
@@ -169,7 +169,7 @@ function FindingCard({ finding }: { finding: Finding }) {
         <p className="finding-foot">
           <ClockIcon size={16} />
           <span>
-            다시 볼 시점: <b>{finding.timeframe}</b>
+            Check again: <b>{finding.timeframe}</b>
           </span>
         </p>
       )}

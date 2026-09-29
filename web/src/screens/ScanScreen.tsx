@@ -21,9 +21,9 @@ import {
 import { Notice, TopBar } from "../components/ui";
 
 const STEPS = [
-  "사진 확인하기",
-  "항목별로 살펴보기",
-  "설명과 팁 정리하기",
+  "Checking the photo",
+  "Looking at each area",
+  "Writing up notes and tips",
 ];
 
 /**
@@ -55,7 +55,7 @@ function retryDelay(attempt: number): number {
 function wait(ms: number, signal: AbortSignal): Promise<void> {
   return new Promise((resolve, reject) => {
     if (signal.aborted) {
-      reject(new DOMException("취소되었습니다.", "AbortError"));
+      reject(new DOMException("Cancelled", "AbortError"));
       return;
     }
     const timer = setTimeout(() => {
@@ -64,7 +64,7 @@ function wait(ms: number, signal: AbortSignal): Promise<void> {
     }, ms);
     function onAbort() {
       clearTimeout(timer);
-      reject(new DOMException("취소되었습니다.", "AbortError"));
+      reject(new DOMException("Cancelled", "AbortError"));
     }
     signal.addEventListener("abort", onAbort, { once: true });
   });
@@ -138,7 +138,7 @@ export function ScanScreen({
       setError(
         err instanceof ImageError
           ? err.message
-          : "사진을 불러오지 못했습니다. 다른 사진으로 시도해 주세요.",
+          : "We couldn't open that photo. Please try another one.",
       );
     }
   }
@@ -161,7 +161,6 @@ export function ScanScreen({
             base64: image.base64,
             mediaType: image.mediaType,
             hand,
-            finger: FINGER_LABELS[finger],
             fingerKey: finger,
             note,
             keepPhoto: settings.keepPhotos,
@@ -220,7 +219,7 @@ export function ScanScreen({
       setError(
         err instanceof ApiError
           ? err.message
-          : "이 사진으로는 결과를 만들지 못했어요. 다른 사진으로 다시 시도해 주세요.",
+          : "We couldn't get a result from this photo. Please try another one.",
       );
     } finally {
       setBusy(false);
@@ -231,7 +230,7 @@ export function ScanScreen({
   if (busy) {
     return (
       <>
-        <TopBar title="분석 중" />
+        <TopBar title="Analyzing" />
         <main className="screen">
           {/* 진행 상황을 화면 낭독기에도 알린다. */}
           <div role="status" aria-live="polite">
@@ -242,11 +241,11 @@ export function ScanScreen({
                 <div className="thumb" aria-hidden="true" />
               )}
               <div>
-                <div className="an-title">사진을 살펴보고 있어요</div>
+                <div className="an-title">Looking at your photo</div>
                 <div className="an-sub">
                   {attempt > 1
-                    ? "생각보다 오래 걸리고 있어요. 계속 시도하고 있으니 그대로 두셔도 돼요."
-                    : "보통 10~30초 정도 걸려요."}
+                    ? "This is taking longer than usual. We're still trying, so you can leave it running."
+                    : "This usually takes 10 to 30 seconds."}
                 </div>
               </div>
             </div>
@@ -270,8 +269,8 @@ export function ScanScreen({
 
             {attempt > 1 && (
               <p className="retry-note">
-                {attempt}번째 시도 중이에요.
-                {attempt > 4 && lastReason ? ` 서버 응답: ${lastReason}` : ""}
+                Attempt {attempt}.
+                {attempt > 4 && lastReason ? ` Server said: ${lastReason}` : ""}
               </p>
             )}
           </div>
@@ -295,7 +294,7 @@ export function ScanScreen({
             className="btn btn-secondary mt-24"
             onClick={() => abort.current?.abort()}
           >
-            그만두기
+            Stop
           </button>
         </main>
       </>
@@ -304,7 +303,7 @@ export function ScanScreen({
 
   return (
     <>
-      <TopBar title="손톱 스캔" />
+      <TopBar title="Scan a nail" />
       <main className="screen">
         <input
           ref={fileInput}
@@ -325,7 +324,7 @@ export function ScanScreen({
         <button
           type="button"
           className={`picker${dragging ? " dragging" : ""}`}
-          aria-label={image ? "사진 다시 고르기" : "손톱 사진 고르기"}
+          aria-label={image ? "Choose a different photo" : "Choose a nail photo"}
           onDragOver={(event) => {
             event.preventDefault();
             setDragging(true);
@@ -339,12 +338,12 @@ export function ScanScreen({
           onClick={() => fileInput.current?.click()}
         >
           {image ? (
-            <img src={image.previewUrl} alt="선택한 손톱 사진 미리보기" />
+            <img src={image.previewUrl} alt="Preview of the selected nail photo" />
           ) : (
             <span className="picker-empty">
               <CameraIcon size={30} />
-              <strong>손톱 사진을 올려 주세요</strong>
-              <span>눌러서 고르거나 파일을 끌어다 놓으세요</span>
+              <strong>Add a photo of your nail</strong>
+              <span>Tap to choose, or drop a file here</span>
             </span>
           )}
         </button>
@@ -355,14 +354,14 @@ export function ScanScreen({
             onClick={() => cameraInput.current?.click()}
           >
             <CameraIcon size={19} />
-            촬영
+            Camera
           </button>
           <button
             className="btn btn-secondary"
             onClick={() => fileInput.current?.click()}
           >
             <AlbumIcon size={19} />
-            {image ? "다시 고르기" : "앨범"}
+            {image ? "Replace" : "Library"}
           </button>
         </div>
 
@@ -377,27 +376,27 @@ export function ScanScreen({
             <Notice tone="monitor">
               <strong>{image.quality.issues.join(", ")}</strong>
               <br />
-              {image.quality.hint} 이대로도 분석할 수 있지만, 볼 수 있는 항목이
-              줄어들 수 있어요.
+              {image.quality.hint} You can still analyze it, but fewer areas
+              may be visible.
             </Notice>
           </div>
         )}
 
         <details className="how-to mt-8">
           <summary>
-            <ChevronIcon size={16} />잘 찍는 방법
+            <ChevronIcon size={16} />Tips for a good photo
           </summary>
           <ul>
-            <li>밝은 자연광 아래에서, 그림자가 지지 않게 찍어 주세요.</li>
-            <li>손톱 하나가 화면의 절반 이상을 채우도록 가까이 찍어 주세요.</li>
-            <li>매니큐어나 젤을 지운 상태여야 손톱판이 보여요.</li>
-            <li>손톱 주변 피부까지 함께 나오면 더 많은 항목을 볼 수 있어요.</li>
+            <li>Use bright, natural light and avoid shadows.</li>
+            <li>Get close so one nail fills at least half the frame.</li>
+            <li>Remove polish or gel so the nail plate is visible.</li>
+            <li>Include the skin around the nail so more areas can be checked.</li>
           </ul>
         </details>
 
         <section className="sec">
-          <h3 className="sec-title">어느 손톱인가요?</h3>
-          <div className="pick-group" role="group" aria-label="손">
+          <h3 className="sec-title">Which nail is it?</h3>
+          <div className="pick-group" role="group" aria-label="Hand">
             <div className="chips">
               {(["left", "right"] as const).map((value) => (
                 <button
@@ -406,12 +405,12 @@ export function ScanScreen({
                   aria-pressed={hand === value}
                   onClick={() => setHand(value)}
                 >
-                  {value === "left" ? "왼손" : "오른손"}
+                  {value === "left" ? "Left hand" : "Right hand"}
                 </button>
               ))}
             </div>
           </div>
-          <div className="pick-group" role="group" aria-label="손가락">
+          <div className="pick-group" role="group" aria-label="Finger">
             <div className="chips">
               {FINGER_KEYS.map((key) => (
                 <button
@@ -429,26 +428,26 @@ export function ScanScreen({
 
         <section className="sec">
           <label className="field-label" htmlFor="scan-note">
-            메모 <span className="opt">(선택)</span>
+            Note <span className="opt">(optional)</span>
           </label>
           <textarea
             id="scan-note"
             className="field"
             rows={3}
             maxLength={300}
-            placeholder="최근 변화나 신경 쓰이는 점"
+            placeholder="Recent changes or anything bothering you"
             value={note}
             onChange={(event) => setNote(event.target.value)}
           />
           <p className="field-help">
-            적어 두면 다음에 같은 손톱을 찍었을 때 비교하기 좋아요.
+            Helps you compare the next time you photograph this nail.
           </p>
         </section>
 
         {demoMode && (
           <div className="mt-24">
             <Notice tone="accent">
-              데모 모드예요. 실제 사진 분석 대신 샘플 결과를 보여 드려요.
+              Demo mode. You'll see sample results instead of a real analysis.
             </Notice>
           </div>
         )}
@@ -458,26 +457,26 @@ export function ScanScreen({
           disabled={!image || !online}
           onClick={() => void run()}
         >
-          분석 시작
+          Analyze
         </button>
 
         {!online ? (
           <p className="scan-hint">
             <OfflineIcon size={16} />
-            네트워크가 연결되면 분석할 수 있어요
+            You can analyze once you're back online
           </p>
         ) : !image ? (
           <p className="scan-hint">
             <InfoIcon size={16} />
-            먼저 사진을 골라 주세요
+            Choose a photo first
           </p>
         ) : null}
 
         <p className="fineprint mt-24">
-          사진은 분석할 때만 이 앱의 서버를 거치고 서버에는 저장되지 않아요.
+          Your photo passes through our server only for analysis and is never stored there.
           {settings.keepPhotos
-            ? " 분석이 끝난 사진은 이 기기에만 함께 저장돼요."
-            : " 지금 설정에서는 사진을 기기에 저장하지 않고 결과만 남겨요."}
+            ? " After analysis, it's saved on this device only."
+            : " With your current settings, only the result is kept, not the photo."}
         </p>
       </main>
     </>

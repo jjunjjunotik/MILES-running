@@ -47,7 +47,7 @@ async function getKeys(url: string, kid: string): Promise<Jwk[]> {
 
   const response = await fetch(url);
   if (!response.ok) {
-    throw new OAuthError("provider_unavailable", "로그인 제공자에 연결하지 못했습니다.");
+    throw new OAuthError("provider_unavailable", "Couldn't reach the sign-in provider.");
   }
   const body = (await response.json()) as { keys?: Jwk[] };
   const keys = Array.isArray(body.keys) ? body.keys : [];
@@ -75,7 +75,7 @@ export async function verifyIdToken(options: {
 }): Promise<VerifiedIdToken> {
   const parts = options.token.split(".");
   if (parts.length !== 3) {
-    throw new OAuthError("bad_token", "로그인 정보를 확인하지 못했습니다.");
+    throw new OAuthError("bad_token", "We couldn't verify your sign-in.");
   }
 
   const [rawHeader, rawPayload, rawSignature] = parts as [string, string, string];
@@ -83,13 +83,13 @@ export async function verifyIdToken(options: {
   const payload = decodeSegment(rawPayload) as Record<string, unknown>;
 
   if (header.alg !== "RS256" && header.alg !== "ES256") {
-    throw new OAuthError("bad_token", "지원하지 않는 서명 방식입니다.");
+    throw new OAuthError("bad_token", "Unsupported signature algorithm.");
   }
 
   const keys = await getKeys(options.jwksUrl, header.kid ?? "");
   const jwk = keys.find((key) => key.kid === header.kid) ?? keys[0];
   if (!jwk) {
-    throw new OAuthError("bad_token", "로그인 정보를 확인하지 못했습니다.");
+    throw new OAuthError("bad_token", "We couldn't verify your sign-in.");
   }
 
   const publicKey = crypto.createPublicKey({ key: jwk as crypto.JsonWebKey, format: "jwk" });
@@ -108,12 +108,12 @@ export async function verifyIdToken(options: {
         );
 
   if (!valid) {
-    throw new OAuthError("bad_token", "로그인 정보를 확인하지 못했습니다.");
+    throw new OAuthError("bad_token", "We couldn't verify your sign-in.");
   }
 
   const issuer = String(payload.iss ?? "");
   if (!options.issuers.includes(issuer)) {
-    throw new OAuthError("bad_token", "로그인 정보를 확인하지 못했습니다.");
+    throw new OAuthError("bad_token", "We couldn't verify your sign-in.");
   }
 
   const audience = payload.aud;
@@ -121,21 +121,21 @@ export async function verifyIdToken(options: {
     ? audience.includes(options.audience)
     : audience === options.audience;
   if (!audienceOk) {
-    throw new OAuthError("bad_token", "다른 앱에서 발급된 로그인 정보입니다.");
+    throw new OAuthError("bad_token", "This sign-in was issued for a different app.");
   }
 
   const exp = Number(payload.exp ?? 0);
   if (!Number.isFinite(exp) || exp * 1000 <= Date.now()) {
-    throw new OAuthError("expired_token", "로그인 정보가 만료되었습니다. 다시 시도해 주세요.");
+    throw new OAuthError("expired_token", "Your sign-in expired. Please try again.");
   }
 
   if (options.nonce && payload.nonce !== options.nonce) {
-    throw new OAuthError("bad_token", "로그인 정보를 확인하지 못했습니다.");
+    throw new OAuthError("bad_token", "We couldn't verify your sign-in.");
   }
 
   const sub = String(payload.sub ?? "");
   if (!sub) {
-    throw new OAuthError("bad_token", "로그인 정보를 확인하지 못했습니다.");
+    throw new OAuthError("bad_token", "We couldn't verify your sign-in.");
   }
 
   const emailVerified =
@@ -164,7 +164,7 @@ export function googleEnabled(): boolean {
 
 export async function verifyGoogleToken(idToken: string): Promise<VerifiedIdToken> {
   if (!googleEnabled()) {
-    throw new OAuthError("not_configured", "구글 로그인이 설정되지 않았습니다.");
+    throw new OAuthError("not_configured", "Google sign-in isn't set up.");
   }
   return verifyIdToken({
     token: idToken,
@@ -196,7 +196,7 @@ function appleClientSecret(): string {
   if (!APPLE_TEAM_ID || !APPLE_KEY_ID || !APPLE_PRIVATE_KEY) {
     throw new OAuthError(
       "not_configured",
-      "애플 로그인 키가 설정되지 않았습니다.",
+      "The Apple sign-in key isn't set up.",
     );
   }
 
@@ -237,7 +237,7 @@ export async function verifyAppleLogin(input: {
   nonce?: string;
 }): Promise<VerifiedIdToken> {
   if (!appleEnabled()) {
-    throw new OAuthError("not_configured", "애플 로그인이 설정되지 않았습니다.");
+    throw new OAuthError("not_configured", "Apple sign-in isn't set up.");
   }
 
   let idToken = input.idToken;
@@ -255,14 +255,14 @@ export async function verifyAppleLogin(input: {
       body,
     });
     if (!response.ok) {
-      throw new OAuthError("provider_error", "애플 로그인에 실패했습니다. 다시 시도해 주세요.");
+      throw new OAuthError("provider_error", "Apple sign-in failed. Please try again.");
     }
     const tokens = (await response.json()) as { id_token?: string };
     idToken = tokens.id_token;
   }
 
   if (!idToken) {
-    throw new OAuthError("bad_token", "로그인 정보를 확인하지 못했습니다.");
+    throw new OAuthError("bad_token", "We couldn't verify your sign-in.");
   }
 
   return verifyIdToken({

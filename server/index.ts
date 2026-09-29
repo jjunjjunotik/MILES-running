@@ -12,7 +12,12 @@ import {
   type SupportedMediaType,
 } from "./analyze.js";
 import { buildDemoAnalysis } from "../shared/demo.js";
-import type { AnalyzeResponse } from "../shared/analysis.js";
+import {
+  FINGER_KEYS,
+  FINGER_LABELS,
+  type AnalyzeResponse,
+  type FingerKey,
+} from "../shared/analysis.js";
 import {
   auditCredentials,
   createRateLimiter,
@@ -58,6 +63,10 @@ app.use((req, _res, next) => {
   next();
 });
 
+function isFingerKey(value: unknown): value is FingerKey {
+  return (FINGER_KEYS as readonly unknown[]).includes(value);
+}
+
 /**
  * 분석 한 번이 곧 API 비용이다. 엔드포인트가 노출되어도 남이 내 키로
  * 마음껏 호출하지 못하도록 같은 출처만 받고 횟수를 제한한다.
@@ -88,21 +97,21 @@ app.post("/api/analyze", sameOriginOnly, analyzeLimiter, async (req, res) => {
   const send = (status: number, body: AnalyzeResponse) =>
     res.status(status).json(body);
 
-  const { image, mediaType, hand, finger, fingerKey, note, keepPhoto } =
+  const { image, mediaType, hand, fingerKey, note, keepPhoto } =
     req.body ?? {};
 
   if (typeof image !== "string" || image.length === 0) {
     return send(400, {
       ok: false,
       code: "bad_request",
-      error: "사진이 전달되지 않았습니다.",
+      error: "No photo was received.",
     });
   }
   if (!SUPPORTED_MEDIA_TYPES.includes(mediaType)) {
     return send(400, {
       ok: false,
       code: "bad_request",
-      error: "지원하지 않는 이미지 형식입니다. JPG 또는 PNG로 시도해 주세요.",
+      error: "That image format isn't supported. Please try a JPG or PNG.",
     });
   }
   // base64 는 원본 대비 약 4/3 크기다. 4MB 를 넘으면 거절한다.
@@ -110,15 +119,17 @@ app.post("/api/analyze", sameOriginOnly, analyzeLimiter, async (req, res) => {
     return send(413, {
       ok: false,
       code: "bad_request",
-      error: "사진 용량이 너무 큽니다. 조금 더 작은 사진으로 시도해 주세요.",
+      error: "That photo is too large. Please try a smaller one.",
     });
   }
 
   const input = {
     imageBase64: image,
     mediaType: mediaType as SupportedMediaType,
-    hand: hand === "left" ? "왼손" : "오른손",
-    finger: typeof finger === "string" ? finger : "손톱",
+    hand: hand === "left" ? "left hand" : "right hand",
+    finger: isFingerKey(fingerKey)
+      ? FINGER_LABELS[fingerKey].toLowerCase()
+      : "finger not specified",
     note: typeof note === "string" ? note.slice(0, 300) : "",
   };
 
@@ -130,7 +141,7 @@ app.post("/api/analyze", sameOriginOnly, analyzeLimiter, async (req, res) => {
     ? {
         userId: req.user.id,
         hand: hand === "left" ? "left" : "right",
-        finger: typeof fingerKey === "string" ? fingerKey : "index",
+        finger: isFingerKey(fingerKey) ? fingerKey : "index",
         note: input.note,
         capturedAt: Date.now(),
       }
@@ -142,7 +153,7 @@ app.post("/api/analyze", sameOriginOnly, analyzeLimiter, async (req, res) => {
         ok: false,
         code: "no_api_key",
         error:
-          "분석 서버에 API 키가 설정되지 않았습니다. 관리자에게 문의해 주세요.",
+          "The analysis service isn't set up yet. Please contact the app's administrator.",
       });
     }
     const analysis = buildDemoAnalysis(image.length % 13);
@@ -168,15 +179,15 @@ app.post("/api/analyze", sameOriginOnly, analyzeLimiter, async (req, res) => {
 
     if (!analysis.isNailPhoto) {
       const message =
-        "사진에서 손톱을 찾지 못했습니다. 손톱이 화면을 채우도록 다시 촬영해 주세요.";
+        "We couldn't find a nail in this photo. Please retake it with the nail filling the frame.";
       if (record) saveFailedScan({ ...record, code: "not_a_nail_photo", message });
       return send(422, { ok: false, code: "not_a_nail_photo", error: message });
     }
     if (!analysis.imageQuality.usable) {
       const message =
         analysis.imageQuality.issues.length > 0
-          ? `사진을 살펴보기 어려웠습니다: ${analysis.imageQuality.issues.join(", ")}`
-          : "사진이 흐려 관찰이 어려웠습니다. 밝은 곳에서 다시 촬영해 주세요.";
+          ? `This photo was hard to read: ${analysis.imageQuality.issues.join(", ")}`
+          : "The photo is too blurry to observe. Please retake it in bright light.";
       if (record) saveFailedScan({ ...record, code: "unusable_image", message });
       return send(422, { ok: false, code: "unusable_image", error: message });
     }
@@ -218,7 +229,7 @@ app.post("/api/analyze", sameOriginOnly, analyzeLimiter, async (req, res) => {
     return send(500, {
       ok: false,
       code: "upstream_error",
-      error: "분석 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+      error: "Something went wrong during analysis. Please try again in a moment.",
     });
   }
 });

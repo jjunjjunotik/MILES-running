@@ -15,8 +15,8 @@ export async function seedExampleRecords(): Promise<boolean> {
   if (existing.length > 0) return false;
 
   const samples: { daysAgo: number; score: number; note: string }[] = [
-    { daysAgo: 24, score: 71, note: "설거지 자주 한 주" },
-    { daysAgo: 15, score: 76, note: "핸드크림 챙겨 바르기 시작" },
+    { daysAgo: 24, score: 71, note: "Lots of dishwashing this week" },
+    { daysAgo: 15, score: 76, note: "Started using hand cream" },
     { daysAgo: 6, score: 82, note: "" },
   ];
 

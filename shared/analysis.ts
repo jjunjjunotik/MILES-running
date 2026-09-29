@@ -32,21 +32,21 @@ export const METRIC_KEYS = [
 export type MetricKey = (typeof METRIC_KEYS)[number];
 
 export const METRIC_LABELS: Record<MetricKey, string> = {
-  color: "색상",
-  surface: "표면",
-  ridges: "줄무늬",
-  cracks: "갈라짐",
-  shape: "두께 · 모양",
-  skin: "주변 피부",
+  color: "Color",
+  surface: "Surface",
+  ridges: "Ridges",
+  cracks: "Splitting",
+  shape: "Thickness and shape",
+  skin: "Surrounding skin",
 };
 
 export const METRIC_DESCRIPTIONS: Record<MetricKey, string> = {
-  color: "손톱판의 전체적인 색조와 균일함, 부분적인 색 변화",
-  surface: "표면의 매끄러움, 광택, 함몰이나 점상 흔적",
-  ridges: "세로 또는 가로 방향으로 보이는 결·능선",
-  cracks: "끝부분의 갈라짐, 층이 일어남, 부서짐",
-  shape: "두께감, 곡률, 전체적인 윤곽",
-  skin: "손톱 주변 피부와 큐티클, 손톱 옆선의 상태",
+  color: "Overall tone of the nail plate, how even it is, and any local color change",
+  surface: "Smoothness, shine, dents and pitting",
+  ridges: "Lines or ridges running lengthwise or across",
+  cracks: "Splitting, peeling layers and breakage at the tip",
+  shape: "Thickness, curve and overall outline",
+  skin: "Skin around the nail, the cuticle and the side folds",
 };
 
 /**
@@ -58,18 +58,18 @@ export const STATUS_KEYS = ["good", "watch", "consult"] as const;
 export type Status = (typeof STATUS_KEYS)[number];
 
 export const STATUS_LABELS: Record<Status, string> = {
-  good: "특이사항 적음",
-  watch: "지켜보기",
-  consult: "전문가 확인 권장",
+  good: "Nothing notable",
+  watch: "Keep an eye on",
+  consult: "Worth a professional look",
 };
 
 export const CONFIDENCE_KEYS = ["high", "medium", "low"] as const;
 export type Confidence = (typeof CONFIDENCE_KEYS)[number];
 
 export const CONFIDENCE_LABELS: Record<Confidence, string> = {
-  high: "사진에서 비교적 뚜렷하게 보임",
-  medium: "부분적으로만 확인됨",
-  low: "사진만으로는 확인이 어려움",
+  high: "Fairly clear in the photo",
+  medium: "Only partly visible",
+  low: "Hard to judge from the photo",
 };
 
 export interface Metric {
@@ -91,17 +91,17 @@ export const ATTENTION_KEYS = ["routine", "monitor", "consult", "soon"] as const
 export type Attention = (typeof ATTENTION_KEYS)[number];
 
 export const ATTENTION_LABELS: Record<Attention, string> = {
-  routine: "일상 관리 범위",
-  monitor: "경과 지켜보기",
-  consult: "전문가 확인 권장",
-  soon: "빠른 진료 권장",
+  routine: "Everyday care",
+  monitor: "Keep an eye on",
+  consult: "Worth a professional look",
+  soon: "See a doctor soon",
 };
 
 export const ATTENTION_DESCRIPTIONS: Record<Attention, string> = {
-  routine: "흔하게 관찰되는 모습이라 평소 관리만으로 충분한 경우",
-  monitor: "지금 당장 할 일은 없지만, 같은 부위를 다시 찍어 비교해 볼 만한 경우",
-  consult: "사진만으로는 구분이 어려워 한 번 직접 보여주는 편이 나은 경우",
-  soon: "위험 신호가 보여 미루지 말고 진료를 받는 편이 좋은 경우",
+  routine: "A common look where everyday care is enough",
+  monitor: "Nothing to do right now, but worth photographing the same nail again to compare",
+  consult: "Hard to tell apart from a photo, so it is worth showing someone in person",
+  soon: "A warning sign is visible, so it is best not to put off seeing a doctor",
 };
 
 /** 화면에서 위험도 순으로 정렬할 때 쓴다. 큰 값이 더 신경 쓸 항목. */
@@ -136,10 +136,10 @@ export const LIKELIHOOD_KEYS = [
 export type Likelihood = (typeof LIKELIHOOD_KEYS)[number];
 
 export const LIKELIHOOD_LABELS: Record<Likelihood, string> = {
-  likely: "사진 소견과 잘 맞음",
-  possible: "가능성 있음",
-  uncommon: "흔하지 않음",
-  rare_important: "드물지만 놓치면 안 됨",
+  likely: "Fits the photo well",
+  possible: "Possible",
+  uncommon: "Uncommon",
+  rare_important: "Rare but important not to miss",
 };
 
 export interface Possibility {
@@ -155,9 +155,9 @@ export const SIGN_STATES = ["present", "absent", "unclear"] as const;
 export type SignState = (typeof SIGN_STATES)[number];
 
 export const SIGN_STATE_LABELS: Record<SignState, string> = {
-  present: "보임",
-  absent: "보이지 않음",
-  unclear: "사진으로는 확인 어려움",
+  present: "Seen",
+  absent: "Not seen",
+  unclear: "Can't tell from the photo",
 };
 
 export interface SignCheck {
@@ -217,11 +217,11 @@ export const TIP_CATEGORIES = [
 export type TipCategory = (typeof TIP_CATEGORIES)[number];
 
 export const TIP_CATEGORY_LABELS: Record<TipCategory, string> = {
-  nutrition: "식습관",
-  hydration: "수분",
-  care: "관리",
-  habit: "생활습관",
-  rest: "휴식",
+  nutrition: "Diet",
+  hydration: "Hydration",
+  care: "Nail care",
+  habit: "Habits",
+  rest: "Rest",
 };
 
 export interface Tip {
@@ -302,15 +302,15 @@ export const FINGER_KEYS = [
 export type FingerKey = (typeof FINGER_KEYS)[number];
 
 export const FINGER_LABELS: Record<FingerKey, string> = {
-  thumb: "엄지",
-  index: "검지",
-  middle: "중지",
-  ring: "약지",
-  little: "소지",
+  thumb: "Thumb",
+  index: "Index",
+  middle: "Middle",
+  ring: "Ring",
+  little: "Little",
 };
 
 export const DISCLAIMER_SHORT =
-  "이 앱은 의료기기가 아니며, 사진만으로는 질병을 확정할 수 없습니다.";
+  "This app is not a medical device, and no condition can be confirmed from a photo alone.";
 
 export const DISCLAIMER_LONG =
-  "NailSense는 사진에서 보이는 손톱의 겉모습을 정리하고, 그런 모습을 만들 수 있는 상태들의 이름과 위험 신호를 함께 알려 주는 참고용 도구입니다. 여러 가능성을 나열할 뿐 어느 하나로 확정하지 않습니다. 손톱 색소 변화는 눈과 사진만으로는 양성과 악성을 가릴 수 없고, 확인하려면 진료실에서 더모스코피나 조직검사가 필요합니다. 약이나 시술을 안내하지 않으며, 결과가 안심의 근거가 될 수도 없습니다. 위험 신호가 하나라도 보이거나 변화가 이어진다면 피부과 진료를 받으세요.";
+  "NailSense describes how your nails look in a photo and lists the names of conditions that can cause that look, along with warning signs. It lists possibilities without settling on any one of them. Pigment changes in a nail cannot be judged benign or malignant by eye or from a photo; that takes dermoscopy or a biopsy in a clinic. The app does not recommend medicines or procedures, and its results are never a reason to feel reassured. If any warning sign is present or a change keeps going, see a dermatologist.";

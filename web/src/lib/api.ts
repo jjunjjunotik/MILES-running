@@ -23,9 +23,7 @@ export interface AnalyzeArgs {
   base64: string;
   mediaType: string;
   hand: "left" | "right";
-  /** 프롬프트에 넣는 한국어 부위 이름 */
-  finger: string;
-  /** 기록에 저장할 부위 키 */
+  /** 부위 키. 서버가 이 값으로 프롬프트의 부위 이름을 정한다. */
   fingerKey: string;
   note: string;
   /** 사진을 이 기기에 남길지. 서버는 이 값으로 "사진 있음" 표시만 남긴다. */
@@ -45,7 +43,7 @@ export async function analyze(args: AnalyzeArgs): Promise<AnalyzeResult> {
     // 실제 호출과 비슷한 대기 시간을 두어 진행 표시가 제 역할을 하게 한다.
     await new Promise((resolve) => setTimeout(resolve, 2200));
     if (args.signal?.aborted) {
-      throw new DOMException("취소되었습니다.", "AbortError");
+      throw new DOMException("Cancelled", "AbortError");
     }
     return {
       analysis: buildDemoAnalysis(args.base64.length % 13),
@@ -62,7 +60,6 @@ export async function analyze(args: AnalyzeArgs): Promise<AnalyzeResult> {
         image: args.base64,
         mediaType: args.mediaType,
         hand: args.hand,
-        finger: args.finger,
         fingerKey: args.fingerKey,
         note: args.note,
         keepPhoto: args.keepPhoto,
@@ -73,7 +70,7 @@ export async function analyze(args: AnalyzeArgs): Promise<AnalyzeResult> {
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
     throw new ApiError(
-      "분석 서버에 연결하지 못했습니다. 네트워크를 확인해 주세요.",
+      "Couldn't reach the analysis server. Please check your connection.",
       "network",
     );
   }
@@ -82,7 +79,7 @@ export async function analyze(args: AnalyzeArgs): Promise<AnalyzeResult> {
   try {
     body = (await response.json()) as AnalyzeResponse;
   } catch {
-    throw new ApiError("서버 응답을 읽지 못했습니다.", "upstream_error");
+    throw new ApiError("Couldn't read the server response.", "upstream_error");
   }
 
   if (!body.ok) throw new ApiError(body.error, body.code, retryAfter(response));

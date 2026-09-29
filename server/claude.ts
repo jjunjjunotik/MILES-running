@@ -30,7 +30,7 @@ function hasCredentials(): boolean {
 
 async function analyzeNailPhoto(input: AnalyzeInput): Promise<NailAnalysis> {
   if (!hasCredentials()) {
-    throw new AnalyzeError("no_api_key", "ANTHROPIC_API_KEY가 설정되지 않았습니다.");
+    throw new AnalyzeError("no_api_key", "ANTHROPIC_API_KEY is not set.");
   }
 
   const client = getClient();
@@ -78,7 +78,7 @@ async function analyzeNailPhoto(input: AnalyzeInput): Promise<NailAnalysis> {
     if (response.stop_reason === "refusal") {
       throw new AnalyzeError(
         "declined",
-        "이 사진은 분석하지 않았습니다. 다른 사진으로 시도해 주세요.",
+        "This photo wasn't analyzed. Please try a different photo.",
       );
     }
 
@@ -86,7 +86,7 @@ async function analyzeNailPhoto(input: AnalyzeInput): Promise<NailAnalysis> {
     if (!parsed) {
       throw new AnalyzeError(
         "upstream_error",
-        "분석 결과를 해석하지 못했습니다. 잠시 후 다시 시도해 주세요.",
+        "The analysis result couldn't be read. Please try again in a moment.",
       );
     }
 
@@ -96,28 +96,28 @@ async function analyzeNailPhoto(input: AnalyzeInput): Promise<NailAnalysis> {
     if (err instanceof Anthropic.RateLimitError) {
       throw new AnalyzeError(
         "rate_limited",
-        "요청이 많아 잠시 대기가 필요합니다. 잠시 후 다시 시도해 주세요.",
+        "Too many requests right now. Please try again in a moment.",
       );
     }
     if (err instanceof Anthropic.AuthenticationError) {
-      throw new AnalyzeError("no_api_key", "API 키를 확인해 주세요.");
+      throw new AnalyzeError("no_api_key", "Please check the API key.");
     }
     // APIConnectionError 는 APIError 의 하위 클래스이므로 먼저 확인한다.
     if (err instanceof Anthropic.APIConnectionError) {
       throw new AnalyzeError(
         "upstream_error",
-        "분석 서버에 연결하지 못했습니다. 네트워크를 확인해 주세요.",
+        "Couldn't reach the analysis server. Please check your connection.",
       );
     }
     if (err instanceof Anthropic.APIError) {
       throw new AnalyzeError(
         "upstream_error",
-        `분석 서버에서 오류가 발생했습니다. (${err.status ?? "네트워크"})`,
+        `The analysis server returned an error. (${err.status ?? "network"})`,
       );
     }
     throw new AnalyzeError(
       "upstream_error",
-      "분석 중 알 수 없는 오류가 발생했습니다.",
+      "Something went wrong during analysis.",
     );
   }
 }

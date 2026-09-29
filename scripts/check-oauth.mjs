@@ -48,7 +48,7 @@ const base = (over = {}) => ({
   sub: "google-user-1",
   email: "social@example.com",
   email_verified: true,
-  name: "소셜 사용자",
+  name: "Social User",
   exp: Math.floor(Date.now() / 1000) + 600,
   ...over,
 });

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "AI 기반 손톱 관찰 도우미 - 사진으로 손톱의 겉모습을 살펴보고 생활습관 팁을 제안합니다.",
+  "description": "Nail observation helper that describes how a nail looks in a photo and suggests everyday care tips.",
   "scripts": {
     "dev": "concurrently -n server,web -c cyan,magenta \"npm:dev:server\" \"npm:dev:web\"",
     "dev:server": "tsx watch server/index.ts",
@@ -23,7 +23,7 @@
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",
     "@fontsource/ibm-plex-mono": "^5.3.0",
-    "@fontsource/ibm-plex-sans-kr": "^5.3.0",
+    "@fontsource/ibm-plex-sans": "^5.3.0",
     "@google/genai": "^2.22.0",
     "@phosphor-icons/react": "^2.1.10",
     "express": "^5.1.0",

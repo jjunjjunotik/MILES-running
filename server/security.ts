@@ -182,7 +182,7 @@ export function sameOriginOnly(
     res.status(403).json({
       ok: false,
       code: "bad_request",
-      error: "허용되지 않은 요청입니다.",
+      error: "This request isn't allowed.",
     });
     return;
   }
@@ -204,7 +204,7 @@ export function sameOriginOnly(
   res.status(403).json({
     ok: false,
     code: "bad_request",
-    error: "허용되지 않은 요청입니다.",
+    error: "This request isn't allowed.",
   });
 }
 
@@ -267,7 +267,7 @@ export function createRateLimiter(options: {
       res.status(429).json({
         ok: false,
         code: "rate_limited",
-        error: "지금은 요청이 많습니다. 잠시 후 다시 시도해 주세요.",
+        error: "There are a lot of requests right now. Please try again in a moment.",
       });
       return;
     }
@@ -285,7 +285,7 @@ export function createRateLimiter(options: {
       res.status(429).json({
         ok: false,
         code: "rate_limited",
-        error: `분석 요청이 너무 잦습니다. ${retryAfter}초 뒤에 다시 시도해 주세요.`,
+        error: `Too many analysis requests. Please try again in ${retryAfter} seconds.`,
       });
       return;
     }

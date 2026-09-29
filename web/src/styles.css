@@ -51,8 +51,8 @@
   --r-sm: 6px;
 
   --font:
-    "IBM Plex Sans KR", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo",
-    "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif;
+    "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui,
+    sans-serif;
   --font-num: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
   --gutter: 20px;
@@ -152,7 +152,6 @@ body {
   line-height: 1.6;
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
-  word-break: keep-all;
   overflow-wrap: break-word;
 }
 
@@ -1435,8 +1434,16 @@ img {
   color: var(--ink);
 }
 
+/* 영어 상태 이름("Not seen")이 중간에서 끊기지 않게, 넘치면 통째로 다음 줄로 보낸다. */
+.sign-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 6px;
+}
+
 .sign-state {
-  margin-left: 6px;
+  white-space: nowrap;
   font-size: 13px;
   font-weight: 400;
   color: var(--tone, var(--ink-3));

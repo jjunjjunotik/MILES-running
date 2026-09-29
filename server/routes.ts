@@ -57,7 +57,7 @@ function fail(res: Response, err: unknown): void {
   res.status(500).json({
     ok: false,
     code: "server_error",
-    error: "처리 중 문제가 생겼습니다. 잠시 후 다시 시도해 주세요.",
+    error: "Something went wrong. Please try again in a moment.",
   });
 }
 
@@ -112,7 +112,7 @@ api.post("/auth/google", authLimiter, async (req, res) => {
     const idToken =
       typeof req.body?.idToken === "string" ? req.body.idToken : "";
     if (!idToken) {
-      throw new AuthError(400, "bad_request", "로그인 정보가 전달되지 않았습니다.");
+      throw new AuthError(400, "bad_request", "No sign-in details were received.");
     }
 
     const verified = await verifyGoogleToken(idToken);
@@ -138,7 +138,7 @@ api.post("/auth/apple", authLimiter, async (req, res) => {
     const nonce =
       typeof req.body?.nonce === "string" ? req.body.nonce : undefined;
     if (!idToken && !code) {
-      throw new AuthError(400, "bad_request", "로그인 정보가 전달되지 않았습니다.");
+      throw new AuthError(400, "bad_request", "No sign-in details were received.");
     }
 
     const verified = await verifyAppleLogin({ idToken, code, nonce });
@@ -186,7 +186,7 @@ api.delete("/auth/account", requireUser, authLimiter, (req, res) => {
           ? req.body.confirmEmail.trim().toLowerCase()
           : "";
       if (typed !== req.user!.email) {
-        throw new AuthError(400, "confirm_mismatch", "이메일이 일치하지 않습니다.");
+        throw new AuthError(400, "confirm_mismatch", "The email doesn't match.");
       }
     }
     endAllSessions(req.user!.id);
@@ -411,7 +411,7 @@ api.get("/scans/:id", requireUser, (req, res) => {
 
     // 남의 기록도 없는 기록과 똑같이 취급한다. 존재 여부조차 알려 주지 않는다.
     if (!row) {
-      res.status(404).json({ ok: false, code: "not_found", error: "기록을 찾지 못했습니다." });
+      res.status(404).json({ ok: false, code: "not_found", error: "Scan not found." });
       return;
     }
     res.json({ ok: true, scan: toScan(row) });
@@ -426,7 +426,7 @@ api.delete("/scans/:id", requireUser, (req, res) => {
       .prepare("DELETE FROM nail_scans WHERE id = ? AND user_id = ?")
       .run(String(req.params.id), req.user!.id);
     if (result.changes === 0) {
-      res.status(404).json({ ok: false, code: "not_found", error: "기록을 찾지 못했습니다." });
+      res.status(404).json({ ok: false, code: "not_found", error: "Scan not found." });
       return;
     }
     res.json({ ok: true });
@@ -610,7 +610,7 @@ api.get("/articles/:slug", (req, res) => {
       )
       .get(String(req.params.slug));
     if (!row) {
-      res.status(404).json({ ok: false, code: "not_found", error: "글을 찾지 못했습니다." });
+      res.status(404).json({ ok: false, code: "not_found", error: "Guide not found." });
       return;
     }
     res.json({ ok: true, article: row });

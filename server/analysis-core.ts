@@ -79,9 +79,9 @@ export function normalize(analysis: NailAnalysis): NailAnalysis {
         key,
         status: "watch" as const,
         confidence: "low" as const,
-        observation: "이 사진에서는 해당 항목을 확인하기 어려웠습니다.",
+        observation: "This area was hard to make out in this photo.",
         explanation:
-          "손톱 전체가 잘 보이도록 다시 촬영하면 더 자세히 살펴볼 수 있습니다.",
+          "A photo that shows the whole nail clearly would allow a closer look.",
       },
   );
 
@@ -98,17 +98,14 @@ export function normalize(analysis: NailAnalysis): NailAnalysis {
 
 /**
  * 모델은 프롬프트에서 막아도 가끔 문장 사이에 줄표(—, –)를 끼워 넣는다.
- * 화면 문구 규칙에 맞춰 숫자 사이의 줄표는 물결표("2~3주")로, 문장이 끝난 자리는
- * 마침표로, 나머지는 쉼표로 바꾼다.
- * 문장부호만 고칠 뿐 내용은 건드리지 않는다.
+ * 화면 문구 규칙에 맞춰 숫자 사이의 줄표는 하이픈("2-3 weeks")으로,
+ * 나머지는 쉼표로 바꾼다. 문장부호만 고칠 뿐 내용은 건드리지 않는다.
  */
 export function tidyDashes(text: string): string {
   return text
-    .replace(/(\d)\s*[–—]\s*(\d)/g, "$1~$2")
-    // "~습니다 — 이어지는 말" 처럼 문장이 끝난 자리라면 마침표로 끊는다.
-    .replace(/([다요])\s*[—–]+\s*(?=\S)/g, "$1. ")
+    .replace(/(\d)\s*[–—]\s*(\d)/g, "$1-$2")
     .replace(/\s*[—–]+\s*/g, ", ")
-    .replace(/,\s*([,.])/g, "$1")
+    .replace(/,\s*([,.;:!?])/g, "$1")
     .replace(/^,\s*/, "")
     .replace(/,\s*$/, "");
 }

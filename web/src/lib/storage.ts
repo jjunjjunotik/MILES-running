@@ -29,7 +29,7 @@ function openDb(): Promise<IDBDatabase> {
   if (dbPromise) return dbPromise;
   dbPromise = new Promise((resolve, reject) => {
     if (typeof indexedDB === "undefined") {
-      reject(new Error("이 환경에서는 저장소를 쓸 수 없습니다."));
+      reject(new Error("Storage isn't available here."));
       return;
     }
     const request = indexedDB.open(DB_NAME, DB_VERSION);
@@ -45,7 +45,7 @@ function openDb(): Promise<IDBDatabase> {
     };
     request.onsuccess = () => resolve(request.result);
     request.onerror = () =>
-      reject(request.error ?? new Error("저장소를 열지 못했습니다."));
+      reject(request.error ?? new Error("Couldn't open storage."));
   });
   return dbPromise;
 }
@@ -61,7 +61,7 @@ function tx<T>(
         const transaction = db.transaction(stores, mode);
         let request: IDBRequest<T> | void;
         transaction.onerror = () =>
-          reject(transaction.error ?? new Error("저장소 오류"));
+          reject(transaction.error ?? new Error("Storage error"));
         transaction.oncomplete = () =>
           resolve(request ? request.result : undefined);
         request = run(transaction);
