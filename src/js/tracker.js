@@ -172,7 +172,6 @@
     _push(latlng, altitude, knownStep) {
       const route = this.state.route;
       const hasAlt = typeof altitude === 'number' && isFinite(altitude);
-      if (hasAlt) latlng.alt = Math.round(altitude * 10) / 10;
       if (!route.length) {
         if (hasAlt) this._climb(altitude);
         route.push(latlng);

@@ -242,35 +242,10 @@
 
         <div id="finishSplits"></div>
 
-        <!-- The runner lays the card out. Filled in by UI.paintCard. -->
-        <section class="card-design" aria-labelledby="cardDesignTitle">
-          <h3 class="card-design-title" id="cardDesignTitle">Make the card yours</h3>
-          <div class="design-field">
-            <span class="field-label" id="cardLayoutLabel">Layout</span>
-            <div class="seg seg--block" id="cardTemplates" role="group" aria-labelledby="cardLayoutLabel"></div>
-          </div>
-          <div class="design-field">
-            <span class="field-label" id="cardNumbersLabel">Numbers · up to 3</span>
-            <div class="design-chips" id="cardStats" role="group" aria-labelledby="cardNumbersLabel"></div>
-          </div>
-          <div class="design-toggle" id="cardHighlightsRow">
-            <div class="design-toggle-text">
-              <span class="setting-name">Highlights</span>
-              <span class="tiny" id="cardHighlightsNote">Records and streaks, found for you</span>
-            </div>
-            <button class="switch" type="button" role="switch" id="cardHighlights" aria-checked="true" aria-label="Highlights"></button>
-          </div>
-          <div class="design-toggle" id="cardProfileRow">
-            <div class="design-toggle-text">
-              <span class="setting-name">Elevation line</span>
-              <span class="tiny">The climb along the run, under the map</span>
-            </div>
-            <button class="switch" type="button" role="switch" id="cardProfile" aria-checked="true" aria-label="Elevation line"></button>
-          </div>
-          <div class="design-field">
-            <span class="field-label" id="cardColourLabel">Colour</span>
-            <div class="seg seg--block" id="cardThemes" role="group" aria-labelledby="cardColourLabel"></div>
-          </div>
+        <!-- The card's look: a picture of each layout, and the colours. -->
+        <section class="card-style" aria-label="Card style">
+          <div class="style-row" id="cardTemplates" role="group" aria-label="Layout"></div>
+          <div class="style-row style-row--swatches" id="cardThemes" role="group" aria-label="Colour"></div>
         </section>
 
         <div class="finish-actions">

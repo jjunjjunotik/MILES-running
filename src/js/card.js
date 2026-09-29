@@ -87,14 +87,13 @@
     ctx.closePath();
   }
 
-  /* --- What a card can hold -----------------------------------------------
-     The runner lays the card out: which of four layouts, which numbers, and
-     whether the highlights and the elevation line are on it. What they can
-     choose depends on what the run actually recorded — a run with no splits
-     has no Splits layout, and one whose phone gave no altitude has no climb. */
+  /* --- Layouts ------------------------------------------------------------
+     Three ways to lay out the same run, the runner's pick: the route on the
+     map, the route's shape on its own like a poster, or a see-through sticker
+     for their own photo. The numbers are the same three on every card. The
+     splits are not a layout: they are listed under the card already. ------- */
 
-  const TEMPLATES = { map: 'Map', poster: 'Poster', splits: 'Splits', sticker: 'Sticker' };
-  const STAT_ORDER = ['time', 'pace', 'elev', 'speed', 'fastest', 'distance'];
+  const TEMPLATES = { map: 'Map', poster: 'Poster', sticker: 'Sticker' };
 
   /** The one number this run was about, and the line that says what it is. */
   function headlineOf(activity) {
@@ -115,55 +114,20 @@
     };
   }
 
-  /** Every number this run can put on its card, keyed. */
-  function statsFor(activity) {
-    const a = activity;
-    const splits = a.splits || [];
-    const out = {
-      time: { label: 'Time', value: clock(a.duration) },
-      pace: { label: 'Pace', value: Units.paceText(a.duration / Math.max(1, a.distance)), unit: Units.paceLabel() },
-    };
-    if (typeof a.elevation === 'number') out.elev = { label: 'Elevation gain', value: Units.elevText(a.elevation), unit: Units.elevLabel() };
-    if (a.duration > 0) out.speed = { label: 'Avg speed', value: Units.speed(a.distance / a.duration).toFixed(1), unit: Units.speedLabel() };
-    if (splits.length >= 2) out.fastest = { label: 'Fastest km', value: clock(Math.min.apply(null, splits.map((x) => x.seconds))) };
-    // Said once: when the headline is the distance, it is not offered again.
-    if (!headlineOf(a).isDistance) out.distance = { label: 'Distance', value: Units.distText(a.distance), unit: Units.distLabel() };
-    return out;
-  }
-
   /**
-   * The runner's picks that this run can show. A pick this run cannot show —
-   * a fastest km with no splits, a climb with no altitude — is replaced from
-   * the usual order, so the card keeps the number of columns they chose.
+   * Time, pace and the climb. A run whose phone gave no altitude has no climb
+   * to show, and its third number is the distance instead — or, when the
+   * distance is already the headline, the average speed.
    */
-  function pickStats(activity, keys) {
-    const all = statsFor(activity);
-    const want = Math.min(3, (keys && keys.length) || 3);
-    const picked = (keys || []).filter((k, i, xs) => all[k] && xs.indexOf(k) === i).slice(0, 3);
-    STAT_ORDER.forEach((k) => { if (picked.length < want && all[k] && picked.indexOf(k) < 0) picked.push(k); });
-    return picked;
-  }
-
-  function templatesFor(activity) {
-    return Object.keys(TEMPLATES).filter((t) => t !== 'splits' || (activity.splits || []).length >= 2);
-  }
-
-  /** Altitude along the run, resampled evenly by distance; null without it. */
-  function profileOf(activity) {
-    const pts = (activity.route || []).filter((p) => typeof p.alt === 'number');
-    if (pts.length < 8) return null;
-    const along = [0];
-    for (let i = 1; i < pts.length; i++) along.push(along[i - 1] + Geo.distance(pts[i - 1], pts[i]));
-    const total = along[along.length - 1];
-    if (!total) return null;
-    const out = [];
-    let j = 0;
-    for (let k = 0; k < 90; k++) {
-      const d = (k / 89) * total;
-      while (j < along.length - 2 && along[j + 1] < d) j++;
-      const t = (d - along[j]) / Math.max(1e-6, along[j + 1] - along[j]);
-      out.push(pts[j].alt + (pts[j + 1].alt - pts[j].alt) * Math.min(1, Math.max(0, t)));
-    }
+  function statsOf(activity) {
+    const a = activity;
+    const out = [
+      { label: 'Time', value: clock(a.duration) },
+      { label: 'Pace', value: Units.paceText(a.duration / Math.max(1, a.distance)), unit: Units.paceLabel() },
+    ];
+    if (typeof a.elevation === 'number') out.push({ label: 'Elevation gain', value: Units.elevText(a.elevation), unit: Units.elevLabel() });
+    else if (!headlineOf(a).isDistance) out.push({ label: 'Distance', value: Units.distText(a.distance), unit: Units.distLabel() });
+    else out.push({ label: 'Avg speed', value: Units.speed(a.distance / Math.max(1, a.duration)).toFixed(1), unit: Units.speedLabel() });
     return out;
   }
 
@@ -171,26 +135,22 @@
    * Draws the card for an activity.
    * @param {HTMLCanvasElement} canvas
    * @param {object} activity
-   * @param {object} [options] – { theme, athlete, rank, totalArea, template,
-   *   stats: keys, highlights: lines to show, profile: draw the elevation line }
+   * @param {object} [options] – { theme, athlete, rank, totalArea, template }
    *
    * Every block it draws is recorded, with its box, on `canvas.cardLayout` —
    * which is how the tests prove that nothing on the card lands on anything
-   * else, whatever the runner switches on.
+   * else, in any layout.
    */
   function renderCard(canvas, activity, options) {
     const opts = options || {};
     const kind = activity.kind || 'free';
     const K = M.KINDS[kind] || M.KINDS.free;
     const theme = THEMES[opts.theme] || { accent: K.accent, ink: K.ink };
-    const templates = templatesFor(activity);
-    const template = templates.indexOf(opts.template) >= 0 ? opts.template : 'map';
+    const template = TEMPLATES[opts.template] ? opts.template : 'map';
     const sticker = template === 'sticker';
     const seed = Math.floor((activity.startedAt || 7000) / 1000) % 9973;
     const headline = headlineOf(activity);
-    const stats = pickStats(activity, opts.stats).map((k) => statsFor(activity)[k]);
-    const badges = (opts.highlights || []).slice(0, 2);
-    const profile = opts.profile && (template === 'map' || template === 'splits') ? profileOf(activity) : null;
+    const stats = statsOf(activity);
 
     canvas.width = W;
     canvas.height = H;
@@ -224,34 +184,16 @@
       drawHeader(L, K, headline.caption);
       drawDate(L, activity, 262);
       drawHero(L, headline, 484, 240);
-      const badgeY = drawBadges(L, badges, 504);
-      const top = badgeY ? 568 : 520;
-      const bottom = profile ? 930 : 1008;
-      const panel = { x: PAD, y: top, w: W - PAD * 2, h: bottom - top };
-      const view = drawMapPanel(L, activity, panel, outcome, seed);
-      if (profile) drawProfile(L, profile, { x: PAD, y: 948, w: W - PAD * 2, h: 60 });
+      const panel = { x: PAD, y: 528, w: W - PAD * 2, h: 478 };
+      canvas._view = drawMapPanel(L, activity, panel, outcome, seed);
       drawStats(L, stats, 1140);
       drawFooter(L, activity, opts);
-      canvas._view = view;
     } else if (template === 'poster') {
       // The shape of the run, large and on its own, with the number under it.
       drawHeader(L, K, headline.caption);
       drawDate(L, activity, 262);
-      const badgeY = drawBadges(L, badges, 300);
-      const top = badgeY ? 366 : 306;
-      drawShape(L, activity, { x: PAD, y: top, w: W - PAD * 2, h: 830 - top });
+      drawShape(L, activity, { x: PAD, y: 306, w: W - PAD * 2, h: 524 });
       drawHero(L, headline, 1018, 240);
-      drawStats(L, stats, 1140);
-      drawFooter(L, activity, opts);
-    } else if (template === 'splits') {
-      drawHeader(L, K, headline.caption);
-      drawDate(L, activity, 262);
-      drawHero(L, headline, 448, 180);
-      const badgeY = drawBadges(L, badges, 468);
-      const top = badgeY ? 534 : 486;
-      const bottom = profile ? 930 : 1008;
-      drawSplits(L, activity.splits || [], { x: PAD, y: top, w: W - PAD * 2, h: bottom - top });
-      if (profile) drawProfile(L, profile, { x: PAD, y: 948, w: W - PAD * 2, h: 60 });
       drawStats(L, stats, 1140);
       drawFooter(L, activity, opts);
     } else {
@@ -368,33 +310,6 @@
     text(L, headline.unit, PAD - 8 + valueW + 24, baseline, 'unit');
   }
 
-  /** Highlights as plates in a row; one that would not fit is left off. */
-  function drawBadges(L, lines, top) {
-    const { ctx, theme } = L;
-    if (!lines.length) return 0;
-    ctx.font = `700 26px ${SANS}`;
-    let x = PAD;
-    let drawn = 0;
-    lines.forEach((line, i) => {
-      const w = ctx.measureText(line).width + 72;
-      if (x + w > W - PAD) return;
-      roundRect(ctx, x, top, w, 50, 12);
-      ctx.fillStyle = INK.plate;
-      ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = INK.line;
-      ctx.stroke();
-      ctx.fillStyle = i ? '#eab052' : theme.accent;
-      ctx.fillRect(x + 22, top + 19, 12, 12);
-      ctx.fillStyle = INK.hi;
-      ctx.fillText(line, x + 48, top + 34);
-      L.layout.push({ name: 'badge', parent: null, x, y: top, w, h: 50 });
-      x += w + 14;
-      drawn++;
-    });
-    return drawn ? top + 50 : 0;
-  }
-
   function drawMapPanel(L, activity, panel, outcome, seed) {
     const { ctx, theme } = L;
     const view = routeMap(activity, panel, outcome ? 86 : 0);
@@ -486,113 +401,7 @@
     ctx.restore();
   }
 
-  /**
-   * The splits, fitted to the room they are given. As rows while each row
-   * can be at least 36px tall; past that — a long run, or the highlights and
-   * the elevation line both on — as columns, which fit any number. Either
-   * way the block is drawn inside its box and nothing outside it moves.
-   */
-  function drawSplits(L, splits, box) {
-    const { ctx, theme } = L;
-    L.layout.push({ name: 'splits', parent: null, x: box.x, y: box.y, w: box.w, h: box.h });
-    const n = splits.length;
-    if (!n) return;
-    const secs = splits.map((x) => x.seconds);
-    const fastest = Math.min.apply(null, secs);
-    const slowest = Math.max.apply(null, secs);
-    const rowH = Math.min(64, box.h / n);
-
-    if (rowH >= 36) {
-      const labelPx = Math.round(Math.max(22, Math.min(30, rowH * 0.5)));
-      const timePx = Math.round(Math.max(30, Math.min(50, rowH * 0.78)));
-      const barH = Math.round(Math.max(10, Math.min(16, rowH * 0.28)));
-      const top = box.y + (box.h - rowH * n) / 2;
-      const barX = box.x + 130;
-      const barW = box.w - 130 - 150;
-      splits.forEach((sp, i) => {
-        const y = top + rowH * i;
-        const mid = y + rowH / 2;
-        const best = sp.seconds === fastest;
-        ctx.fillStyle = best ? theme.ink : INK.lo;
-        ctx.font = `600 ${labelPx}px ${SANS}`;
-        text(L, `${sp.km} km`, box.x, mid + labelPx * 0.36, 'split-label', 'splits');
-        ctx.fillStyle = 'rgba(243, 236, 224, 0.07)';
-        ctx.fillRect(barX, mid - barH / 2, barW, barH);
-        ctx.fillStyle = best ? theme.accent : 'rgba(243, 236, 224, 0.4)';
-        ctx.fillRect(barX, mid - barH / 2, barW * (fastest / sp.seconds), barH);
-        L.layout.push({ name: 'split-bar', parent: 'splits', x: barX, y: mid - barH / 2, w: barW, h: barH });
-        ctx.fillStyle = INK.hi;
-        ctx.font = `700 ${timePx}px ${NUM}`;
-        ctx.textAlign = 'right';
-        text(L, clock(sp.seconds), box.x + box.w, mid + timePx * 0.35, 'split-time', 'splits');
-        ctx.textAlign = 'left';
-      });
-      return;
-    }
-
-    // Columns: one per kilometre, taller for quicker, the quickest in colour
-    // with its time over it. Kilometre numbers every five under the axis.
-    const labelH = 40;
-    const headH = 52;
-    const chart = { x: box.x, y: box.y + headH, w: box.w, h: box.h - headH - labelH };
-    const gap = Math.max(2, Math.min(10, chart.w / n * 0.25));
-    const colW = (chart.w - gap * (n - 1)) / n;
-    const range = Math.max(1e-6, fastest / fastest - fastest / slowest);
-    let bestX = 0;
-    let bestTop = 0;
-    splits.forEach((sp, i) => {
-      const speed = (fastest / sp.seconds - fastest / slowest) / range;       // 0 slowest … 1 quickest
-      const h = chart.h * (0.35 + 0.65 * speed);
-      const x = chart.x + i * (colW + gap);
-      const y = chart.y + chart.h - h;
-      const best = sp.seconds === fastest;
-      ctx.fillStyle = best ? theme.accent : 'rgba(243, 236, 224, 0.35)';
-      ctx.fillRect(x, y, colW, h);
-      if (best) { bestX = x + colW / 2; bestTop = y; }
-      if (sp.km === 1 || sp.km % 5 === 0) {
-        ctx.fillStyle = INK.lo;
-        ctx.font = `600 24px ${SANS}`;
-        ctx.textAlign = 'center';
-        text(L, String(sp.km), x + colW / 2, chart.y + chart.h + 32, 'split-axis', 'splits');
-        ctx.textAlign = 'left';
-      }
-    });
-    L.layout.push({ name: 'split-chart', parent: 'splits', x: chart.x, y: chart.y, w: chart.w, h: chart.h });
-    ctx.fillStyle = theme.ink;
-    ctx.font = `700 40px ${NUM}`;
-    const label = `Fastest ${clock(fastest)}`;
-    const lw = ctx.measureText(label).width;
-    const lx = Math.max(box.x, Math.min(box.x + box.w - lw, bestX - lw / 2));
-    text(L, label, lx, Math.min(bestTop - 12, chart.y - 10), 'split-best', 'splits');
-  }
-
-  /** The climb along the run, as a thin line over a faint fill. */
-  function drawProfile(L, alts, box) {
-    const { ctx } = L;
-    const lo = Math.min.apply(null, alts);
-    const hi = Math.max.apply(null, alts);
-    const span = Math.max(4, hi - lo);                  // a flat run stays flat
-    const pt = (v, i) => [box.x + (i / (alts.length - 1)) * box.w, box.y + box.h - 4 - ((v - lo) / span) * (box.h - 8)];
-    ctx.beginPath();
-    alts.forEach((v, i) => { const [x, y] = pt(v, i); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
-    ctx.lineTo(box.x + box.w, box.y + box.h);
-    ctx.lineTo(box.x, box.y + box.h);
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(243, 236, 224, 0.07)';
-    ctx.fill();
-    ctx.beginPath();
-    alts.forEach((v, i) => { const [x, y] = pt(v, i); if (i) ctx.lineTo(x, y); else ctx.moveTo(x, y); });
-    ctx.strokeStyle = 'rgba(243, 236, 224, 0.55)';
-    ctx.lineWidth = 3;
-    ctx.lineJoin = 'round';
-    ctx.stroke();
-    L.layout.push({ name: 'profile', parent: null, x: box.x, y: box.y, w: box.w, h: box.h });
-  }
-
-  /**
-   * The chosen numbers: the value, its unit beside it, a plain word under it,
-   * a hairline between columns. One, two or three, sharing the width.
-   */
+  /** The three numbers: value, unit beside it, a plain word under it. */
   function drawStats(L, stats, baseline, bare) {
     const { ctx } = L;
     const n = Math.max(1, stats.length);
@@ -788,13 +597,7 @@
   M.CARD_THEMES = THEME_NAMES;
   M.CARD_TEMPLATES = TEMPLATES;
   M.cardThemesFor = themesFor;
-  M.cardTemplatesFor = templatesFor;
-  M.cardStatsFor = (activity) => {
-    const all = statsFor(activity);
-    return STAT_ORDER.filter((k) => all[k]).map((k) => ({ key: k, label: all[k].label }));
-  };
-  M.cardPickStats = pickStats;
-  M.cardHasProfile = (activity) => !!profileOf(activity);
+  M.CARD_THEME_COLOURS = THEMES;
   M.ordinal = ordinal;
   M.downloadCard = downloadCard;
 })(window.MILES);

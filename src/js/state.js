@@ -7,7 +7,7 @@
 (function (M) {
   'use strict';
 
-  const { Geo, Store, Bus, Units, startOfWeek, startOfMonth, uid, clock, climbOf } = M;
+  const { Geo, Store, Bus, Units, startOfWeek, startOfMonth, uid, climbOf } = M;
 
   /* --- Ranks --------------------------------------------------------------
      Earned with quest XP, never with raw distance: the ladder rewards what
@@ -134,9 +134,8 @@
     },
   ];
 
-  /* How a new runner's record card is laid out until they change it: the map,
-     and the three numbers the headline does not already say. */
-  const CARD_DESIGN = { template: 'map', stats: ['time', 'pace', 'elev'], highlights: true, profile: true };
+  /* How a new runner's record card is laid out until they pick another. */
+  const CARD_DESIGN = { template: 'map' };
 
   /* --- Derived statistics ------------------------------------------------- */
 
@@ -202,67 +201,6 @@
 
     totalArea(state) {
       return state.territories.reduce((s, t) => s + t.area, 0);
-    },
-
-    /**
-     * What is worth saying about a run on its card, in the order it is worth
-     * saying it. Every line is checked against the history rather than
-     * guessed, and only against runs before it, so an old card still says
-     * what was true on the day.
-     */
-    highlights(state, a) {
-      const out = [];
-      const earlier = state.activities.filter((x) => x.id !== a.id && x.startedAt < a.startedAt);
-      const when = new Date(a.startedAt);
-      const month = when.toLocaleDateString('en-US', { month: 'long' });
-      const sameMonth = (x) => {
-        const d = new Date(x.startedAt);
-        return d.getFullYear() === when.getFullYear() && d.getMonth() === when.getMonth();
-      };
-      const inMonth = earlier.filter(sameMonth);
-      const pace = (x) => x.duration / Math.max(1, x.distance);
-
-      if (earlier.length >= 2 && earlier.every((x) => a.distance > x.distance)) out.push('Longest run yet');
-      else if (inMonth.length && inMonth.every((x) => a.distance > x.distance)) out.push(`Longest run of ${month}`);
-
-      // Pace only means something over a real distance.
-      if (a.distance >= 3000) {
-        const peers = earlier.filter((x) => x.distance >= 3000);
-        const peersInMonth = peers.filter(sameMonth);
-        if (peers.length >= 2 && peers.every((x) => pace(a) < pace(x))) out.push('Fastest pace yet');
-        else if (peersInMonth.length && peersInMonth.every((x) => pace(a) < pace(x))) out.push(`Fastest pace of ${month}`);
-      }
-
-      // A negative split — the second half quicker than the first — is the
-      // thing a runner is proudest of and the thing no total shows.
-      const splits = a.splits || [];
-      if (splits.length >= 4) {
-        const half = Math.floor(splits.length / 2);
-        const avg = (xs) => xs.reduce((sum, x) => sum + x.seconds, 0) / xs.length;
-        if (avg(splits.slice(splits.length - half)) < avg(splits.slice(0, half))) out.push('Negative split');
-      }
-
-      if (a.elevation && inMonth.length && inMonth.every((x) => (x.elevation || 0) < a.elevation)) out.push(`Biggest climb of ${month}`);
-
-      if (a.claimedArea > 0) {
-        const claims = earlier.filter((x) => x.claimedArea > 0);
-        if (claims.length && claims.every((x) => a.claimedArea > x.claimedArea)) out.push('Biggest claim yet');
-      }
-
-      // The streak that ended with this run. Days are stepped with the
-      // calendar, not by 24 hours, so a clock change cannot break one.
-      const dayOf = (t) => new Date(t).setHours(0, 0, 0, 0);
-      const days = new Set(state.activities.filter((x) => x.startedAt <= a.startedAt).map((x) => dayOf(x.startedAt)));
-      let streak = 0;
-      const cursor = new Date(dayOf(a.startedAt));
-      while (days.has(cursor.getTime())) { streak++; cursor.setDate(cursor.getDate() - 1); }
-      if (streak >= 3) out.push(`${streak}-day streak`);
-
-      if (splits.length >= 2) {
-        const best = splits.reduce((b, x) => (x.seconds < b.seconds ? x : b));
-        out.push(`Fastest km ${clock(best.seconds)}`);
-      }
-      return out;
     },
 
     streak(state) {
@@ -360,10 +298,10 @@
       { day: today - 12, dist: 5200, kind: 'free' },
     ];
 
-    // Altitudes laid along the route from their own generator and scaled so
-    // the route climbs the amount the seed drew for it: the card's elevation
-    // line and its "Elevation gain" then describe the same hill.
-    const seedAltitudes = (route, climb, r) => {
+    // Altitudes along the route from their own generator, scaled so the
+    // route climbs about what the seed drew for it; the climb is then counted
+    // from them the same way a real run's is.
+    const seedClimb = (route, climb, r) => {
       const waves = [0, 1, 2].map(() => ({ f: 0.6 + r() * 2.4, p: r() }));
       const raw = route.map((_, i) => {
         const t = i / Math.max(1, route.length - 1);
@@ -371,8 +309,7 @@
       });
       const unit = climbOf(raw.map((v) => v * 10)) || 1;
       const scale = (10 * climb) / unit;
-      route.forEach((pt, i) => { pt.alt = Math.round((24 + raw[i] * scale) * 10) / 10; });
-      return Math.round(climbOf(route.map((pt) => pt.alt)));
+      return Math.round(climbOf(raw.map((v) => 24 + v * scale)));
     };
 
     // One split per whole kilometre, wandering a few seconds either side of
@@ -398,7 +335,7 @@
         duration,
         // The draw from `rand` stays exactly where it was, so every other
         // seeded number is unchanged.
-        elevation: seedAltitudes(route, Math.round(20 + rand() * 90), M.rng(Math.floor(startedAt / 1000) % 99989)),
+        elevation: seedClimb(route, Math.round(20 + rand() * 90), M.rng(Math.floor(startedAt / 1000) % 99989)),
         route,
         // Its own generator, so adding splits left every other seeded number as it was.
         splits: seedSplits(p.dist, paceSec, M.rng(Math.floor(startedAt / 1000) % 99991)),
@@ -663,7 +600,7 @@
           units: 'km',
           mapStyle: 'dark',
           heroBg: 0,
-          cardDesign: Object.assign({}, CARD_DESIGN, { stats: CARD_DESIGN.stats.slice() }),
+          cardDesign: Object.assign({}, CARD_DESIGN),
           rankSeen: RANKS[0].key,
           pro: { plan: null, trialEndsAt: null },
           rangeMode: 'week',
@@ -724,7 +661,10 @@
       // Saved before the home picture could be swiped.
       if (typeof this.data.heroBg !== 'number') this.data.heroBg = 0;
       // Saved before the record card could be laid out by the runner.
-      if (!this.data.cardDesign) this.data.cardDesign = Object.assign({}, CARD_DESIGN, { stats: CARD_DESIGN.stats.slice() });
+      // A Splits layout and number, highlight and elevation switches came and
+      // went; only the layout is kept.
+      const layout = this.data.cardDesign && this.data.cardDesign.template;
+      this.data.cardDesign = { template: ['map', 'poster', 'sticker'].indexOf(layout) >= 0 ? layout : 'map' };
       // "You" was neon lime; it is chalk now. Runs and crew rosters saved
       // with the old colour would otherwise keep drawing in it.
       const LIME = '#c8ff2e';

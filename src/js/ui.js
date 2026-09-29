@@ -922,105 +922,64 @@
      * card you share is yours rather than the app's.
      */
     /**
-     * Draws the record card and the controls that lay it out. The layout,
-     * the numbers and the two toggles are the runner's own and are kept, so
-     * the next card comes out the way they left this one. Colourways are what
+     * Draws the record card and, under it, the two things the runner can
+     * change about it: the layout, picked from a small picture of each, and
+     * the colour. The layout is kept for the next card. Colourways are what
      * Supporter buys; the default per run kind is free.
      */
     paintCard(activity, athlete) {
-      const design = State.data.cardDesign;
       // Never the kind's own colour a second time under another name:
       // "Default" and "Chalk" on a free run were the same card.
       const offered = M.cardThemesFor(activity.kind);
       if (this.cardTheme && offered.indexOf(this.cardTheme) < 0) this.cardTheme = null;
-      const templates = M.cardTemplatesFor(activity);
-      const template = templates.indexOf(design.template) >= 0 ? design.template : 'map';
-      const stats = M.cardPickStats(activity, design.stats);
-      const lines = Stats.highlights(State.data, activity);
-      const hasProfile = M.cardHasProfile(activity);
-
-      M.renderCard($('#cardCanvas'), activity, {
+      const template = State.data.cardDesign.template;
+      const options = (layout) => ({
         athlete,
         rank: Stats.rank(State.data).current.name,
         totalArea: Stats.totalArea(State.data),
         theme: this.cardTheme || undefined,
-        template,
-        stats,
-        highlights: design.highlights ? lines : [],
-        profile: design.profile,
+        template: layout,
       });
+      M.renderCard($('#cardCanvas'), activity, options(template));
       $('#recordCard').dataset.template = template;
-
       const repaint = () => this.paintCard(activity, athlete);
-      const keep = (patch) => {
-        Object.assign(State.data.cardDesign, patch);
-        State.save();
-        repaint();
-      };
 
+      // Each layout is shown as itself: the same card, drawn small.
       const layouts = $('#cardTemplates');
       layouts.innerHTML = '';
-      templates.forEach((key) => layouts.appendChild(el('button', {
-        type: 'button', text: M.CARD_TEMPLATES[key], 'aria-pressed': String(key === template),
-        onclick: () => keep({ template: key }),
-      })));
-
-      // Picking a fourth number lets go of the oldest; the last one cannot be
-      // let go of, because a card with no numbers is not a record.
-      const chips = $('#cardStats');
-      chips.innerHTML = '';
-      M.cardStatsFor(activity).forEach(({ key, label }) => {
-        const on = stats.indexOf(key) >= 0;
-        chips.appendChild(el('button', {
-          class: 'chip design-chip', type: 'button', 'aria-pressed': String(on), text: label,
+      Object.keys(M.CARD_TEMPLATES).forEach((key) => {
+        const thumb = el('canvas', { class: 'style-thumb', 'aria-hidden': 'true' });
+        const full = document.createElement('canvas');
+        M.renderCard(full, activity, options(key));
+        thumb.width = 216;
+        thumb.height = 270;
+        thumb.getContext('2d').drawImage(full, 0, 0, 216, 270);
+        layouts.appendChild(el('button', {
+          class: 'style-option', type: 'button', 'data-layout': key, 'aria-pressed': String(key === template),
           onclick: () => {
-            let next = stats.slice();
-            if (on) {
-              if (next.length === 1) return;
-              next = next.filter((k) => k !== key);
-            } else {
-              next.push(key);
-              if (next.length > 3) next.shift();
-            }
-            keep({ stats: next });
-          },
-        }));
-      });
-
-      // The note says exactly what the highlights will put on the card.
-      const highlightsOn = design.highlights;
-      $('#cardHighlightsRow').hidden = template === 'sticker';
-      $('#cardHighlights').setAttribute('aria-checked', String(highlightsOn));
-      $('#cardHighlights').onclick = () => keep({ highlights: !highlightsOn });
-      $('#cardHighlightsNote').textContent = lines.length
-        ? lines.slice(0, 2).join(' · ')
-        : 'Nothing on this run beat an earlier one';
-
-      $('#cardProfileRow').hidden = !hasProfile || (template !== 'map' && template !== 'splits');
-      $('#cardProfile').setAttribute('aria-checked', String(design.profile));
-      $('#cardProfile').onclick = () => keep({ profile: !design.profile });
-
-      const seg = $('#cardThemes');
-      seg.innerHTML = '';
-      const unlocked = M.Pro.can('cardThemes');
-      seg.appendChild(el('button', {
-        type: 'button', text: 'Default', 'aria-pressed': String(!this.cardTheme),
-        onclick: () => { this.cardTheme = null; repaint(); },
-      }));
-      offered.forEach((key) => {
-        seg.appendChild(el('button', {
-          type: 'button',
-          'aria-pressed': String(this.cardTheme === key),
-          onclick: () => {
-            if (!unlocked) return this.openPro('cardThemes');
-            this.cardTheme = key;
+            State.data.cardDesign.template = key;
+            State.save();
             repaint();
           },
-        }, [
-          el('span', { text: M.CARD_THEMES[key] }),
-          unlocked ? null : this.icon('i-lock', 'ico--sm'),
-        ]));
+        }, [thumb, el('span', { class: 'style-name', text: M.CARD_TEMPLATES[key] })]));
       });
+
+      const kind = M.KINDS[activity.kind] || M.KINDS.free;
+      const unlocked = M.Pro.can('cardThemes');
+      const swatches = $('#cardThemes');
+      swatches.innerHTML = '';
+      const swatch = (name, colour, pressed, onclick, locked) => swatches.appendChild(el('button', {
+        class: 'style-swatch', type: 'button', 'aria-pressed': String(pressed), 'aria-label': name + (locked ? ' (Supporter)' : ''), onclick,
+      }, [
+        el('span', { class: 'style-dot', style: `--dot:${colour}` }, [locked ? this.icon('i-lock', 'style-lock') : null]),
+        el('span', { class: 'style-name', text: name }),
+      ]));
+      swatch('Default', kind.accent, !this.cardTheme, () => { this.cardTheme = null; repaint(); });
+      offered.forEach((key) => swatch(M.CARD_THEMES[key], M.CARD_THEME_COLOURS[key].accent, this.cardTheme === key, () => {
+        if (!unlocked) return this.openPro('cardThemes');
+        this.cardTheme = key;
+        repaint();
+      }, !unlocked));
     },
 
     /** Gives up on an open loop: the run is kept, the land is not. */

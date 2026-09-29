@@ -1,9 +1,8 @@
-// The record card the runner lays out. Checked here: every layout draws for
-// every kind of run with nothing on the card landing on anything else, however
-// the switches are set; the splits fit their room however many there are; the
-// numbers on offer are ones the run actually has; the highlights are true; the
-// sticker is see-through; the climb comes from altitude rather than from thin
-// air; and the runner's layout is still there next time.
+// The record card. Checked here: every layout draws for every kind of run and
+// colour with nothing on the card landing on anything else; the three numbers
+// are time, pace and the climb, and never repeat the headline; the sticker is
+// see-through; the climb comes from altitude rather than from thin air; and
+// the layout the runner picks, from a picture of each, is kept.
 //   node test-card.js
 // Needs Playwright, which the app itself does not: `npm i playwright`, or run
 // with NODE_PATH pointing at an install that has it.
@@ -52,7 +51,7 @@ const CHECK = `(activity, options) => {
     if (!cond) bad++;
   };
 
-  // --- 1. Every layout, every kind, every switch ---------------------------
+  // --- 1. Every layout, every kind, every colour -------------------------
   const sweep = await page.evaluate(`(async () => {
     const check = ${CHECK};
     const S = MILES.State.data;
@@ -60,114 +59,61 @@ const CHECK = `(activity, options) => {
       S.activities.find((a) => a.kind === 'free' && a.distance > 10000),
       S.activities.find((a) => a.kind === 'territory' && a.claimedArea > 0),
       S.activities.find((a) => a.kind === 'race'),
+      Object.assign({}, S.activities.find((a) => a.kind === 'free'), { route: [] }),
+      Object.assign({}, S.activities.find((a) => a.kind === 'free'), { distance: 123456, duration: 36600 }),
     ];
     const problems = [];
     let drawn = 0;
     for (const a of runs) {
-      const lines = ['Longest run of September', 'Fastest km 5:18'];
-      for (const t of MILES.cardTemplatesFor(a)) {
-        for (const highlights of [[], lines]) {
-          for (const profile of [false, true]) {
-            for (const stats of [['time'], ['time', 'pace'], ['time', 'pace', 'elev'], ['speed', 'fastest', 'distance']]) {
-              const r = check(a, { template: t, highlights, profile, stats, athlete: 'You', rank: 'Strider', totalArea: 720000 });
-              drawn++;
-              if (r.template !== t) problems.push(a.kind + '/' + t + ' drew ' + r.template);
-              r.bad.forEach((b) => problems.push(a.kind + '/' + t + (highlights.length ? '+hl' : '') + (profile ? '+elev' : '') + ' ' + stats.join(',') + ': ' + b));
-            }
-          }
+      for (const t of Object.keys(MILES.CARD_TEMPLATES)) {
+        for (const theme of [undefined].concat(MILES.cardThemesFor(a.kind))) {
+          const r = check(a, { template: t, theme, athlete: 'You', rank: 'Strider', totalArea: 720000 });
+          drawn++;
+          if (r.template !== t) problems.push(a.kind + '/' + t + ' drew ' + r.template);
+          r.bad.forEach((b) => problems.push(a.kind + '/' + t + '/' + (theme || 'default') + ': ' + b));
         }
       }
     }
-    return { problems, drawn };
+    return { problems, drawn, layouts: Object.keys(MILES.CARD_TEMPLATES) };
   })()`);
-  ok(`${sweep.drawn} cards across every layout, kind and switch: nothing lands on anything`,
-    sweep.drawn > 100 && sweep.problems.length === 0, sweep.problems.slice(0, 6).join(' | '));
+  ok('three layouts: Map, Poster and Sticker — the splits are listed under the card, not a layout',
+    JSON.stringify(sweep.layouts) === JSON.stringify(['map', 'poster', 'sticker']), JSON.stringify(sweep.layouts));
+  ok(`${sweep.drawn} cards across every layout, kind and colour: nothing lands on anything`,
+    sweep.drawn >= 60 && sweep.problems.length === 0, sweep.problems.slice(0, 6).join(' | '));
 
-  // --- 2. The splits fit their room, however many there are ----------------
-  const splits = await page.evaluate(`(async () => {
+  // --- 2. The numbers --------------------------------------------------------
+  const numbers = await page.evaluate(`(() => {
     const check = ${CHECK};
-    const base = MILES.State.data.activities.find((a) => a.kind === 'free' && a.distance > 10000);
-    const out = [];
-    for (const n of [2, 5, 9, 12, 21, 42]) {
-      const a = Object.assign({}, base, {
-        distance: n * 1000 + 300, duration: n * 330,
-        splits: Array.from({ length: n }, (_, i) => ({ km: i + 1, seconds: 300 + ((i * 37) % 41) })),
-      });
-      for (const highlights of [[], ['Longest run yet', 'Negative split']]) {
-        for (const profile of [false, true]) {
-          const r = check(a, { template: 'splits', highlights, profile, stats: ['time', 'pace', 'elev'] });
-          const times = r.layout.filter((b) => b.name === 'split-time');
-          out.push({
-            n, hl: highlights.length > 0, profile, bad: r.bad,
-            mode: r.names.includes('split-chart') ? 'columns' : 'rows',
-            rows: times.length,
-            smallest: times.length ? Math.min.apply(null, times.map((b) => b.h)) : null,
-          });
-        }
-      }
-    }
-    return out;
-  })()`);
-  ok('2 to 42 splits, with and without highlights and the elevation line: nothing overlaps',
-    splits.every((s) => s.bad.length === 0), JSON.stringify(splits.filter((s) => s.bad.length).map((s) => [s.n, s.hl, s.profile, s.bad[0]])));
-  ok('as rows, every split is on the card and its time is at least 20px tall',
-    splits.filter((s) => s.mode === 'rows').every((s) => s.rows === s.n && s.smallest >= 20),
-    JSON.stringify(splits.filter((s) => s.mode === 'rows').map((s) => [s.n, s.rows, s.smallest])));
-  ok('a long run switches to columns instead of squeezing rows',
-    splits.filter((s) => s.n >= 21).every((s) => s.mode === 'columns'), JSON.stringify(splits.map((s) => [s.n, s.mode])));
-
-  // --- 3. The numbers on offer are ones the run has -------------------------
-  const offers = await page.evaluate(() => {
     const S = MILES.State.data;
     const free = S.activities.find((a) => a.kind === 'free' && a.distance > 10000);
     const terr = S.activities.find((a) => a.kind === 'territory' && a.claimedArea > 0);
-    const keys = (a) => MILES.cardStatsFor(a).map((s) => s.key);
-    return {
-      free: keys(free),
-      terr: keys(terr),
-      noAlt: keys(Object.assign({}, free, { elevation: null })),
-      noSplits: keys(Object.assign({}, free, { splits: [] })),
-      refill: MILES.cardPickStats(free, ['distance', 'time']),
-      cap: MILES.cardPickStats(free, ['time', 'pace', 'elev', 'speed']),
-      layouts: MILES.cardTemplatesFor(Object.assign({}, free, { splits: [] })),
+    const labels = (a) => {
+      const c = document.createElement('canvas');
+      MILES.renderCard(c, a, { template: 'map' });
+      return c.cardLayout.filter((b) => b.name === 'stat').length;
     };
-  });
-  ok('a free run does not offer its distance twice', !offers.free.includes('distance'), JSON.stringify(offers.free));
-  ok('a territory card, whose headline is area, offers the distance', offers.terr.includes('distance'), JSON.stringify(offers.terr));
-  ok('no altitude, no climb on offer', !offers.noAlt.includes('elev'), JSON.stringify(offers.noAlt));
-  ok('no splits, no fastest km and no Splits layout',
-    !offers.noSplits.includes('fastest') && !offers.layouts.includes('splits'), JSON.stringify([offers.noSplits, offers.layouts]));
-  ok('a pick the run cannot show is refilled, keeping the count', JSON.stringify(offers.refill) === JSON.stringify(['time', 'pace']), JSON.stringify(offers.refill));
-  ok('never more than three numbers', offers.cap.length === 3, JSON.stringify(offers.cap));
-
-  // --- 4. The highlights are true -------------------------------------------
-  const truth = await page.evaluate(() => {
-    const day = (d, h) => new Date(2026, 8, d, h || 7).getTime();
-    const run = (id, d, km, secPerKm, extra) => Object.assign({
-      id, startedAt: day(d), kind: 'free', distance: km * 1000, duration: km * secPerKm, elevation: 20, splits: [],
-    }, extra || {});
-    const a = run('a', 3, 5, 330);
-    const b = run('b', 10, 8, 340);
-    const c = run('c', 20, 6, 320);
-    const d = run('d', 25, 10, 345);
-    const state = { activities: [d, c, b, a] };
-    const H = (x) => MILES.Stats.highlights(state, x);
-    const neg = run('n', 26, 4, 300, { splits: [{ km: 1, seconds: 310 }, { km: 2, seconds: 305 }, { km: 3, seconds: 296 }, { km: 4, seconds: 289 }] });
-    const pos = run('p', 26, 4, 300, { splits: [{ km: 1, seconds: 289 }, { km: 2, seconds: 296 }, { km: 3, seconds: 305 }, { km: 4, seconds: 310 }] });
-    const streak = { activities: [run('s1', 12, 5, 330), run('s2', 13, 5, 330), run('s3', 14, 5, 330)] };
-    return {
-      b: H(b), c: H(c), d: H(d),
-      neg: MILES.Stats.highlights({ activities: [neg] }, neg),
-      pos: MILES.Stats.highlights({ activities: [pos] }, pos),
-      streak: MILES.Stats.highlights(streak, streak.activities[2]),
+    const words = (a) => {
+      const seen = [];
+      const c = document.createElement('canvas');
+      const ctx = c.getContext('2d');
+      const fill = ctx.fillText;
+      CanvasRenderingContext2D.prototype.fillText = function (t) { seen.push(String(t)); return fill.apply(this, arguments); };
+      try { MILES.renderCard(c, a, { template: 'map' }); } finally { CanvasRenderingContext2D.prototype.fillText = fill; }
+      return seen;
     };
-  });
-  ok('the longest of the month so far says so', truth.b.includes('Longest run of September'), JSON.stringify(truth.b));
-  ok('a shorter run does not claim to be the longest', !truth.c.some((l) => /Longest/.test(l)), JSON.stringify(truth.c));
-  ok('the longest of all, with a history behind it, is "Longest run yet"', truth.d[0] === 'Longest run yet', JSON.stringify(truth.d));
-  ok('a quicker second half is a negative split', truth.neg.includes('Negative split'), JSON.stringify(truth.neg));
-  ok('a slower second half is not', !truth.pos.includes('Negative split'), JSON.stringify(truth.pos));
-  ok('three days running is a 3-day streak', truth.streak.includes('3-day streak'), JSON.stringify(truth.streak));
+    return {
+      free: words(free),
+      noAlt: words(Object.assign({}, free, { elevation: null })),
+      terrNoAlt: words(Object.assign({}, terr, { elevation: null })),
+      count: labels(free),
+    };
+  })()`);
+  ok('the numbers are time, pace and elevation gain',
+    ['Time', 'Pace', 'Elevation gain'].every((w) => numbers.free.includes(w)), JSON.stringify(numbers.free));
+  ok('a free run says its distance once', !numbers.free.includes('Distance'), JSON.stringify(numbers.free));
+  ok('with no altitude the climb is not made up: speed, or the distance when the headline is not it',
+    !numbers.noAlt.includes('Elevation gain') && numbers.noAlt.includes('Avg speed') && numbers.terrNoAlt.includes('Distance'),
+    JSON.stringify([numbers.noAlt, numbers.terrNoAlt]));
 
   // --- 5. The sticker is see-through, the others are not ---------------------
   const alpha = await page.evaluate(() => {
@@ -212,20 +158,22 @@ const CHECK = `(activity, options) => {
   ok('a real run climbs what its altitudes climbed', climb.gps >= 15 && climb.gps <= 22, climb.gps);
   ok('a phone that gives no altitude records the climb as unknown, not as flat', climb.noAlt === null, climb.noAlt);
 
-  // --- 7. The layout sticks, and a long split list folds -----------------------
+  // --- 7. Picking a layout, from a picture of each -----------------------------
   await page.evaluate(() => { const a = MILES.State.data.activities.find((x) => x.kind === 'free' && x.distance > 10000); MILES.UI.showCardPreview(a); });
   await page.waitForTimeout(300);
-  const folded = await page.evaluate(() => ({
-    rows: document.querySelectorAll('#finishSplits .split').length,
-    button: !!document.querySelector('#finishSplits button'),
+  const picker = await page.evaluate(() => ({
+    options: [...document.querySelectorAll('#cardTemplates .style-option')].map((b) => b.textContent.trim()),
+    thumbs: [...document.querySelectorAll('#cardTemplates canvas')].map((c) => c.width),
+    swatches: document.querySelectorAll('#cardThemes .style-swatch').length,
+    splitsUnder: !!document.querySelector('#finishSplits .split'),
+    oldControls: !!document.querySelector('#cardStats, #cardHighlights, #cardProfile'),
   }));
-  ok('twelve splits open folded to five, with a way to the rest', folded.rows === 5 && folded.button, JSON.stringify(folded));
-  await page.click('#finishSplits button');
-  ok('and show all twelve on a tap', await page.evaluate(() => document.querySelectorAll('#finishSplits .split').length === 12));
-  await page.click('#cardTemplates button:nth-child(2)');
-  await page.click('#cardStats button:nth-child(4)');
-  await page.click('#cardHighlights');
-  const chosen = await page.evaluate(() => JSON.stringify(MILES.State.data.cardDesign));
+  ok('each layout is offered as a picture of the card in that layout',
+    JSON.stringify(picker.options) === JSON.stringify(['Map', 'Poster', 'Sticker']) && picker.thumbs.every((w) => w > 0) && picker.thumbs.length === 3,
+    JSON.stringify(picker));
+  ok('the default colour and four others, as swatches', picker.swatches === 5, picker.swatches);
+  ok('the splits are listed under the card, and nothing else is left to set', picker.splitsUnder && !picker.oldControls, JSON.stringify(picker));
+  await page.click('#cardTemplates .style-option[data-layout="poster"]');
   await page.reload();
   await page.waitForTimeout(900);
   const kept = await page.evaluate(() => {
@@ -234,17 +182,26 @@ const CHECK = `(activity, options) => {
     return {
       design: JSON.stringify(MILES.State.data.cardDesign),
       drawn: document.querySelector('#cardCanvas').cardTemplate,
-      pressed: [...document.querySelectorAll('#cardStats [aria-pressed="true"]')].map((b) => b.textContent),
+      pressed: document.querySelector('#cardTemplates [aria-pressed="true"]').dataset.layout,
     };
   });
-  ok('the layout, numbers and switches the runner chose survive a reload', kept.design === chosen && kept.drawn === 'poster',
-    `${chosen} → ${kept.design}, drew ${kept.drawn}`);
-  ok('picking a fourth number lets go of the oldest', JSON.stringify(kept.pressed) === JSON.stringify(['Pace', 'Elevation gain', 'Avg speed']),
-    JSON.stringify(kept.pressed));
+  ok('the layout the runner picked is there after a reload',
+    kept.design === '{"template":"poster"}' && kept.drawn === 'poster' && kept.pressed === 'poster', JSON.stringify(kept));
+  // A card laid out under the old controls — a Splits layout, picked numbers,
+  // highlight and elevation switches — opens as a Map card and keeps nothing else.
+  await page.evaluate(() => {
+    const saved = JSON.parse(localStorage.getItem('miles.v1'));
+    saved.cardDesign = { template: 'splits', stats: ['speed'], highlights: true, profile: true };
+    localStorage.setItem('miles.v1', JSON.stringify(saved));
+  });
+  await page.reload();
+  await page.waitForTimeout(900);
+  const migrated = await page.evaluate(() => JSON.stringify(MILES.State.data.cardDesign));
+  ok('an old Splits layout comes back as Map, with the old switches gone', migrated === '{"template":"map"}', migrated);
 
   await browser.close();
   errors.forEach((e) => console.log(e));
   const failed = bad + errors.length;
-  console.log(failed === 0 ? 'THE CARD IS THE RUNNER\'S, AND NOTHING ON IT COLLIDES' : `${failed} FAILED`);
+  console.log(failed === 0 ? 'THE CARD HOLDS TOGETHER IN EVERY LAYOUT' : `${failed} FAILED`);
   process.exit(failed === 0 ? 0 : 1);
 })();

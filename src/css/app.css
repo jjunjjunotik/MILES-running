@@ -457,35 +457,3 @@ select.input option { background: var(--ink-700); color: var(--text-hi); }
    never off the class, so a .chip used as a caption keeps its size. -------- */
 button.chip, a.chip { min-height: var(--tap); padding: 5px 13px; }
 button.avatar { width: var(--tap); height: var(--tap); font-size: 15px; }
-
-/* --- Switch ---------------------------------------------------------------
-   On/off for a single setting. The track is 48×28 but the button is the full
-   44px tall, so it is as easy to hit as any other control. */
-.switch {
-  position: relative;
-  flex: none;
-  width: 56px;
-  height: var(--tap);
-  border-radius: var(--r-md);
-  background: none;
-}
-.switch::before {
-  content: "";
-  position: absolute; left: 4px; top: 8px;
-  width: 48px; height: 28px;
-  border-radius: 99px;
-  background: var(--ink-400);
-  transition: background 0.2s ease;
-}
-.switch::after {
-  content: "";
-  position: absolute; left: 7px; top: 11px;
-  width: 22px; height: 22px;
-  border-radius: 50%;
-  background: var(--text-mid);
-  transition: transform 0.2s ease, background 0.2s ease;
-}
-.switch[aria-checked="true"]::before { background: var(--flame); }
-.switch[aria-checked="true"]::after { transform: translateX(20px); background: var(--text-hi); }
-.switch:focus-visible { outline: 2px solid var(--text-hi); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { .switch::before, .switch::after { transition: none; } }
