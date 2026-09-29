@@ -194,12 +194,30 @@ AI 비전 모델이 6개 항목을 관찰해 설명하고, 눈에 띈 특징은 
 ### 키 넣기
 
 ```bash
-cp .env.example .env
+echo 'GEMINI_API_KEY=발급받은_키' > .env   # 또는 ANTHROPIC_API_KEY
 chmod 600 .env                       # 본인만 읽도록
-# .env 를 편집기로 열어 GEMINI_API_KEY (또는 ANTHROPIC_API_KEY) 를 채웁니다
 git config core.hooksPath .githooks  # 커밋 전 자격증명 검사 켜기 (권장)
 npm run dev
 ```
+
+#### 설정할 수 있는 값
+
+필수는 분석 키 하나이고, 나머지는 모두 기본값이 있어 비워 둬도 됩니다.
+
+| 이름 | 기본값 | 설명 |
+|---|---|---|
+| `GEMINI_API_KEY` / `ANTHROPIC_API_KEY` | 없음 | 분석 키. 없으면 샘플 결과로 동작(데모) |
+| `ANALYSIS_PROVIDER` | 자동 | `gemini` 또는 `claude`. 둘 다 있으면 Gemini |
+| `GEMINI_MODEL` / `ANTHROPIC_MODEL` | 아래 표 | 404 가 나면 `npm run models` 로 목록 확인 |
+| `PORT` | `8787` | 서버 포트 |
+| `DATA_DIR` / `DB_FILE` | `./data`, `./data/nailsense.db` | 데이터베이스 위치(백업 대상) |
+| `GOOGLE_CLIENT_ID` | 없음 | 구글 로그인(선택) |
+| `APPLE_CLIENT_ID` · `APPLE_TEAM_ID` · `APPLE_KEY_ID` · `APPLE_PRIVATE_KEY` | 없음 | 애플 로그인(선택). `.p8` 내용은 한 줄로, 줄바꿈 자리에 `\n` |
+| `ALLOW_DEMO_FALLBACK` | `true` | 공개 배포 때는 `false` 권장 |
+| `RATE_LIMIT_PER_IP` · `RATE_LIMIT_GLOBAL` · `RATE_LIMIT_WINDOW_MS` | `12` · `240` · `300000` | 분석 요청 속도 제한 |
+| `AUTH_RATE_LIMIT_PER_IP` · `AUTH_RATE_LIMIT_GLOBAL` · `AUTH_RATE_LIMIT_WINDOW_MS` | `20` · `200` · `600000` | 로그인·가입 속도 제한 |
+| `ALLOWED_ORIGINS` | 같은 출처만 | 다른 도메인에서 서빙할 때 쉼표로 나열 |
+| `TRUST_PROXY` | `false` | 리버스 프록시 뒤에서만 `true` |
 
 `.env` 는 서버가 기동할 때 Node 내장 `process.loadEnvFile` 로 읽습니다.
 이미 설정된 환경변수는 덮어쓰지 않으므로, 배포 환경에서는 `.env` 없이
@@ -243,7 +261,7 @@ npm run dev
 
 ```bash
 npm install
-cp .env.example .env        # ANTHROPIC_API_KEY 를 채워 넣으세요
+echo 'GEMINI_API_KEY=발급받은_키' > .env   # 키가 없으면 이 줄은 건너뛰어도 데모로 동작
 npm run dev                 # 서버(8787) + Vite 개발 서버(5173)
 ```
 

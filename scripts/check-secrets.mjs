@@ -27,10 +27,6 @@ const PATTERNS = [
 
 /**
  * 이 파일 자신만 건너뛴다. 패턴 문자열을 일부러 담고 있기 때문이다.
- *
- * .env.example 은 건너뛰지 않는다. git 에 추적되는 파일이라, 실수로 진짜 키를
- * 여기에 넣으면 그대로 공개된다. 실제로 흔한 실수다. 안의 자리표시자는
- * 한글이 섞여 있어 진짜 키 패턴과 겹치지 않으므로 오탐이 나지 않는다.
  */
 const SKIP = new Set(["scripts/check-secrets.mjs"]);
 
@@ -84,7 +80,7 @@ for (const file of tracked) {
 
 // 3) .env 가 실수로 추적되고 있지 않은지
 for (const file of tracked) {
-  if (file === ".env" || file.startsWith(".env.") && file !== ".env.example") {
+  if (file === ".env" || file.startsWith(".env.")) {
     findings.push(`${file}: 환경변수 파일이 git 에 추적되고 있습니다.`);
   }
 }

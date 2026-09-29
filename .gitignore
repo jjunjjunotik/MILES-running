@@ -12,4 +12,3 @@ data/
 .smoke/
 demo/
 .env.*
-!.env.example
