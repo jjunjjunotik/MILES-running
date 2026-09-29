@@ -591,13 +591,13 @@
     },
 
     locate() {
-      if (!navigator.geolocation) {
+      if (!M.Native.isApp && !navigator.geolocation) {
         this.toast('Location is not available in this browser');
         return;
       }
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const home = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+      M.Native.currentPosition(
+        (fix) => {
+          const home = { lat: fix.lat, lng: fix.lng };
           State.setHome(home);
           Object.values(this.maps).forEach((m) => { m.setAnchor(home); m.setCenter(home); });
           $('#geoNote').textContent = 'Live GPS';
@@ -608,8 +608,7 @@
         () => {
           $('#geoStatus').textContent = 'Denied — running on simulated location';
           this.toast('Location denied — staying on the simulated map');
-        },
-        { enableHighAccuracy: true, timeout: 8000 }
+        }
       );
     },
 

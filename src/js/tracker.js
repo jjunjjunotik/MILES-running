@@ -1,7 +1,7 @@
 /* ==========================================================================
    MILES · tracker
    Drives an active run: position, distance, pace, splits, loop closure and
-   the live telemetry feed. Uses real GPS when the browser grants it and
+   the live telemetry feed. Uses real GPS when it is granted (see native.js) and
    falls back to a simulated runner so the app is demonstrable anywhere.
    ========================================================================== */
 
@@ -22,7 +22,7 @@
     kind: 'free',
     rivals: [],
     state: null,
-    _watchId: null,
+    _stopGeolocation: null,
     _timer: null,
     _sim: null,
 
@@ -101,20 +101,13 @@
     },
 
     _startGeolocation() {
-      if (!navigator.geolocation) return;
-      try {
-        this._watchId = navigator.geolocation.watchPosition(
-          (pos) => {
-            // Anything the simulator climbed before the first real fix was
-            // made up; the real run's climb starts from here.
-            if (this.state.source !== 'gps') this.state.elevation = 0;
-            this.state.source = 'gps';
-            this._push({ lat: pos.coords.latitude, lng: pos.coords.longitude }, pos.coords.altitude);
-          },
-          () => { /* denied or unavailable: the simulator keeps the run alive */ },
-          { enableHighAccuracy: true, maximumAge: 1000, timeout: 8000 }
-        );
-      } catch (err) { /* insecure context */ }
+      this._stopGeolocation = M.Native.watchPosition((fix) => {
+        // Anything the simulator climbed before the first real fix was
+        // made up; the real run's climb starts from here.
+        if (this.state.source !== 'gps') this.state.elevation = 0;
+        this.state.source = 'gps';
+        this._push({ lat: fix.lat, lng: fix.lng }, fix.altitude);
+      }, () => { /* denied or unavailable: the simulator keeps the run alive */ }, { background: true });
     },
 
     pause() {
@@ -280,11 +273,9 @@
       if (!this.active) return null;
       this.active = false;
       if (this._timer) clearInterval(this._timer);
-      if (this._watchId !== null && navigator.geolocation) {
-        try { navigator.geolocation.clearWatch(this._watchId); } catch (err) { /* ignore */ }
-      }
+      if (this._stopGeolocation) this._stopGeolocation();
       this._timer = null;
-      this._watchId = null;
+      this._stopGeolocation = null;
 
       const s = this.state;
       if (options && options.abandon && s.kind === 'territory' && !s.closure) s.kind = 'free';

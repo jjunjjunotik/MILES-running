@@ -4,4 +4,7 @@ node_modules/
 *.log
 
 # Screenshots from test runs
-*.png
+/*.png
+
+# Capacitor: www/ is a copy of the app, rebuilt by `npm run build`
+www/

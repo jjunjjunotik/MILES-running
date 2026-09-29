@@ -35,6 +35,11 @@
 }
 
 :root {
+  /* The notch and the home bar. In the Android app Capacitor measures them
+     and sets --safe-area-inset-*; iOS and browsers answer env(). Zero on a
+     screen with neither. */
+  --inset-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --inset-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
   /* --- Base surfaces (dark-first: running happens at dawn and dusk) ------ */
   /* One grey family, warmed toward the brand: asphalt at dusk rather than
      the blue-black of a code editor. */

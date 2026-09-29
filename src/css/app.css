@@ -50,6 +50,7 @@ p { margin: 0; }
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  padding: var(--inset-top) 0 var(--inset-bottom);
   box-shadow: var(--shadow-3);
 }
 
@@ -234,7 +235,7 @@ p { margin: 0; }
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: var(--s-1);
-  padding: 10px var(--s-3) calc(var(--s-3) + env(safe-area-inset-bottom));
+  padding: 10px var(--s-3) var(--s-3);
   background: rgba(14, 13, 12, 0.94);
   border-top: 1px solid var(--line);
 }
@@ -319,7 +320,7 @@ p { margin: 0; }
   border-top-left-radius: var(--r-xl);
   border-top-right-radius: var(--r-xl);
   border-top: 1px solid var(--line-strong);
-  padding: var(--s-3) var(--s-4) var(--s-6);
+  padding: var(--s-3) var(--s-4) calc(var(--s-6) + var(--inset-bottom));
   animation: sheet-in 0.3s cubic-bezier(0.2, 1, 0.3, 1);
   scrollbar-width: none;
 }

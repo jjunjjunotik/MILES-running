@@ -1,0 +1,11 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MILES</string>
+    <string name="title_activity_main">MILES</string>
+    <string name="package_name">app.miles.running</string>
+    <string name="custom_url_scheme">app.miles.running</string>
+    <!-- The "Run in progress" notification shown while a run records in the background. -->
+    <string name="capacitor_background_geolocation_notification_channel_name">Run in progress</string>
+    <string name="capacitor_background_geolocation_notification_icon">drawable/ic_run_notification</string>
+    <string name="capacitor_background_geolocation_notification_color">#F2642A</string>
+</resources>

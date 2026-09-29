@@ -1,0 +1,22 @@
+{
+  "name": "miles-running",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MILES, packaged as an Android and iOS app with Capacitor. The web app itself still needs nothing.",
+  "scripts": {
+    "build": "node scripts/build-www.js",
+    "sync": "node scripts/build-www.js && cap sync",
+    "android": "node scripts/build-www.js && cap sync android && cap open android",
+    "ios": "node scripts/build-www.js && cap sync ios && cap open ios"
+  },
+  "dependencies": {
+    "@capacitor-community/background-geolocation": "^1.2.26",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/ios": "^8.5.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^8.5.2"
+  }
+}

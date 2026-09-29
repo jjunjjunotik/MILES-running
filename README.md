@@ -219,7 +219,9 @@ week, but an open loop encloses nothing, so no land is claimed.
 
 ## Location
 
-Real GPS is used whenever the browser grants it (`watchPosition`). If it is
+Real GPS is used whenever it is granted — the browser's `watchPosition`, or
+in the Android and iOS app the background-location plugin (see **The phone
+app** below). If it is
 denied or unavailable — file URLs, no HTTPS, a desktop at a desk — a simulated
 runner takes over so every screen stays usable. **You → Simulated pace** plays
 those runs back at 1×, 12× or 40×, which is how you capture a loop in under a
@@ -294,7 +296,7 @@ whichever basemap is underneath.
 
 ## Tests
 
-Sixteen checks live in the repo root. The first is plain Node; the rest drive the
+Seventeen checks live in the repo root. The first is plain Node; the rest drive the
 real app in headless Chromium and need Playwright, which the app itself does
 not — `npm i playwright`, or run with `NODE_PATH` pointing at an install that
 has it. The three marked `:8765` want `python3 -m http.server 8765` running.
@@ -316,6 +318,7 @@ node test-type.js         nothing renders below the legibility floor
 node test-hero.js         the home picture swipes, and nothing a swipe could break does
 node test-crew.js         a captain's crew screen: one job per block, nothing shown twice
 node test-card.js         the record card: every layout fits, and its climb is real
+node test-native.js       the phone app: a run records in the background, the notch is clear
 ```
 
 `test-tiles.js` serves its own tiles from a throwaway HTTP server, so it needs
@@ -491,6 +494,45 @@ The free tier keeps everything it had, including **all** of your history —
 holding a runner's own data hostage is not a business model. What is free is
 also the *fact* that you lost ground; what is paid is the breakdown of who took
 it.
+
+---
+
+## The phone app
+
+The same app, packed into Android and iOS projects with
+[Capacitor](https://capacitorjs.com). `android/` and `ios/` are the native
+projects; the web app is copied into them, not rewritten.
+
+```bash
+npm install
+npm run android        # copy the app into android/ and open Android Studio
+npm run ios            # the same for Xcode (a Mac is needed for iOS)
+npm run sync           # after changing the app: copy it into both
+```
+
+What the app adds over the browser, all in `src/js/native.js`:
+
+- **A run keeps recording with the screen off.** GPS comes from
+  `@capacitor-community/background-geolocation`. On Android that is a
+  foreground service of type `location` with a "Run in progress"
+  notification; the notification permission is asked when the first run
+  starts (`RunNoticePlugin.java`). There is no `ACCESS_BACKGROUND_LOCATION`:
+  recording only ever happens in a run the runner started, which is what a
+  foreground service covers. On iOS it is the `location` background mode.
+- **"Centre on me"** asks for one position through the same permission,
+  without the notification.
+- **The notch and the home bar.** `--inset-top` and `--inset-bottom` in
+  `tokens.css` pad the shell; Capacitor measures them on Android, `env()`
+  does on iOS.
+- Portrait only, iPhone only (no iPad layout to review), dark status bar.
+- Android targets API 36, as Google Play requires from 31 August 2026.
+
+The icon and launch screen are drawn from the wordmark face by
+`node scripts/draw-icons.js` into `assets/`, and cut to every size with
+`npx capacitor-assets generate`.
+
+The app id is `app.miles.running` (`capacitor.config.json`). Change it before
+the first store upload if you want another; after that it is permanent.
 
 ---
 
