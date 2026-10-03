@@ -40,6 +40,9 @@ export interface ServerPreferences {
   keepPhotos: boolean;
   expandByDefault: boolean;
   onboarded: boolean;
+  /** 건강 데이터 처리에 동의한 시각과 문구 버전. 거두었거나 아직이면 null */
+  healthConsentAt: number | null;
+  healthConsentVersion: string | null;
 }
 
 export interface ServerScan {
@@ -72,7 +75,7 @@ export interface Article extends ArticleSummary {
   updatedAt: number;
 }
 
-async function request<T>(
+export async function request<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
@@ -224,7 +227,7 @@ export async function fetchPreferences(): Promise<ServerPreferences> {
 }
 
 export async function savePreferences(
-  next: Partial<ServerPreferences>,
+  next: Partial<ServerPreferences> & { healthConsent?: false },
 ): Promise<ServerPreferences> {
   const body = await request<{ preferences: ServerPreferences }>("/preferences", {
     method: "PUT",

@@ -1,3 +1,5 @@
+import type { UsageInfo } from "./billing.js";
+
 /**
  * 손톱 "관찰" 스키마.
  *
@@ -267,8 +269,10 @@ export type AnalyzeResponse =
       model: string;
       /** 서버에 남은 기록의 아이디. 사진은 이 아이디로 기기 안에 저장한다. */
       scanId?: string;
+      /** 이번 분석을 센 뒤의 사용량. 결제 기능이 꺼져 있으면 없다. */
+      usage?: UsageInfo;
     }
-  | { ok: false; error: string; code: AnalyzeErrorCode };
+  | { ok: false; error: string; code: AnalyzeErrorCode; usage?: UsageInfo };
 
 export type AnalyzeErrorCode =
   | "unauthorized"
@@ -278,7 +282,11 @@ export type AnalyzeErrorCode =
   | "no_api_key"
   | "rate_limited"
   | "declined"
-  | "upstream_error";
+  | "upstream_error"
+  /** 이번 기간의 분석 횟수를 다 썼다. 다시 보내도 소용없다. */
+  | "quota_exceeded"
+  /** 건강 데이터 처리 동의 없이 보낸 요청 */
+  | "consent_required";
 
 /** 기록 화면에서 쓰는 저장 레코드 */
 export interface NailRecord {

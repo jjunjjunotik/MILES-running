@@ -72,6 +72,12 @@ await page.click('text="Ring"');
 await page.fill("textarea", "E2E test");
 await shot(page, "05-scan-ready");
 await page.click('button:has-text("Analyze")');
+// 첫 분석 전에는 건강 데이터 처리 동의를 받는다. 체크하기 전에는 분석 버튼이 꺼져 있어야 한다.
+await page.waitForSelector(".sheet >> text=Before your first scan", { timeout: 5000 });
+const agreeButton = page.locator('.sheet button:has-text("Agree and analyze")');
+if (!(await agreeButton.isDisabled())) problems.push("동의 체크 전에 분석 버튼이 켜져 있음");
+await page.check('.sheet input[type="checkbox"]');
+await agreeButton.click();
 await page.waitForSelector("text=By area", { timeout: 60000 });
 await page.waitForTimeout(600);
 await shot(page, "06-result");

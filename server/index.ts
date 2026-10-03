@@ -18,6 +18,7 @@ import {
   type AnalyzeResponse,
   type FingerKey,
 } from "../shared/analysis.js";
+import { HEALTH_CONSENT_VERSION } from "../shared/billing.js";
 import {
   auditCredentials,
   createRateLimiter,
@@ -26,7 +27,17 @@ import {
   securityHeaders,
 } from "./security.js";
 import { attachUser } from "./auth.js";
-import { api, saveFailedScan, saveScan } from "./routes.js";
+import { api, recordHealthConsent, saveFailedScan, saveScan } from "./routes.js";
+import {
+  billing,
+  handlePaddleWebhook,
+  quotaMessage,
+  reserveScan,
+  scanAllowance,
+  usageOf,
+} from "./billing.js";
+import { billingConfig, missingBillingSettings } from "./billing-config.js";
+import { pruneUsage } from "./usage.js";
 import { DB_PATH, db } from "./db.js";
 import { seedArticles } from "./seed-articles.js";
 
@@ -39,6 +50,16 @@ const ALLOW_DEMO = process.env.ALLOW_DEMO_FALLBACK !== "false";
 app.set("trust proxy", process.env.TRUST_PROXY === "true" ? 1 : false);
 app.disable("x-powered-by");
 app.use(securityHeaders);
+
+/**
+ * 결제 업체(Paddle)의 웹훅. 서명을 원본 본문으로 검증해야 하므로 JSON 파서보다 먼저,
+ * 원본 그대로 받는다. 브라우저가 아니라 Paddle 서버가 부르므로 세션도 오리진도 없다.
+ */
+app.post(
+  "/api/billing/webhook",
+  express.raw({ type: "*/*", limit: "1mb" }),
+  handlePaddleWebhook,
+);
 
 // 업로드 이미지는 클라이언트에서 미리 1280px 이하로 줄여 보낸다.
 app.use(express.json({ limit: "6mb" }));
@@ -89,6 +110,9 @@ app.get("/api/health", (req, res) => {
     signedIn: Boolean(req.user),
   });
 });
+
+// 요금제 · 결제 · 사용량
+app.use("/api/billing", billing);
 
 // 계정 · 기록 · 설정 · 건강 정보
 app.use("/api", api);
@@ -147,9 +171,51 @@ app.post("/api/analyze", sameOriginOnly, analyzeLimiter, async (req, res) => {
       }
     : null;
 
+  // 건강 데이터 처리에 동의한 화면에서 온 요청만 받는다. 동의 문구가 바뀌면 다시 묻는다.
+  if (req.body?.consentVersion !== HEALTH_CONSENT_VERSION) {
+    return send(400, {
+      ok: false,
+      code: "consent_required",
+      error: "Please review how your photo is processed and agree before scanning.",
+    });
+  }
+  if (req.user) recordHealthConsent(req.user.id, HEALTH_CONSENT_VERSION);
+
+  /**
+   * 사용 한도. 분석을 시작하기 전에 한 번을 미리 세고, 결과를 돌려주지 못하면 되돌린다.
+   * 결제 기능이 꺼져 있으면 한도가 없다(allowance.buckets 가 비어 있다).
+   */
+  const allowance = scanAllowance(req, res);
+  const reservation = reserveScan(allowance);
+  if (!reservation.ok) {
+    // 걸린 것이 IP 한도여도 화면에는 "이번 기간 횟수를 다 썼다"로 보이게 한다.
+    const usage = usageOf(allowance);
+    return send(402, {
+      ok: false,
+      code: "quota_exceeded",
+      error: quotaMessage(allowance, Boolean(req.user)),
+      usage: { ...usage, used: Math.max(usage.used, allowance.limit ?? 0) },
+    });
+  }
+  // 로그인하지 않은 사람이 기다리다 나가 버리면 결과를 다시 볼 길이 없다. 그때는 세지 않는다.
+  let clientGone = false;
+  res.on("close", () => {
+    if (!res.writableFinished) clientGone = true;
+  });
+  const finish = (status: number, body: AnalyzeResponse) => {
+    if (!body.ok || (clientGone && !req.user)) reservation.release();
+    if (clientGone) return;
+    return send(
+      status,
+      body.ok && allowance.buckets.length > 0
+        ? { ...body, usage: usageOf(allowance) }
+        : body,
+    );
+  };
+
   if (!hasCredentials()) {
     if (!ALLOW_DEMO) {
-      return send(503, {
+      return finish(503, {
         ok: false,
         code: "no_api_key",
         error:
@@ -158,7 +224,7 @@ app.post("/api/analyze", sameOriginOnly, analyzeLimiter, async (req, res) => {
     }
     const analysis = buildDemoAnalysis(image.length % 13);
     if (!record) {
-      return send(200, { ok: true, demo: true, model: "demo", analysis });
+      return finish(200, { ok: true, demo: true, model: "demo", analysis });
     }
     const scanId = saveScan({
       ...record,
@@ -171,7 +237,7 @@ app.post("/api/analyze", sameOriginOnly, analyzeLimiter, async (req, res) => {
     });
     // 사진은 이 아이디로 브라우저 안에 저장된다. 서버는 아이디만 안다.
     markImageRef(scanId, keepPhoto === true);
-    return send(200, { ok: true, demo: true, model: "demo", analysis, scanId });
+    return finish(200, { ok: true, demo: true, model: "demo", analysis, scanId });
   }
 
   try {
@@ -181,7 +247,7 @@ app.post("/api/analyze", sameOriginOnly, analyzeLimiter, async (req, res) => {
       const message =
         "We couldn't find a nail in this photo. Please retake it with the nail filling the frame.";
       if (record) saveFailedScan({ ...record, code: "not_a_nail_photo", message });
-      return send(422, { ok: false, code: "not_a_nail_photo", error: message });
+      return finish(422, { ok: false, code: "not_a_nail_photo", error: message });
     }
     if (!analysis.imageQuality.usable) {
       const message =
@@ -189,13 +255,13 @@ app.post("/api/analyze", sameOriginOnly, analyzeLimiter, async (req, res) => {
           ? `This photo was hard to read: ${analysis.imageQuality.issues.join(", ")}`
           : "The photo is too blurry to observe. Please retake it in bright light.";
       if (record) saveFailedScan({ ...record, code: "unusable_image", message });
-      return send(422, { ok: false, code: "unusable_image", error: message });
+      return finish(422, { ok: false, code: "unusable_image", error: message });
     }
 
     const provider = activeProvider();
     if (!record) {
       // 로그인하지 않은 사람의 분석은 서버에 흔적을 남기지 않는다.
-      return send(200, { ok: true, demo: false, model: provider.model, analysis });
+      return finish(200, { ok: true, demo: false, model: provider.model, analysis });
     }
 
     const scanId = saveScan({
@@ -209,7 +275,7 @@ app.post("/api/analyze", sameOriginOnly, analyzeLimiter, async (req, res) => {
     });
     markImageRef(scanId, keepPhoto === true);
 
-    return send(200, {
+    return finish(200, {
       ok: true,
       demo: false,
       model: provider.model,
@@ -223,10 +289,10 @@ app.post("/api/analyze", sameOriginOnly, analyzeLimiter, async (req, res) => {
       if (record) saveFailedScan({ ...record, code: err.code, message: err.message });
       const status =
         err.code === "rate_limited" ? 429 : err.code === "declined" ? 422 : 502;
-      return send(status, { ok: false, code: err.code, error: err.message });
+      return finish(status, { ok: false, code: err.code, error: err.message });
     }
     console.error("analyze failed: unexpected");
-    return send(500, {
+    return finish(500, {
       ok: false,
       code: "upstream_error",
       error: "Something went wrong during analysis. Please try again in a moment.",
@@ -279,10 +345,24 @@ app.listen(PORT, () => {
     );
   }
 
+  const paddle = billingConfig();
+  const missing = missingBillingSettings();
+  if (paddle.enabled) {
+    console.log(`결제: Paddle ${paddle.environment} · 무료 사용 한도 적용`);
+  } else if (missing.length > 0) {
+    console.warn(
+      `[결제] 설정이 일부만 되어 있어 결제를 끈 채로 동작합니다. 빠진 값: ${missing.join(", ")}`,
+    );
+  }
+
   for (const warning of auditCredentials(ENV_FILE_PATH)) {
     console.warn(`[보안] ${warning}`);
   }
 });
+
+// 지난 달 사용량과 오래된 웹훅 기록을 하루에 한 번 정리한다.
+pruneUsage();
+setInterval(pruneUsage, 24 * 60 * 60 * 1000).unref();
 
 // 처리되지 않은 오류가 스택과 함께 응답으로 나가지 않게 막는다.
 process.on("unhandledRejection", (reason) => {

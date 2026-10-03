@@ -156,6 +156,69 @@ const MIGRATIONS: Migration[] = [
         ON profiles(apple_sub) WHERE apple_sub IS NOT NULL;
     `,
   },
+  {
+    version: 3,
+    name: "구독 · 결제 이벤트 · 사용량 · 건강 데이터 동의",
+    sql: `
+      -- 결제 업체(Paddle)의 고객 아이디. 카드 정보는 결제 업체에만 있고 여기에는 없다.
+      ALTER TABLE profiles ADD COLUMN paddle_customer_id TEXT;
+
+      -- 구독 상태의 사본. 원본은 결제 업체에 있고, 웹훅과 API 조회로 맞춘다.
+      CREATE TABLE IF NOT EXISTS subscriptions (
+        id                  TEXT PRIMARY KEY,
+        user_id             TEXT REFERENCES profiles(id) ON DELETE CASCADE,
+        customer_id         TEXT,
+        status              TEXT NOT NULL,
+        price_id            TEXT,
+        billing_interval    TEXT,
+        current_period_end  INTEGER,
+        scheduled_cancel_at INTEGER,
+        -- 결제 업체 쪽에서 마지막으로 바뀐 시각. 늦게 도착한 옛 이벤트를 걸러 낸다.
+        source_updated_at   INTEGER NOT NULL,
+        created_at          INTEGER NOT NULL,
+        updated_at          INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_subscriptions_user ON subscriptions(user_id);
+
+      -- 서버가 만든 결제 거래. 어느 계정이 시작한 결제인지는 이 표로만 판단한다.
+      CREATE TABLE IF NOT EXISTS billing_checkouts (
+        transaction_id  TEXT PRIMARY KEY,
+        user_id         TEXT NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
+        price_id        TEXT NOT NULL,
+        subscription_id TEXT,
+        created_at      INTEGER NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS idx_checkouts_subscription
+        ON billing_checkouts(subscription_id);
+
+      -- 같은 웹훅이 두 번 와도 한 번만 처리한다.
+      CREATE TABLE IF NOT EXISTS billing_events (
+        event_id    TEXT PRIMARY KEY,
+        event_type  TEXT NOT NULL,
+        received_at INTEGER NOT NULL
+      );
+
+      -- 무료 사용 한도. 주체는 계정, 또는 (로그인하지 않았으면) 기기와 IP 의 해시다.
+      CREATE TABLE IF NOT EXISTS usage_counters (
+        subject    TEXT NOT NULL,
+        period     TEXT NOT NULL,
+        count      INTEGER NOT NULL DEFAULT 0,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (subject, period)
+      );
+
+      -- 서버가 스스로 만든 비밀값(사용량 해시용). 환경변수로 주면 그쪽이 우선한다.
+      CREATE TABLE IF NOT EXISTS app_secrets (
+        name       TEXT PRIMARY KEY,
+        value      TEXT NOT NULL,
+        created_at INTEGER NOT NULL
+      );
+
+      -- 건강 데이터 처리 동의를 언제, 어느 문구 버전에 받았는지.
+      ALTER TABLE user_preferences ADD COLUMN health_consent_at INTEGER;
+      ALTER TABLE user_preferences ADD COLUMN health_consent_version TEXT;
+    `,
+  },
 ];
 
 function migrate(database: DatabaseSync): void {

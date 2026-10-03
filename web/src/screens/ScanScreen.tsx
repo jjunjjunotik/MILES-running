@@ -19,6 +19,10 @@ import {
   OfflineIcon,
 } from "../components/Icons";
 import { Notice, TopBar } from "../components/ui";
+import { ConsentSheet } from "../components/ConsentSheet";
+import { giveConsent, hasConsent, withdrawConsent } from "../lib/consent";
+import { formatBillingDate, usageExhausted, usageLine } from "../lib/billing";
+import type { UsageInfo } from "../../../shared/billing";
 
 const STEPS = [
   "Checking the photo",
@@ -41,6 +45,9 @@ const STOP_CODES = new Set([
   "unusable_image",
   "bad_request",
   "declined",
+  // 이번 기간의 분석 횟수를 다 썼거나, 동의 없이 보낸 요청. 다시 보내도 같다.
+  "quota_exceeded",
+  "consent_required",
 ]);
 
 const RETRY_FIRST_MS = 2000;
@@ -75,6 +82,10 @@ export function ScanScreen({
   demoMode,
   online = true,
   signedIn = false,
+  usage = null,
+  onUsage,
+  onOpenPlan,
+  onSignIn,
   onDone,
 }: {
   settings: Settings;
@@ -82,6 +93,11 @@ export function ScanScreen({
   online?: boolean;
   /** 로그인했으면 결과는 계정에, 아니면 이 기기에 저장한다. */
   signedIn?: boolean;
+  /** 이번 기간의 사용량. 한도가 없거나 아직 모르면 null */
+  usage?: UsageInfo | null;
+  onUsage?: (usage: UsageInfo) => void;
+  onOpenPlan?: () => void;
+  onSignIn?: () => void;
   onDone: (view: ResultView) => Promise<void> | void;
 }) {
   const [image, setImage] = useState<PreparedImage | null>(null);
@@ -96,6 +112,8 @@ export function ScanScreen({
   /** 마지막으로 막힌 이유. 오래 걸릴 때만, 참고 정보로 보여 준다. */
   const [lastReason, setLastReason] = useState<string | null>(null);
   const [dragging, setDragging] = useState(false);
+  /** 첫 분석 전 건강 데이터 처리 동의 창 */
+  const [askConsent, setAskConsent] = useState(false);
 
   const fileInput = useRef<HTMLInputElement>(null);
   const cameraInput = useRef<HTMLInputElement>(null);
@@ -145,6 +163,11 @@ export function ScanScreen({
 
   async function run() {
     if (!image || busy) return;
+    // 사진을 보내기 전에 동의부터 받는다. 서버 없는 데모는 사진이 기기를 떠나지 않으므로 묻지 않는다.
+    if (!STANDALONE_DEMO && !hasConsent()) {
+      setAskConsent(true);
+      return;
+    }
     setBusy(true);
     setError(null);
     setAttempt(1);
@@ -179,6 +202,7 @@ export function ScanScreen({
       }
 
       const { analysis, demo, scanId } = result;
+      if (result.usage) onUsage?.(result.usage);
 
       // 로그인 상태에서는 서버가 기록 아이디를 정한다. 사진은 그 아이디로 기기에 저장한다.
       const recordId = scanId ?? crypto.randomUUID();
@@ -216,6 +240,17 @@ export function ScanScreen({
       });
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") return;
+      if (err instanceof ApiError && err.code === "quota_exceeded" && err.usage) {
+        // 한도 안내는 분석 버튼 자리에 따로 그린다.
+        onUsage?.(err.usage);
+        return;
+      }
+      if (err instanceof ApiError && err.code === "consent_required") {
+        // 동의 문구가 바뀌었다. 다시 묻는다.
+        withdrawConsent();
+        setAskConsent(true);
+        return;
+      }
       setError(
         err instanceof ApiError
           ? err.message
@@ -452,15 +487,39 @@ export function ScanScreen({
           </div>
         )}
 
-        <button
-          className="btn btn-primary mt-24"
-          disabled={!image || !online}
-          onClick={() => void run()}
-        >
-          Analyze
-        </button>
+        {usageExhausted(usage) && usage ? (
+          <QuotaPanel
+            usage={usage}
+            signedIn={signedIn}
+            onOpenPlan={onOpenPlan}
+            onSignIn={onSignIn}
+          />
+        ) : (
+          <>
+            <button
+              className="btn btn-primary mt-24"
+              disabled={!image || !online}
+              onClick={() => void run()}
+            >
+              Analyze
+            </button>
+            {usage && usageLine(usage) && (
+              <p className="usage-line">
+                {usageLine(usage)}
+                {usage.plan === "free" && onOpenPlan && (
+                  <>
+                    {" · "}
+                    <button className="link" onClick={onOpenPlan}>
+                      See Pro
+                    </button>
+                  </>
+                )}
+              </p>
+            )}
+          </>
+        )}
 
-        {!online ? (
+        {usageExhausted(usage) ? null : !online ? (
           <p className="scan-hint">
             <OfflineIcon size={16} />
             You can analyze once you're back online
@@ -479,6 +538,62 @@ export function ScanScreen({
             : " With your current settings, only the result is kept, not the photo."}
         </p>
       </main>
+
+      {askConsent && (
+        <ConsentSheet
+          signedIn={signedIn}
+          onClose={() => setAskConsent(false)}
+          onAgree={() => {
+            giveConsent();
+            setAskConsent(false);
+            void run();
+          }}
+        />
+      )}
     </>
+  );
+}
+
+/** 이번 기간의 분석 횟수를 다 썼을 때 분석 버튼 자리에 보여 준다. */
+function QuotaPanel({
+  usage,
+  signedIn,
+  onOpenPlan,
+  onSignIn,
+}: {
+  usage: UsageInfo;
+  signedIn: boolean;
+  onOpenPlan?: () => void;
+  onSignIn?: () => void;
+}) {
+  const pro = usage.plan === "pro";
+  return (
+    <div className="quota mt-24" role="status">
+      <div className="t">
+        {pro
+          ? `You've reached today's limit of ${usage.limit} scans`
+          : `You've used your ${usage.limit} free ${usage.limit === 1 ? "scan" : "scans"} this month`}
+      </div>
+      <p>
+        {pro
+          ? "You can scan again tomorrow (the limit resets at midnight UTC)."
+          : `They reset on ${formatBillingDate(usage.resetsAt)}.`}{" "}
+        Your past results, including warning-sign checks, are still in History.
+      </p>
+      {!pro && (
+        <div className={signedIn || !onSignIn ? "mt-12" : "btn-row mt-12"}>
+          {!signedIn && onSignIn && (
+            <button className="btn btn-secondary" onClick={onSignIn}>
+              Log in
+            </button>
+          )}
+          {onOpenPlan && (
+            <button className="btn btn-primary" onClick={onOpenPlan}>
+              See Pro
+            </button>
+          )}
+        </div>
+      )}
+    </div>
   );
 }

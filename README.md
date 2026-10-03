@@ -21,11 +21,12 @@ AI 비전 모델이 6개 항목을 관찰해 설명하고, 눈에 띈 특징은 
 | 온보딩 | 앱 소개, 비진단 안내, 사진 처리 방식. 언제든 건너뛸 수 있습니다 |
 | 로그인 · 가입 | 이메일 계정, 로그인 유지, 인증 오류 안내 |
 | 홈 | 인사, 최근 관찰 요약, 지표 추이, 건강 정보 입구, 사진 처리 방식 안내 |
-| 손톱 스캔 | 촬영/업로드, 사진 품질 사전 확인, 부위 선택, 메모, 분석 실행 |
+| 손톱 스캔 | 촬영/업로드, 사진 품질 사전 확인, 부위 선택, 메모, 첫 분석 전 동의, 남은 횟수, 분석 실행 |
 | 결과 | 사진과 한 줄 요약, 6개 항목 한눈에 보기, 관찰 지표, **특이 사항**, 항목별 관찰과 일반 정보, 생활 팁, 전문가 상담 신호, 요약 카드 공유 |
 | 기록 | 부위 필터, 관찰 지표 추이, 날짜별 목록과 이전 대비 변화, 삭제 |
 | 건강 정보 | 손톱 관리 · 관찰법 · 흔한 변화 · 상담 시점, 카테고리와 검색 |
-| 프로필 | 계정, 설정, 데이터·계정 삭제, 개인정보 처리 안내, 앱 버전 |
+| 프로필 | 계정, 요금제, 설정, 데이터·계정 삭제, 동의 철회, 개인정보처리방침·약관, 앱 버전 |
+| 요금제 | Free/Pro 비교, 가격·체험·자동 갱신 고지, 결제, 해지·철회, 결제 수단 변경 (결제를 켰을 때만) |
 
 ## 로그인은 선택입니다
 
@@ -261,6 +262,107 @@ npm run dev
 - 프로필 화면에서 사진만 또는 전체 기록을 한 번에 삭제할 수 있고,
   "Save analyzed photos"를 끄면 결과만 남고 사진은 저장되지 않습니다.
 
+## 유료 구독 (Paddle)
+
+**결제 업체 계정과 키를 넣기 전까지는 꺼져 있습니다.** 이때는 요금제 화면이 보이지 않고
+분석 횟수 한도도 없습니다(지금까지와 같음). 아래 다섯 값을 모두 넣으면 켜집니다.
+
+| 요금제 | 할 수 있는 것 |
+|---|---|
+| Free | 한 달에 3번 분석 (`FREE_SCANS_PER_MONTH`), 결과 전체 |
+| Pro | 하루 20번까지 분석 (`PRO_SCANS_PER_DAY`), 결과 전체 |
+
+- **안전 정보는 요금제와 상관없이 모두 보입니다.** 위험 신호 점검, 진료 안내, 지난 결과는
+  한도를 다 써도 그대로 볼 수 있습니다. 요금제가 바꾸는 것은 새로 분석할 수 있는 횟수뿐입니다.
+- 가격과 무료 체험 기간은 코드가 아니라 **Paddle 에 설정한 가격**을 그대로 읽어 보여 줍니다.
+  화면의 금액과 실제 청구액이 어긋나지 않게 하기 위해서입니다.
+- 결제는 Paddle(판매 대행, Merchant of Record)이 받습니다. 카드 정보는 이 서버를 지나가지 않고,
+  각국 부가세·판매세 신고와 환불, 영수증도 Paddle 이 맡습니다.
+
+### 어떻게 동작하나
+
+1. 화면에서 결제를 누르면 **서버가 Paddle 에 거래를 만들고**, 그 거래 아이디로 Paddle 결제 창을 엽니다.
+   어떤 요금을 얼마에 사는지는 서버가 정하고, 어느 계정의 결제인지도 서버가 만든 거래 기록으로만 정합니다.
+2. 결제가 끝나면 화면은 서버에 확인을 맡기고, 서버가 비밀키로 Paddle 에 직접 조회해 Pro 를 켭니다.
+   그래서 웹훅이 늦거나 빠져도 결제 직후 바로 Pro 가 됩니다.
+3. 이후의 변화(갱신, 결제 실패, 해지 확정)는 **서명을 검증한 웹훅**(`POST /api/billing/webhook`)으로 받습니다.
+   같은 이벤트가 두 번 와도 한 번만 처리하고, 순서가 뒤바뀌어 온 옛 이벤트는 무시합니다.
+4. 해지는 앱의 Profile > Plan 에서 두 번 눌러 끝납니다. 이번 결제 기간이 끝날 때까지 Pro 가 유지되고,
+   그 전에 철회할 수 있습니다. 결제 수단 변경과 영수증은 Paddle 고객 포털(새 창)에서 합니다.
+5. 계정을 지우면 살아 있는 구독을 **먼저 즉시 해지**합니다. 해지에 실패하면 계정도 지우지 않습니다.
+6. 무료 한도는 로그인했으면 계정으로 세고, 로그인하지 않았으면 이 기기의 무작위 쿠키(`ns_device`)와
+   같은 IP 의 손님 전체(`GUEST_SCANS_PER_IP_PER_MONTH`, 기본 15회)로 셉니다. IP 와 쿠키 값은 그대로
+   저장하지 않고 서버 비밀값으로 만든 해시만 남기며, IP 해시는 달마다 바뀝니다.
+   기간은 UTC 기준(무료: 매달 1일, Pro: 매일 0시)으로 다시 찹니다.
+
+### Paddle 설정 (sandbox 로 먼저)
+
+1. sandbox 계정을 만듭니다: https://sandbox-login.paddle.com/signup
+2. **Catalog > Products** 에 상품 하나와 가격 둘을 만듭니다.
+   월간(매달 청구, 원하면 7일 무료 체험), 연간(매년 청구). 각 가격의 아이디(`pri_…`)를 적어 둡니다.
+3. **Checkout > Checkout settings** 에서 기본 결제 링크(default payment link)를 앱 주소로 정합니다.
+   이게 없으면 거래를 만들 수 없습니다. sandbox 는 `localhost` 도 됩니다.
+   실서비스(production)는 Paddle 의 **도메인 승인**이 먼저 필요합니다.
+4. **Developer tools > Authentication** 에서
+   - API 키(서버용, `pdl_sdbx_apikey_…`): transactions·subscriptions·customer portal 쓰기, prices 읽기 권한
+   - 클라이언트 토큰(브라우저용, `test_…`)
+5. **Developer tools > Notifications** 에서 웹훅 대상을 만듭니다.
+   - 주소: `https://<앱 주소>/api/billing/webhook`
+   - 이벤트: `subscription.created`, `subscription.updated`, `subscription.activated`,
+     `subscription.trialing`, `subscription.past_due`, `subscription.paused`, `subscription.resumed`,
+     `subscription.canceled`, `transaction.completed`, `transaction.paid`
+   - 만들 때 보이는 비밀값(`pdl_ntfset_…`)을 복사합니다.
+   - Paddle 은 내 컴퓨터(localhost)로 웹훅을 보낼 수 없습니다. 로컬에서는 결제 직후 Pro 전환까지는
+     확인 경로로 동작하지만, 갱신·해지 확정까지 보려면 터널(cloudflared, ngrok 등)이나 배포한 서버가 필요합니다.
+6. `.env` 에 넣고 서버를 다시 켭니다. 기동 로그에 `결제: Paddle sandbox` 가 찍히면 켜진 것입니다.
+
+```bash
+PADDLE_ENV=sandbox                 # 실서비스는 production
+PADDLE_API_KEY=pdl_sdbx_apikey_…   # 서버 전용 비밀값
+PADDLE_WEBHOOK_SECRET=pdl_ntfset_… # 서버 전용 비밀값
+PADDLE_CLIENT_TOKEN=test_…         # 공개 토큰 (브라우저로 내려가도 되는 값)
+PADDLE_PRICE_MONTHLY=pri_…
+PADDLE_PRICE_YEARLY=pri_…          # 둘 중 하나만 있어도 됩니다
+
+# 선택
+FREE_SCANS_PER_MONTH=3
+PRO_SCANS_PER_DAY=20
+GUEST_SCANS_PER_IP_PER_MONTH=15
+USAGE_HASH_SECRET=…                # 없으면 서버가 만들어 데이터베이스에 둡니다
+```
+
+- sandbox 결제는 Paddle 문서의 테스트 카드로 합니다. 실제로 청구되지 않습니다.
+- 서버는 sandbox 키와 live 키를 섞어 넣으면 기동할 때 경고합니다. 비밀값은 어떤 로그에도 찍지 않고,
+  빌드 검사(`check:secrets`)가 Paddle 비밀키 형식도 잡습니다.
+- 결제를 켜면 CSP 에 Paddle 출처(스크립트 `cdn.paddle.com`, 결제 창 `buy.paddle.com` 등)가 더해지고,
+  Paddle.js 는 결제 버튼을 누를 때 처음 불러옵니다. Paddle.js 가 부르는 별도 분석 스크립트(Retain)는 막아 둡니다.
+
+## 동의와 약관
+
+- **첫 분석 전에 건강 데이터 처리 동의**를 받습니다. 미리 체크해 두지 않고, 사진이 어디로 가고
+  무엇이 남는지 먼저 보여 준 뒤 사용자가 직접 체크해야 분석이 됩니다. 서버도 동의 버전
+  (`shared/billing.ts` 의 `HEALTH_CONSENT_VERSION`) 표시가 없는 분석 요청은 거절합니다.
+  로그인했으면 동의 시각과 문구 버전을 계정에 남기고, Profile 에서 언제든 거둘 수 있습니다.
+  동의 문구를 바꾸면 버전을 올려 모두에게 다시 묻게 합니다.
+- **구독 전에는** 금액, 갱신 주기, 체험이 끝나면 청구된다는 것, 해지 방법을 결제 버튼 바로 위에 적고,
+  약관 동의와 자동 갱신을 이해했다는 체크를 받아야 결제 창이 열립니다.
+- 개인정보처리방침과 이용약관은 `shared/legal.ts` 에 있는 **영어 초안**입니다.
+  변호사 검토 전이라 화면에 "Draft for legal review" 표시가 붙습니다. 검토가 끝나면 문구를 고치고,
+  `OPERATOR` 의 빈칸(운영자 이름·주소·연락처·준거법·EU/영국 대리인)을 채우고,
+  `LEGAL_STATUS` 를 `"final"` 로 바꿉니다. 초안 안의 `[…]` 표시는 확인이 필요한 곳입니다.
+- 서버 없는 단일 HTML 데모는 사진이 기기를 떠나지 않으므로 동의 창과 요금제를 보여 주지 않습니다.
+
+### 아직 하지 않은 것
+
+- 실제 Paddle 계정(sandbox 포함)으로 결제해 본 적은 없습니다. 모의 Paddle 서버로 전 과정을 검증했고,
+  진짜 Paddle.js 를 불러와 CSP 에 막히지 않는 것까지만 확인했습니다. sandbox 로 한 번 결제해 보세요.
+- 무료 체험을 해지 후 다시 받는 것을 막지 않습니다. 필요하면 Paddle 에 체험 없는 가격을 하나 더 두고
+  재가입자에게는 그 가격을 쓰게 바꾸면 됩니다.
+- 손님으로 쓰던 무료 횟수는 가입하면 계정 기준으로 새로 셉니다.
+- Pro 전용 기능은 아직 "더 많은 분석 횟수" 하나뿐입니다(사진 나란히 비교, 재촬영 알림, 진료용 PDF 등은 없음).
+- 앱스토어·구글 플레이용 인앱 결제는 없습니다(지금은 웹 결제만).
+- 약관·개인정보처리방침은 법률 검토 전 초안입니다. 의료기기 해당 여부도 출시 전에 전문가 검토가 필요합니다.
+
 ## 실행
 
 ```bash
@@ -309,6 +411,14 @@ npm run models
 ```bash
 npm start                   # 다른 터미널에서
 npm run smoke               # 업로드 → 분석 → 공유 카드 → 기록까지 한 번 돌려보고 스크린샷 저장
+npm run e2e                 # 온보딩 → 스캔 → 기록 → 건강 정보 → 로그인·가져오기·로그아웃 → 남의 기록 차단
+```
+
+결제와 한도는 서버를 따로 띄우지 않아도 됩니다. 스크립트가 모의 Paddle 과 서버를 직접 띄웁니다.
+
+```bash
+npm run check:billing       # 동의·한도·결제 거래·웹훅 서명/중복/순서·해지·계정 삭제
+npm run build && npm run e2e:billing   # 같은 흐름을 화면으로: 한도 안내 → 요금제 → 결제 창 → Pro → 해지·철회
 ```
 
 ## 분석 프로바이더
@@ -370,9 +480,14 @@ server/gemini.ts       Gemini 호출과 오류 매핑
 server/analyze.ts      프로바이더 선택
 server/env.ts          .env 로드 (다른 모듈보다 먼저)
 server/security.ts     키 마스킹, 속도 제한, 오리진 검사, 보안 헤더
+server/billing.ts      Paddle 거래·구독·웹훅, 요금제 상태, 사용 한도 판단
+server/billing-config.ts 결제 설정 읽기 (다른 모듈에 의존하지 않음)
+server/usage.ts        분석 횟수 세기 (계정 / 기기·IP 해시)
 server/index.ts        API 프록시 + 정적 파일 서빙
+shared/billing.ts      요금제 타입, 건강 데이터 동의 버전
+shared/legal.ts        개인정보처리방침·이용약관 초안
 web/src/lib/           이미지 전처리, 로컬 저장소, API 클라이언트, 공유 카드 렌더링
-web/src/screens/       온보딩 / 로그인 / 홈 / 스캔 / 결과 / 기록 / 건강 정보 / 프로필
+web/src/screens/       온보딩 / 로그인 / 홈 / 스캔 / 결과 / 기록 / 건강 정보 / 프로필 / 요금제
 web/src/components/    공용 UI, 특이 사항, 항목 목록, 팁, 추이 차트, 탭바, 사진 썸네일, 아이콘 별칭
 web/src/fonts.ts       직접 호스팅하는 글꼴
 web/src/styles.css     디자인 토큰(라이트·다크)과 화면 스타일

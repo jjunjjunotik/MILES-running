@@ -1,5 +1,7 @@
 import type { AnalyzeResponse, NailAnalysis } from "../../../shared/analysis";
+import { HEALTH_CONSENT_VERSION, type UsageInfo } from "../../../shared/billing";
 import { buildDemoAnalysis } from "../../../shared/demo";
+import { hasConsent } from "./consent";
 
 /**
  * 서버 없이 동작하는 빌드(단일 HTML 데모)에서만 true.
@@ -13,6 +15,8 @@ export class ApiError extends Error {
     readonly code: string,
     /** 서버가 Retry-After 를 준 경우, 다시 시도하기까지 기다릴 시간(ms) */
     readonly retryAfterMs?: number,
+    /** 한도에 걸렸을 때 서버가 알려 준 사용량 */
+    readonly usage?: UsageInfo,
   ) {
     super(message);
     this.name = "ApiError";
@@ -36,6 +40,8 @@ export interface AnalyzeResult {
   demo: boolean;
   /** 서버가 만든 기록 아이디. 데모 빌드에서는 없다. */
   scanId?: string;
+  /** 이번 분석을 센 뒤의 사용량. 한도가 없으면 없다. */
+  usage?: UsageInfo;
 }
 
 export async function analyze(args: AnalyzeArgs): Promise<AnalyzeResult> {
@@ -63,6 +69,8 @@ export async function analyze(args: AnalyzeArgs): Promise<AnalyzeResult> {
         fingerKey: args.fingerKey,
         note: args.note,
         keepPhoto: args.keepPhoto,
+        // 동의 화면을 거친 경우에만 실린다. 없으면 서버가 분석을 거절한다.
+        consentVersion: hasConsent() ? HEALTH_CONSENT_VERSION : undefined,
       }),
       credentials: "same-origin",
       signal: args.signal,
@@ -82,8 +90,15 @@ export async function analyze(args: AnalyzeArgs): Promise<AnalyzeResult> {
     throw new ApiError("Couldn't read the server response.", "upstream_error");
   }
 
-  if (!body.ok) throw new ApiError(body.error, body.code, retryAfter(response));
-  return { analysis: body.analysis, demo: body.demo, scanId: body.scanId };
+  if (!body.ok) {
+    throw new ApiError(body.error, body.code, retryAfter(response), body.usage);
+  }
+  return {
+    analysis: body.analysis,
+    demo: body.demo,
+    scanId: body.scanId,
+    usage: body.usage,
+  };
 }
 
 /** 속도 제한에 걸렸을 때 서버가 알려 주는 대기 시간. 없으면 undefined. */

@@ -13,6 +13,16 @@ import { LibraryScreen } from "./screens/LibraryScreen";
 import { ProfileScreen } from "./screens/ProfileScreen";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { AuthScreen } from "./screens/AuthScreen";
+import { PlanScreen } from "./screens/PlanScreen";
+import { LegalSheet } from "./components/Legal";
+import { fetchBillingStatus } from "./lib/billing";
+import { giveConsent, hasConsent } from "./lib/consent";
+import {
+  HEALTH_CONSENT_VERSION,
+  type BillingStatus,
+  type UsageInfo,
+} from "../../shared/billing";
+import type { LegalDocId } from "../../shared/legal";
 import {
   DEFAULT_SETTINGS,
   clearAll,
@@ -83,6 +93,12 @@ export function App() {
   const [demoMode, setDemoMode] = useState(false);
   /** 프로필에서 직접 열었을 때만 보이는 로그인 화면 */
   const [showAuth, setShowAuth] = useState(false);
+  /** 요금제 화면. 로그인하러 갔다 와도 그대로 돌아오도록 따로 기억한다. */
+  const [showPlan, setShowPlan] = useState(false);
+  /** 어느 화면 위에서든 여는 약관 시트 */
+  const [legalDoc, setLegalDoc] = useState<LegalDocId | null>(null);
+  /** 요금제와 사용량. 결제 기능이 꺼져 있으면 enabled: false */
+  const [billing, setBilling] = useState<BillingStatus | null>(null);
   const [online, setOnline] = useState(
     typeof navigator === "undefined" ? true : navigator.onLine,
   );
@@ -92,6 +108,16 @@ export function App() {
   // 콜백들이 최신 로그인 상태를 보도록 ref 로도 들고 있는다.
   const userRef = useRef<AuthUser | null>(null);
   userRef.current = user;
+
+  const refreshBilling = useCallback(async () => {
+    const status = await fetchBillingStatus();
+    if (status) setBilling(status);
+  }, []);
+
+  /** 분석 직후처럼 사용량만 바뀌었을 때 */
+  const updateUsage = useCallback((usage: UsageInfo) => {
+    setBilling((current) => (current ? { ...current, usage } : current));
+  }, []);
 
   /** 기록을 다시 읽는다. 로그인했으면 계정에서, 아니면 이 기기에서. */
   const refreshRecords = useCallback(async (signedIn: boolean = Boolean(userRef.current)) => {
@@ -131,14 +157,22 @@ export function App() {
           keepPhotos: prefs.keepPhotos,
           expandByDefault: prefs.expandByDefault,
         });
+        // 이 계정으로 지금 문구에 동의한 적이 있으면 이 기기에서도 다시 묻지 않는다.
+        if (
+          !hasConsent() &&
+          prefs.healthConsentVersion === HEALTH_CONSENT_VERSION &&
+          prefs.healthConsentAt
+        ) {
+          giveConsent(prefs.healthConsentAt);
+        }
       } catch {
         setSettings(loadSettings());
       }
 
-      await refreshRecords(true);
+      await Promise.all([refreshRecords(true), refreshBilling()]);
       setPhase("ready");
     },
-    [refreshRecords],
+    [refreshRecords, refreshBilling],
   );
 
   useEffect(() => {
@@ -151,6 +185,7 @@ export function App() {
         if (!info || cancelled) return;
         setDemoMode(!info.configured && info.demoAvailable);
       });
+      void refreshBilling();
 
       // 서버 없이 도는 단일 HTML 데모: 계정이라는 개념 자체가 없다.
       if (STANDALONE_DEMO) {
@@ -188,7 +223,7 @@ export function App() {
     return () => {
       cancelled = true;
     };
-  }, [enterApp, refreshRecords]);
+  }, [enterApp, refreshRecords, refreshBilling]);
 
   // 네트워크가 끊기고 돌아오는 것을 화면 위쪽 띠로 알린다.
   useEffect(() => {
@@ -218,7 +253,7 @@ export function App() {
 
   useEffect(() => {
     window.scrollTo({ top: 0 });
-  }, [tab, result]);
+  }, [tab, result, showPlan]);
 
   const updateSettings = useCallback(
     (next: Settings) => {
@@ -305,9 +340,10 @@ export function App() {
     setResult(null);
     setSettings(loadSettings());
     setTab("home");
+    setShowPlan(false);
     // 로그인 화면으로 쫓아내지 않는다. 이 기기에 저장하며 계속 쓸 수 있다.
-    await refreshRecords(false);
-  }, [refreshRecords]);
+    await Promise.all([refreshRecords(false), refreshBilling()]);
+  }, [refreshRecords, refreshBilling]);
 
   const finishOnboarding = useCallback(() => {
     try {
@@ -320,7 +356,10 @@ export function App() {
 
   return (
     <IconContext.Provider value={ICON_DEFAULTS}>
-      <div className="app">{renderPhase()}</div>
+      <div className="app">
+        {renderPhase()}
+        {legalDoc && <LegalSheet doc={legalDoc} onClose={() => setLegalDoc(null)} />}
+      </div>
     </IconContext.Provider>
   );
 
@@ -346,6 +385,19 @@ export function App() {
             void enterApp(signedIn);
           }}
           onBack={() => setShowAuth(false)}
+        />
+      );
+    }
+
+    if (showPlan) {
+      return (
+        <PlanScreen
+          billing={billing}
+          user={user}
+          onBack={() => setShowPlan(false)}
+          onSignIn={() => setShowAuth(true)}
+          onBillingChange={setBilling}
+          onOpenLegal={setLegalDoc}
         />
       );
     }
@@ -395,6 +447,10 @@ export function App() {
                 demoMode={demoMode}
                 online={online}
                 signedIn={Boolean(user)}
+                usage={billing?.enabled ? billing.usage : null}
+                onUsage={updateUsage}
+                onOpenPlan={billing?.enabled ? () => setShowPlan(true) : undefined}
+                onSignIn={() => setShowAuth(true)}
                 onDone={async (view) => {
                   await refreshRecords();
                   showResult(view);
@@ -425,6 +481,9 @@ export function App() {
                 onChanged={refreshRecords}
                 onDeleteAll={removeAllRecords}
                 onSignOut={signOut}
+                billing={billing}
+                onOpenPlan={() => setShowPlan(true)}
+                onOpenLegal={setLegalDoc}
               />
             )}
           </>

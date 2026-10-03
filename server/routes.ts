@@ -25,6 +25,7 @@ import {
   verifyGoogleToken,
 } from "./oauth.js";
 import { METRIC_KEYS, type NailAnalysis } from "../shared/analysis.js";
+import { BillingError, cancelForAccountDeletion } from "./billing.js";
 
 /**
  * 계정 · 기록 · 설정 · 건강 정보 API.
@@ -48,7 +49,7 @@ function fail(res: Response, err: unknown): void {
     res.status(status).json({ ok: false, code: err.code, error: err.message });
     return;
   }
-  if (err instanceof AuthError) {
+  if (err instanceof AuthError || err instanceof BillingError) {
     res.status(err.status).json({ ok: false, code: err.code, error: err.message });
     return;
   }
@@ -172,7 +173,7 @@ api.get("/auth/me", (req, res) => {
   res.json({ ok: true, user: req.user ?? null });
 });
 
-api.delete("/auth/account", requireUser, authLimiter, (req, res) => {
+api.delete("/auth/account", requireUser, authLimiter, async (req, res) => {
   try {
     // 계정 삭제는 되돌릴 수 없다. 한 번 더 본인인지 확인한다.
     if (req.user!.hasPassword) {
@@ -189,6 +190,8 @@ api.delete("/auth/account", requireUser, authLimiter, (req, res) => {
         throw new AuthError(400, "confirm_mismatch", "The email doesn't match.");
       }
     }
+    // 살아 있는 구독이 있으면 먼저 해지한다. 해지하지 못하면 계정도 지우지 않는다.
+    await cancelForAccountDeletion(req.user!.id);
     endAllSessions(req.user!.id);
     deleteAccount(req.user!.id);
     endSession(req, res);
@@ -520,6 +523,17 @@ api.put("/preferences", requireUser, (req, res) => {
         typeof body.onboarded === "boolean" ? body.onboarded : current.onboarded,
     };
 
+    // 동의는 분석할 때 기록된다. 여기서는 거두는 것만 받는다.
+    if (body.healthConsent === false) {
+      db()
+        .prepare(
+          `UPDATE user_preferences
+              SET health_consent_at = NULL, health_consent_version = NULL, updated_at = ?
+            WHERE user_id = ?`,
+        )
+        .run(now(), req.user!.id);
+    }
+
     db()
       .prepare(
         `UPDATE user_preferences
@@ -535,7 +549,7 @@ api.put("/preferences", requireUser, (req, res) => {
         req.user!.id,
       );
 
-    res.json({ ok: true, preferences: next });
+    res.json({ ok: true, preferences: readPreferences(req.user!.id) });
   } catch (err) {
     fail(res, err);
   }
@@ -545,11 +559,20 @@ function readPreferences(userId: string) {
   const row = db()
     .prepare(
       `SELECT nickname, keep_photos AS keepPhotos,
-              expand_by_default AS expandByDefault, onboarded
+              expand_by_default AS expandByDefault, onboarded,
+              health_consent_at AS healthConsentAt,
+              health_consent_version AS healthConsentVersion
          FROM user_preferences WHERE user_id = ?`,
     )
     .get(userId) as
-    | { nickname: string; keepPhotos: number; expandByDefault: number; onboarded: number }
+    | {
+        nickname: string;
+        keepPhotos: number;
+        expandByDefault: number;
+        onboarded: number;
+        healthConsentAt: number | null;
+        healthConsentVersion: string | null;
+      }
     | undefined;
 
   if (!row) {
@@ -561,7 +584,14 @@ function readPreferences(userId: string) {
          ON CONFLICT(user_id) DO NOTHING`,
       )
       .run(userId, stamp, stamp);
-    return { nickname: "", keepPhotos: true, expandByDefault: false, onboarded: false };
+    return {
+      nickname: "",
+      keepPhotos: true,
+      expandByDefault: false,
+      onboarded: false,
+      healthConsentAt: null,
+      healthConsentVersion: null,
+    };
   }
 
   return {
@@ -569,7 +599,24 @@ function readPreferences(userId: string) {
     keepPhotos: row.keepPhotos === 1,
     expandByDefault: row.expandByDefault === 1,
     onboarded: row.onboarded === 1,
+    healthConsentAt: row.healthConsentAt,
+    healthConsentVersion: row.healthConsentVersion,
   };
+}
+
+/**
+ * 건강 데이터 처리 동의를 계정에 남긴다. 언제 어느 문구에 동의했는지 보여 줄 수 있어야 한다.
+ * 같은 버전에 이미 동의했으면 처음 동의한 시각을 그대로 둔다.
+ */
+export function recordHealthConsent(userId: string, version: string): void {
+  readPreferences(userId); // 설정 줄이 없으면 만든다.
+  db()
+    .prepare(
+      `UPDATE user_preferences
+          SET health_consent_at = ?, health_consent_version = ?, updated_at = ?
+        WHERE user_id = ? AND (health_consent_version IS NULL OR health_consent_version <> ?)`,
+    )
+    .run(now(), version, now(), userId, version);
 }
 
 /* -------------------------------- 건강 정보 -------------------------------- */

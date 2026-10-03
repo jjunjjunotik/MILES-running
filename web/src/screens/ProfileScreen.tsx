@@ -15,11 +15,17 @@ import {
   clearServerImages,
   deleteAccount,
   importScans,
+  savePreferences,
   type AuthUser,
 } from "../lib/server";
 import { Notice, Sheet, TopBar } from "../components/ui";
+import { ChevronIcon } from "../components/Icons";
+import type { BillingStatus } from "../../../shared/billing";
+import type { LegalDocId } from "../../../shared/legal";
+import { consentGivenAt, withdrawConsent } from "../lib/consent";
+import { formatBillingDate, usageLine } from "../lib/billing";
 
-type PendingAction = "photos" | "all" | "account" | null;
+type PendingAction = "photos" | "all" | "account" | "consent" | null;
 
 export const APP_VERSION = "1.0.0";
 
@@ -32,6 +38,9 @@ export function ProfileScreen({
   onDeleteAll,
   onSignOut,
   onSignIn,
+  billing = null,
+  onOpenPlan,
+  onOpenLegal,
 }: {
   user: AuthUser | null;
   settings: Settings;
@@ -41,6 +50,9 @@ export function ProfileScreen({
   onDeleteAll: () => Promise<void>;
   onSignOut: () => Promise<void>;
   onSignIn?: () => void;
+  billing?: BillingStatus | null;
+  onOpenPlan?: () => void;
+  onOpenLegal?: (doc: LegalDocId) => void;
 }) {
   const [pending, setPending] = useState<PendingAction>(null);
   const [busy, setBusy] = useState(false);
@@ -53,6 +65,9 @@ export function ProfileScreen({
   const [localCount, setLocalCount] = useState(0);
 
   const photoCount = records.filter((record) => record.hasImage).length;
+  /** 이 기기에서 건강 데이터 처리에 동의한 시각 */
+  const [consentAt, setConsentAt] = useState<number | null>(() => consentGivenAt());
+  const subscription = billing?.subscription ?? null;
 
   useEffect(() => {
     if (STANDALONE_DEMO || !user) return;
@@ -100,6 +115,12 @@ export function ProfileScreen({
         await clearScopedImages();
         await onDeleteAll();
         setDone("All scans and photos were deleted.");
+      } else if (action === "consent") {
+        // 계정에 남은 동의 기록도 함께 거둔다. 다음 분석 전에 다시 묻는다.
+        if (!STANDALONE_DEMO && user) await savePreferences({ healthConsent: false });
+        withdrawConsent();
+        setConsentAt(null);
+        setDone(null);
       } else {
         // 비밀번호가 없는 소셜 계정은 이메일을 그대로 적어 확인한다.
         await deleteAccount(
@@ -120,7 +141,11 @@ export function ProfileScreen({
         setBusy(false);
         return;
       }
-      setDone("Delete didn't work. Please try again in a moment.");
+      setDone(
+        action === "consent"
+          ? "We couldn't update your consent. Please try again in a moment."
+          : "Delete didn't work. Please try again in a moment.",
+      );
     } finally {
       setBusy(false);
       if (action !== "account") setPending(null);
@@ -185,6 +210,32 @@ export function ProfileScreen({
           <div className="mt-16" role="status">
             <Notice>{imported}</Notice>
           </div>
+        )}
+
+        {billing?.enabled && onOpenPlan && (
+          <section className="sec" style={{ marginTop: 28 }}>
+            <h3 className="sec-title">Plan</h3>
+            <div className="list">
+              <button className="row plan-row" onClick={onOpenPlan}>
+                <div className="row-main">
+                  <div className="row-title">
+                    {billing.usage.plan === "pro" ? "Pro" : "Free"}
+                  </div>
+                  <div className="row-sub">
+                    {subscription?.cancelAt
+                      ? `Pro ends ${formatBillingDate(subscription.cancelAt)}`
+                      : subscription?.status === "past_due"
+                        ? "Payment needs attention"
+                        : usageLine(billing.usage)}
+                  </div>
+                </div>
+                <span className="row-end">
+                  {billing.usage.plan === "pro" ? "Manage" : "See Pro"}
+                </span>
+                <ChevronIcon size={18} className="chev" />
+              </button>
+            </div>
+          </section>
         )}
 
         <section className="sec" style={{ marginTop: 28 }}>
@@ -288,6 +339,44 @@ export function ProfileScreen({
             title="Only you see your history"
             body="Only you can view or delete your scans."
           />
+          {!STANDALONE_DEMO && (
+            <div className="list mt-8">
+              <div className="row">
+                <div className="row-main">
+                  <div className="row-title">Consent to process nail photos</div>
+                  <div className="row-sub">
+                    {consentAt
+                      ? `Given ${formatBillingDate(consentAt)}`
+                      : "Not given. We'll ask before your next scan."}
+                  </div>
+                </div>
+                {consentAt && (
+                  <button
+                    className="btn btn-secondary btn-sm"
+                    onClick={() => setPending("consent")}
+                  >
+                    Withdraw
+                  </button>
+                )}
+              </div>
+              {onOpenLegal && (
+                <>
+                  <button className="row" onClick={() => onOpenLegal("privacy")}>
+                    <div className="row-main">
+                      <div className="row-title">Privacy Policy</div>
+                    </div>
+                    <ChevronIcon size={18} className="chev" />
+                  </button>
+                  <button className="row" onClick={() => onOpenLegal("terms")}>
+                    <div className="row-main">
+                      <div className="row-title">Terms of Service</div>
+                    </div>
+                    <ChevronIcon size={18} className="chev" />
+                  </button>
+                </>
+              )}
+            </div>
+          )}
         </section>
 
         <section className="sec">
@@ -328,7 +417,9 @@ export function ProfileScreen({
               ? "Delete photos"
               : pending === "all"
                 ? "Delete all history"
-                : "Delete account"
+                : pending === "consent"
+                  ? "Withdraw consent"
+                  : "Delete account"
           }
           onClose={() => {
             if (busy) return;
@@ -342,15 +433,27 @@ export function ProfileScreen({
               ? "Delete all saved photos?"
               : pending === "all"
                 ? "Delete all history?"
-                : "Delete your account?"}
+                : pending === "consent"
+                  ? "Withdraw consent?"
+                  : "Delete your account?"}
           </h3>
           <p>
             {pending === "photos"
               ? `${photoCount} ${photoCount === 1 ? "photo" : "photos"} on this device will be deleted. Your results stay.`
               : pending === "all"
                 ? `${records.length} ${records.length === 1 ? "scan" : "scans"} and their photos will be deleted. This can't be undone.`
-                : "Your account, all scans and the photos on this device will be deleted. This can't be undone."}
+                : pending === "consent"
+                  ? "We won't analyze any more photos until you agree again before your next scan. Your saved history isn't deleted; you can delete it under Your data."
+                  : "Your account, all scans and the photos on this device will be deleted. This can't be undone."}
           </p>
+          {pending === "account" && subscription && (
+            <div className="mt-12">
+              <Notice tone="monitor">
+                Your Pro subscription will be canceled right away, and you won't be
+                charged again.
+              </Notice>
+            </div>
+          )}
 
           {pending === "account" && (
             <div className="mt-16">
@@ -391,7 +494,7 @@ export function ProfileScreen({
               disabled={busy}
               onClick={() => void run(pending)}
             >
-              Delete
+              {pending === "consent" ? "Withdraw" : "Delete"}
             </button>
           </div>
         </Sheet>

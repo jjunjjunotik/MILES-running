@@ -18,7 +18,9 @@
     "check:secrets": "node scripts/check-secrets.mjs",
     "models": "node scripts/models.mjs",
     "e2e": "node scripts/e2e.mjs",
-    "check:oauth": "node scripts/check-oauth.mjs"
+    "check:oauth": "node scripts/check-oauth.mjs",
+    "check:billing": "node scripts/check-billing.mjs",
+    "e2e:billing": "node scripts/e2e-billing.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

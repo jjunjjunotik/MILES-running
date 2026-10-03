@@ -2053,6 +2053,231 @@ img {
 }
 
 /* -------------------------------- 유틸 -------------------------------- */
+/* ------------------------------ 요금제와 동의 ------------------------------ */
+/* 결제는 건강 정보가 아니므로 의미색(초록·호박·주황·빨강)을 쓰지 않는다. 고르는 것은 강조색 하나로. */
+.tier-now {
+  padding-top: 8px;
+}
+
+.tier-kicker {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.tier-name {
+  margin: 2px 0 0;
+  font-size: 28px;
+  font-weight: 600;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+}
+
+.tier-usage {
+  margin: 6px 0 0;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.tier-sub {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+.tier-points {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tier-points li,
+.consent-points li {
+  display: grid;
+  grid-template-columns: 18px 1fr;
+  gap: 10px;
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.tier-points svg,
+.consent-points svg {
+  margin-top: 3px;
+  color: var(--accent);
+}
+
+.tier-free {
+  margin: 10px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-3);
+}
+
+.price-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.price-option {
+  display: grid;
+  gap: 2px;
+  padding: 12px 14px;
+  border-radius: var(--r);
+  background: var(--raised);
+  box-shadow: inset 0 0 0 1px var(--line-2);
+  text-align: left;
+  transition:
+    background-color 0.15s var(--ease),
+    box-shadow 0.15s var(--ease);
+}
+
+.price-option[aria-checked="true"] {
+  background: var(--accent-wash);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.po-name {
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.price-option[aria-checked="true"] .po-name {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.po-price {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.po-note {
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+.disclosure {
+  display: grid;
+  gap: 6px;
+  margin: 16px 0 0;
+  padding: 0 0 0 18px;
+  font-size: 13.5px;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+/* 동의 체크. 문장 전체를 눌러도 체크된다. */
+.check {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 10px;
+  align-items: start;
+  margin-top: 16px;
+  font-size: 14.5px;
+  line-height: 1.6;
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.check input {
+  width: 20px;
+  height: 20px;
+  margin: 2px 0 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.consent-points {
+  display: grid;
+  gap: 10px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.consent-points li {
+  font-size: 14.5px;
+  color: var(--ink-2);
+}
+
+.legal-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 18px;
+}
+
+.usage-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0 4px;
+  margin: 6px 0 0;
+  font-size: 13.5px;
+  color: var(--ink-3);
+}
+
+.quota {
+  padding: 14px 16px;
+  border-radius: var(--r);
+  background: var(--accent-wash);
+}
+
+.quota .t {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.quota p {
+  margin: 4px 0 0;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--ink-2);
+}
+
+.plan-row .row-end {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+/* 약관 본문. 시트 안에서 읽는 긴 글이라 줄 길이와 간격을 넉넉히 둔다. */
+.legal h3 {
+  margin: 18px 0 0;
+}
+
+.legal-meta {
+  margin: 2px 0 12px;
+  font-size: 13px;
+  color: var(--ink-3);
+}
+
+.legal h4 {
+  margin: 20px 0 6px;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.legal p + p {
+  margin-top: 8px;
+}
+
+.legal ul {
+  display: grid;
+  gap: 6px;
+  margin: 6px 0 8px;
+  padding-left: 18px;
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--ink-2);
+}
+
 .mt-8 { margin-top: 8px; }
 .mt-12 { margin-top: 12px; }
 .mt-16 { margin-top: 16px; }

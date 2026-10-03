@@ -23,6 +23,9 @@ const PATTERNS = [
   // 자리표시자를 한 번 잘못 잡는 쪽보다 훨씬 비싸다.
   { name: "Google API 키", re: /\bAIza[0-9A-Za-z_-]{20,}/ },
   { name: "PEM 개인키", re: /-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----/ },
+  // Paddle 서버 키와 웹훅 비밀값. 결제 창용 공개 토큰(test_/live_)은 원래 브라우저에 나가는 값이라 제외한다.
+  { name: "Paddle API 키", re: /\bpdl_(live|sdbx)_apikey_[A-Za-z0-9_]{8,}/ },
+  { name: "Paddle 웹훅 비밀값", re: /\bpdl_ntfset_[A-Za-z0-9_]{8,}/ },
 ];
 
 /**
