@@ -125,7 +125,7 @@ async function paddle<T>(
     throw new BillingError(502, "billing_unavailable", UNAVAILABLE);
   }
 
-  type Envelope = { data?: T; error?: { code?: string } };
+  type Envelope = { data?: T; error?: { code?: string; detail?: string } };
   let json: Envelope | null;
   try {
     json = (await response.json()) as Envelope;
@@ -138,11 +138,12 @@ async function paddle<T>(
     console.error(
       `[billing] ${method} ${path} → ${response.status} (${json?.error?.code ?? "no_code"})`,
     );
-    // 개발 중에는 원인을 화면에서도 바로 보이게 Paddle 오류 코드를 덧붙인다(코드에는 개인정보가 없다).
+    // 개발 중에는 원인을 화면에서도 바로 보이게 Paddle 오류 코드와 설명을 덧붙인다.
+    // 설명에는 드물게 고객 정보가 섞일 수 있어 실서비스(production)에서는 붙이지 않는다.
     const hint =
       process.env.NODE_ENV === "production"
         ? ""
-        : ` [Paddle ${response.status}: ${String(json?.error?.code ?? "no_code").slice(0, 60)}]`;
+        : ` [Paddle ${response.status} ${method} ${path.split("?")[0]}: ${String(json?.error?.code ?? "no_code").slice(0, 60)}${json?.error?.detail ? ` - ${String(json.error.detail).slice(0, 200)}` : ""}]`;
     throw new BillingError(
       502,
       "billing_error",
