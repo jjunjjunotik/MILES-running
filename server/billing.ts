@@ -138,10 +138,15 @@ async function paddle<T>(
     console.error(
       `[billing] ${method} ${path} → ${response.status} (${json?.error?.code ?? "no_code"})`,
     );
+    // 개발 중에는 원인을 화면에서도 바로 보이게 Paddle 오류 코드를 덧붙인다(코드에는 개인정보가 없다).
+    const hint =
+      process.env.NODE_ENV === "production"
+        ? ""
+        : ` [Paddle ${response.status}: ${String(json?.error?.code ?? "no_code").slice(0, 60)}]`;
     throw new BillingError(
       502,
       "billing_error",
-      "Our payment provider couldn't complete this request. Please try again in a moment.",
+      `Our payment provider couldn't complete this request. Please try again in a moment.${hint}`,
     );
   }
   return json.data;
