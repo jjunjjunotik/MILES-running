@@ -590,12 +590,50 @@
 
   const DEFAULT_HOME = { lat: 37.5512, lng: 126.9882 };   // Namsan, Seoul
 
+  /**
+   * A signed-in account's state before the server has filled it in. Nothing
+   * is seeded: every runner, crew and plot on a real map comes from the
+   * server (sync.js), and an account with no runs yet has none to show.
+   */
+  function blankAccount(id, home) {
+    return {
+      version: 1,
+      connected: true,
+      account: id ? { id } : null,
+      profile: { name: '', handle: '', initials: '', home: home || DEFAULT_HOME },
+      units: 'km',
+      mapStyle: 'dark',
+      heroBg: 0,
+      cardDesign: Object.assign({}, CARD_DESIGN),
+      rankSeen: RANKS[0].key,
+      pro: { plan: null, trialEndsAt: null },
+      rangeMode: 'week',
+      activities: [],
+      territories: [],
+      questClaims: {},
+      crews: [],
+      rivalLand: [],
+      friends: [],
+      feed: [],
+      outbox: [],
+      server: {},
+    };
+  }
+
   const State = {
     data: null,
 
     init() {
+      const connected = !!(M.Api && M.Api.enabled);
+      Store.key = connected ? 'miles.account.v1' : 'miles.v1';
       const saved = Store.read();
-      if (saved && saved.version === 1) {
+      if (connected) {
+        // The copy on the phone is only ever used for the account it belongs to.
+        const me = M.Api.user ? M.Api.user.id : null;
+        this.data = saved && saved.version === 1 && saved.connected && saved.account && me && saved.account.id === me
+          ? saved
+          : blankAccount(me, saved && saved.profile && saved.profile.home);
+      } else if (saved && saved.version === 1) {
         this.data = saved;
       } else {
         const home = DEFAULT_HOME;
@@ -682,6 +720,15 @@
       // are, so upgrading the app never fakes a promotion they did not just earn.
       if (!this.data.rankSeen) this.data.rankSeen = Stats.rank(this.data).current.key;
 
+      // Everything below fills in or repairs the demo's made-up world. A real
+      // account's world comes from the server, as it is.
+      if (this.data.connected) {
+        if (!this.data.outbox) this.data.outbox = [];
+        if (!this.data.feed) this.data.feed = [];
+        if (!this.data.server) this.data.server = {};
+        return this.data;
+      }
+
       // Owners painted before the palette was validated keep colours that are
       // indistinguishable from each other; restate them in slot order.
       const stale = this.data.friends.some((f, i) => f.color !== FRIEND_COLORS[i % FRIEND_COLORS.length]);
@@ -732,6 +779,29 @@
       Bus.emit('state:changed', this.data);
     },
 
+    /**
+     * Signing in: keep the copy on the phone if it is this account's,
+     * otherwise start a blank one for the server to fill.
+     */
+    useAccount(user) {
+      const home = this.data && this.data.profile ? this.data.profile.home : DEFAULT_HOME;
+      Store.key = 'miles.account.v1';
+      if (!this.data || !this.data.connected || !this.data.account || this.data.account.id !== user.id) {
+        this.data = blankAccount(user.id, home);
+      }
+      Units.system = this.data.units;
+      this.save();
+    },
+
+    /** Signing out, or the account deleted: nothing of it stays on the phone. */
+    signOut() {
+      const home = this.data && this.data.profile ? this.data.profile.home : DEFAULT_HOME;
+      Store.clear();
+      this.data = blankAccount(null, home);
+      Units.system = this.data.units;
+      Bus.emit('state:changed', this.data);
+    },
+
     setUnits(system) {
       this.data.units = system;
       Units.system = system;
@@ -740,10 +810,12 @@
 
     setProfileName(name) {
       const clean = name.slice(0, 24);
+      const before = this.data.profile.name;
       this.data.profile.name = clean;
       this.data.profile.handle = '@' + clean.toLowerCase().replace(/[^a-z0-9]+/g, '') || '@runner';
       this.data.profile.initials = clean.split(/\s+/).map((w) => w[0]).join('').slice(0, 2).toUpperCase() || 'ME';
       this.save();
+      if (this.data.connected && M.Sync) M.Sync.rename(clean, before);
     },
 
     /** Adds a friend to race against. Returns the new friend, or null. */
@@ -762,6 +834,7 @@
     removeFriend(id) {
       this.data.friends = this.data.friends.filter((f) => f.id !== id);
       this.save();
+      if (this.data.connected && M.Sync) M.Sync.removeFriend(id);
     },
 
     /**
@@ -823,10 +896,21 @@
           this.data.territories.unshift(territory);
         }
       }
-      if (territory) this.resolveLand();
+      if (territory) {
+        // On a real map the server decides what the loop takes, a moment
+        // after upload; until then the new plot is drawn whole. The demo
+        // resolves its made-up map here and now.
+        if (this.data.connected) territory.pieces = [{ ring: polygon, holes: [] }];
+        else this.resolveLand();
+      }
+      if (this.data.connected) {
+        activity.pending = true;
+        this.data.outbox.push(activity.id);
+      }
       const unlocked = settleQuests(this.data);
       const rankUp = this.claimRankUp();
       this.save();
+      if (this.data.connected && M.Sync) M.Sync.flush();
       // The claim may have been trimmed by a later one, though a brand new run
       // is normally the latest thing on the map.
       if (territory) activity.claimedArea = territory.area;
@@ -834,12 +918,12 @@
     },
 
     reset() {
-      try { localStorage.removeItem('miles.v1'); } catch (err) { /* ignore */ }
+      Store.clear();
       this.data = null;
       this.init();
       Bus.emit('state:changed', this.data);
     },
   };
 
-  Object.assign(M, { State, Stats, QUESTS, RANKS, TIERS, KINDS, CARD_DESIGN, RACE_DISTANCES, OWNER_COLORS, FRIEND_COLORS, questView, DEFAULT_HOME });
+  Object.assign(M, { State, Stats, blankAccount, QUESTS, RANKS, TIERS, KINDS, CARD_DESIGN, RACE_DISTANCES, OWNER_COLORS, FRIEND_COLORS, questView, DEFAULT_HOME });
 })(window.MILES);

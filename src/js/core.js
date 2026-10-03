@@ -28,6 +28,11 @@ window.MILES = window.MILES || {};
     return node;
   };
 
+  /** Text made safe inside HTML. Toasts take markup; names in them are
+      whatever a runner typed, so every name goes through this first. */
+  const esc = (value) => String(value === null || value === undefined ? '' : value)
+    .replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
   const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
   const lerp = (a, b, t) => a + (b - a) * t;
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
@@ -240,12 +245,14 @@ window.MILES = window.MILES || {};
      localStorage can throw (private mode, blocked site data), so every
      access is guarded and the app stays fully usable without it. -------- */
 
-  const KEY = 'miles.v1';
-
   const Store = {
+    // The demo keeps its made-up world under one key; a signed-in account
+    // keeps its copy of the server under another, so neither overwrites the
+    // other (see state.js).
+    key: 'miles.v1',
     read() {
       try {
-        const raw = localStorage.getItem(KEY);
+        const raw = localStorage.getItem(this.key);
         return raw ? JSON.parse(raw) : null;
       } catch (err) {
         return null;
@@ -253,11 +260,14 @@ window.MILES = window.MILES || {};
     },
     write(data) {
       try {
-        localStorage.setItem(KEY, JSON.stringify(data));
+        localStorage.setItem(this.key, JSON.stringify(data));
         return true;
       } catch (err) {
         return false;
       }
+    },
+    clear() {
+      try { localStorage.removeItem(this.key); } catch (err) { /* nothing to clear */ }
     },
   };
 
@@ -297,5 +307,5 @@ window.MILES = window.MILES || {};
     return gain;
   }
 
-  Object.assign(M, { $, $$, el, clamp, lerp, uid, rng, Units, Geo, Store, Bus, clock, relTime, startOfWeek, startOfMonth, M_PER_MI, CLIMB_STEP, climbOf });
+  Object.assign(M, { $, $$, el, esc, clamp, lerp, uid, rng, Units, Geo, Store, Bus, clock, relTime, startOfWeek, startOfMonth, M_PER_MI, CLIMB_STEP, climbOf });
 })(window.MILES);

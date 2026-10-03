@@ -7,7 +7,7 @@
 (function (M) {
   'use strict';
 
-  const { $, $$, el, State, Stats, Units, Geo, Bus, Tracker, Live, clamp, clock, relTime } = M;
+  const { $, $$, el, esc, State, Stats, Units, Geo, Bus, Tracker, Live, clamp, clock, relTime } = M;
 
   const TAB_SCREENS = ['home', 'crew', 'territory', 'quests', 'feed', 'profile'];
 
@@ -45,7 +45,11 @@
       // a scale bar, and a legend that answers for whatever is on screen now.
       this.maps.territory = new M.MapView($('#terrMap'), {
         mpp: 2.4, padding: 26, scale: true,
-        onMove: () => this.renderTerrLegend(),
+        onMove: () => {
+          this.renderTerrLegend();
+          // On a real map the ground is loaded a view at a time.
+          if (State.data.connected) M.Sync.viewLand(this.maps.territory.bounds());
+        },
       });
       this.maps.territory.enableGestures();
       Object.values(this.maps).forEach((map) => map.setAnchor(State.data.profile.home));
@@ -115,6 +119,7 @@
       if (tab === 'feed') this.renderFeed();
       if (tab === 'crew') this.renderCrew();
       if (tab === 'home') this.maps.home.invalidate();
+      if (State.data.connected && M.Sync) M.Sync.onTab(tab);
     },
 
     /* --- Sheets --------------------------------------------------------------
@@ -463,9 +468,11 @@
           this.toast('Pick at least one runner to race');
           return;
         }
+        if (State.data.connected) { this.startServerRace(); return; }
         this.closeSheet('#duoSheet');
         this.beginRun({ kind: 'race', rivals: this.pendingRivals.slice(), target: this.raceTarget });
       });
+      this._raceNoteDemo = $('#raceNote').innerHTML;
     },
 
     /**
@@ -590,9 +597,12 @@
       map.invalidate();
     },
 
-    locate() {
+    /** `options.quiet` finds you without a toast — after signing in, say. */
+    locate(options) {
+      const quiet = !!(options && options.quiet);
+      const connected = State.data.connected;
       if (!M.Native.isApp && !navigator.geolocation) {
-        this.toast('Location is not available in this browser');
+        if (!quiet) this.toast('Location is not available in this browser');
         return;
       }
       M.Native.currentPosition(
@@ -603,20 +613,61 @@
           $('#geoNote').textContent = 'Live GPS';
           $('#geoStatus').textContent = 'Granted — using live GPS';
           this.renderHomeMap();
-          this.toast('Centred on your <b>real location</b>');
+          if (!quiet) this.toast('Centred on your <b>real location</b>');
+          // Crews and ground "near you" are near here now.
+          if (connected) M.Sync.nearby();
         },
         () => {
-          $('#geoStatus').textContent = 'Denied — running on simulated location';
-          this.toast('Location denied — staying on the simulated map');
+          $('#geoStatus').textContent = connected ? 'Off — runs need it' : 'Denied — running on simulated location';
+          if (!quiet || connected) {
+            this.toast(connected
+              ? 'Location is off. MILES needs it to record your runs and find crews near you.'
+              : 'Location denied — staying on the simulated map');
+          }
         }
       );
     },
 
     /* --- Duo lobby --------------------------------------------------------- */
 
+    /**
+     * A race on a real account is made on the server first: it sends each
+     * friend the invite, and the race runs over the live socket.
+     */
+    startServerRace() {
+      const button = $('#duoStart');
+      button.disabled = true;
+      M.Sync.createRace(this.raceTarget, this.pendingRivals.slice()).then((race) => {
+        this.closeSheet('#duoSheet');
+        this.beginRun({ kind: 'race', rivals: M.Sync.raceRivals(race), target: race.target, room: race.id });
+      }).catch((err) => {
+        if (err.status === 402 && err.feature) { this.openPro(err.feature); return; }
+        this.toast(esc(err.message));
+      }).finally(() => { button.disabled = false; });
+    },
+
+    /** A friend started a race with you in it. */
+    offerRace(race) {
+      if (!race || Tracker.active || this._offeredRace === race.id) return;
+      this._offeredRace = race.id;
+      const host = race.host ? race.host.name : 'A friend';
+      this.confirm({
+        title: `${host} wants to race`,
+        body: `${Units.distText(race.target)} ${Units.distLabel()}, from wherever you are. First to cover it wins; anyone not running yet is paced by a bot until they start.`,
+        confirmLabel: 'Race now',
+        cancelLabel: 'Not now',
+      }).then((yes) => {
+        if (!yes || Tracker.active) return;
+        this.beginRun({ kind: 'race', rivals: M.Sync.raceRivals(race), target: race.target, room: race.id });
+      });
+    },
+
     openRaceLobby() {
       this.raceTarget = this.raceTarget || 5000;
       this.pendingRivals = State.data.friends.slice(0, 1);
+      $('#raceNote').innerHTML = State.data.connected
+        ? '<b style="color:var(--accent)">On their phones:</b> everyone you pick gets the invite straight away. Until a friend starts running, a pace bot runs for them at their usual speed.'
+        : this._raceNoteDemo;
       $$('#racePicker button').forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.distance) === this.raceTarget)));
       this.renderFriendPicker();
       this.openSheet('#duoSheet');
@@ -662,6 +713,24 @@
 
     /** Shared by the lobby and the profile: one prompt, one new friend. */
     promptFriend(after) {
+      if (State.data.connected) {
+        // A real friend is added with the code they give you, never by name.
+        this.promptText({
+          title: 'Add a friend',
+          body: 'Ask them for the six-character code in the Account card on their You screen. It makes you friends both ways.',
+          placeholder: 'Friend code',
+          confirmLabel: 'Add',
+          maxLength: 12,
+          emptyMessage: 'That needs their code',
+        }).then((code) => {
+          if (code === null) return;
+          M.Sync.addFriend(code).then((friend) => {
+            this.toast(`<b>${esc(friend.name)}</b> can now line up with you`);
+            if (after) after(friend);
+          }).catch((err) => this.toast(esc(err.message)));
+        });
+        return;
+      }
       this.promptText({
         title: 'Add a friend',
         body: 'They can line up in your races straight away.',
@@ -672,7 +741,7 @@
         if (name === null) return;
         const friend = State.addFriend(name);
         if (!friend) { this.toast('You already have a friend by that name'); return; }
-        this.toast(`<b>${friend.name}</b> can now line up with you`);
+        this.toast(`<b>${esc(friend.name)}</b> can now line up with you`);
         if (after) after(friend);
       });
     },
@@ -695,8 +764,8 @@
       Bus.on('run:tick', (run) => this.renderRun(run));
       Bus.on('run:position', () => this.renderRunMap());
       Bus.on('live:peers', () => { this.renderRaceBoard(); this.renderRunMap(); });
-      Bus.on('live:joined', (peer) => this.toast(`<b>${peer.name}</b> joined the race — live`, null));
-      Bus.on('live:finished', (bot) => this.toast(`<b>${bot.name}</b> crossed the line`));
+      Bus.on('live:joined', (peer) => this.toast(`<b>${esc(peer.name)}</b> joined the race — live`, null));
+      Bus.on('live:finished', (bot) => this.toast(`<b>${esc(bot.name)}</b> crossed the line`));
       // Crossing your own finish line ends the race for you.
       Bus.on('run:finished', () => this.finishRun());
       Bus.on('run:captured', (run) => {
@@ -750,7 +819,8 @@
       $('#runTime').textContent = clock(run.duration);
       $('#runPace').textContent = Units.paceText(run.currentPace);
       $('#runPaceLabel').textContent = 'Pace ' + Units.paceLabel();
-      $('#runSourceChip').textContent = run.source === 'gps' ? 'GPS' : 'SIM';
+      // On a real account the run waits for a fix rather than simulating one.
+      $('#runSourceChip').textContent = run.source === 'gps' ? 'GPS' : Tracker.simulate() ? 'SIM' : 'GPS…';
 
       // The third cell answers the question the current run kind is asking.
       if (run.kind === 'race') {
@@ -1235,6 +1305,7 @@
         map.pullBack(1.8);
       }
       map.invalidate();
+      if (s.connected) M.Sync.viewLand(map.bounds());
 
       this.renderTerrLegend();
       this.renderTimeMachine();
@@ -1251,9 +1322,10 @@
       // loop covers is not lost — you still hold it, under the newer plot —
       // so counting it here would contradict the breakdown further up.
       const claims = s.territories.concat(rivalLand);
-      const lost = (t) => M.Land.raiders(t, claims, s.profile.home)
+      // On a real map the server keeps each plot's losses; the demo replays them.
+      const lost = (t) => (s.connected ? t.lost || 0 : M.Land.raiders(t, claims, s.profile.home)
         .filter((r) => r.owner !== 'me')
-        .reduce((sum, r) => sum + r.area, 0);
+        .reduce((sum, r) => sum + r.area, 0));
 
       s.territories.forEach((t) => {
         const canvas = el('canvas');
@@ -1430,7 +1502,7 @@
     renderRaiders() {
       const on = M.Pro.can('raiders');
       const raiders = M.Pro.raiders(State.data);
-      const lost = raiders.reduce((a, r) => a + r.area, 0);
+      const lost = M.Pro.lostTotal(State.data);
 
       $('#raidChip').hidden = !on;
       $('#raidLocked').hidden = on;
@@ -1527,6 +1599,16 @@
       });
       $('#proBtn').addEventListener('click', () => {
         if (M.Pro.tier() === 'free') return this.openPro();
+        if (State.data.connected) {
+          // A trial simply ends; a subscription is cancelled where it was bought.
+          const v = M.Pro.verify(State.data);
+          if (v.trial) {
+            this.toast(`The trial ends by itself on <b>${new Date(v.until).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</b>. Nothing is charged.`);
+            return;
+          }
+          M.Account.manageSubscription();
+          return;
+        }
         const name = M.Pro.verify(State.data).trial ? 'the trial' : M.Pro.tier() === 'pro' ? 'Pro' : 'Supporter';
         this.confirm({
           title: `Cancel ${name}?`,
@@ -1542,6 +1624,17 @@
       $('#proLater').addEventListener('click', () => this.closeSheet('#proSheet'));
       $('#proPrimary').addEventListener('click', () => {
         const trial = M.Pro.trialAvailable() && this.proTier === 'pro';
+        if (State.data.connected) {
+          this.closeSheet('#proSheet');
+          if (trial) {
+            M.Sync.startTrial()
+              .then(() => this.toast(`<b>Pro</b> for ${M.Pro.TRIAL_DAYS} days — open the time machine`))
+              .catch((err) => this.toast(esc(err.message)));
+          } else {
+            M.Account.purchase(this.proPlan);
+          }
+          return;
+        }
         if (trial) M.Pro.startTrial(State.data);
         else M.Pro.subscribe(State.data, this.proPlan);
         State.save();
@@ -1728,10 +1821,18 @@
       const done = (save) => {
         this.closeSheet('#askSheet');
         if (!save) return;
+        if (State.data.connected) {
+          if (!territory.serverId) { this.toast('That plot is still reaching the map — try again in a moment'); return; }
+          const name = input.value.trim().slice(0, 28);
+          M.Sync.stylePlot(territory, name, colour)
+            .then(() => this.toast(name ? `Named <b>${esc(name)}</b>` : 'Plot updated'))
+            .catch((err) => this.toast(esc(err.message)));
+          return;
+        }
         territory.name = input.value.trim().slice(0, 28);
         territory.color = colour;
         State.save();
-        this.toast(territory.name ? `Named <b>${territory.name}</b>` : 'Plot updated');
+        this.toast(territory.name ? `Named <b>${esc(territory.name)}</b>` : 'Plot updated');
       };
       this._askDismiss = () => done(false);
 
@@ -1788,9 +1889,9 @@
         const settled = M.Crew.settleMission(state, mine);
         if (settled) {
           const level = settled.level;
-          this.toast(`Mission cleared — <b>${mine.name}</b> +${settled.xp} crew XP`, 'reward');
+          this.toast(`Mission cleared — <b>${esc(mine.name)}</b> +${settled.xp} crew XP`, 'reward');
           if (level.tier.index > (this._crewTier || 0) && this._crewTier) {
-            this.toast(`<b>${mine.name}</b> reached Tier ${level.tier.index} · ${level.tier.name}`, 'reward');
+            this.toast(`<b>${esc(mine.name)}</b> reached Tier ${level.tier.index} · ${level.tier.name}`, 'reward');
           }
           this._crewTier = level.tier.index;
           State.save();
@@ -2133,7 +2234,11 @@
               this.openCrewSheet(crew.id);
               this.renderCrew();
             },
-          }, [this.icon('i-cross')]) : null,
+          }, [this.icon('i-cross')])
+            : State.data.connected ? el('button', {
+              class: 'icon-btn', type: 'button', 'aria-label': 'Report this notice',
+              onclick: () => M.Account.report('notice', notice.id, 'this notice'),
+            }, [this.icon('i-dots')]) : null,
         ]));
       });
 
@@ -2315,15 +2420,19 @@
               if (result.error) { this.toast(result.error); return; }
               this.closeSheet('#crewSheet');
               this.renderCrew();
-              this.toast(`<b>${result.crew.name}</b> is yours — ${result.crew.requests.length} runners already asked to join`);
+              this.toast(result.crew.requests.length
+                ? `<b>${esc(result.crew.name)}</b> is yours — ${result.crew.requests.length} runners already asked to join`
+                : `<b>${esc(result.crew.name)}</b> is yours`);
             },
           }),
         ]),
       ]));
 
       this.openSheet('#crewSheet');
-      // preventScroll stops the browser scrolling ancestors to reveal it.
-      setTimeout(() => name.focus({ preventScroll: true }), 60);
+      // preventScroll stops the browser scrolling ancestors to reveal it. Only
+      // if nothing in the form has been tapped yet, or a quick tap into
+      // another field would have its typing moved here mid-word.
+      setTimeout(() => { if (!body.contains(document.activeElement)) name.focus({ preventScroll: true }); }, 60);
     },
 
     openCrewSheet(crewId) {
@@ -2401,7 +2510,7 @@
               onclick: () => {
                 const r = State.crewAction((st) => M.Crew.approve(st, crew.id, person.id));
                 if (r.error) { this.toast(r.error); return; }
-                this.toast(`<b>${r.joiner.name}</b> is in`);
+                this.toast(`<b>${esc(r.joiner.name)}</b> is in`);
                 this.openCrewSheet(crew.id);
                 this.renderCrew();
               },
@@ -2444,6 +2553,11 @@
             class: 'icon-btn', type: 'button', 'aria-label': 'Manage ' + member.name,
             onclick: () => this.manageMember(crew.id, member.id),
           }, [this.icon('i-dots')]));
+        } else if (State.data.connected && !isMe) {
+          row.appendChild(el('button', {
+            class: 'icon-btn', type: 'button', 'aria-label': 'Report or block ' + member.name,
+            onclick: () => M.Account.personMenu({ id: member.id, name: member.name }),
+          }, [this.icon('i-dots')]));
         }
         roster.appendChild(row);
       });
@@ -2469,6 +2583,20 @@
           },
         }));
       } else {
+        if (State.data.connected && crew.pendingMe) {
+          actions.push(el('button', {
+            class: 'btn btn--ghost btn--block', type: 'button', text: 'Withdraw request',
+            onclick: () => {
+              crew.pendingMe = false;
+              State.save();
+              M.Api.del(`/v1/crews/${crew.id}/request`)
+                .then(() => M.Sync.pullCrews()).then(() => State.save())
+                .catch((err) => this.toast(esc(err.message)));
+              this.closeSheet('#crewSheet');
+              this.renderCrew();
+            },
+          }));
+        }
         actions.push(el('button', {
           class: 'btn btn--primary btn--block', type: 'button',
           text: crew.pendingMe ? 'Request sent' : crew.openJoin ? 'Join crew' : 'Ask to join',
@@ -2478,11 +2606,17 @@
             if (r.error) { this.toast(r.error); return; }
             this.closeSheet('#crewSheet');
             this.renderCrew();
-            this.toast(r.pending ? `Request sent to <b>${crew.name}</b>` : `You are in <b>${crew.name}</b>`);
+            this.toast(r.pending ? `Request sent to <b>${esc(crew.name)}</b>` : `You are in <b>${esc(crew.name)}</b>`);
           },
         }));
       }
       parts.push(el('div', { class: 'sheet-actions' }, actions));
+      if (State.data.connected && !isLeader) {
+        parts.push(el('button', {
+          class: 'link sheet-report', type: 'button', text: 'Report this crew',
+          onclick: () => M.Account.report('crew', crew.id, crew.name),
+        }));
+      }
 
       parts.forEach((node) => body.appendChild(node));
       this.openSheet('#crewSheet');
@@ -2547,7 +2681,7 @@
             if (!ok) return;
             const result = State.crewAction((st) => M.Crew.handOver(st, crewId, member.id));
             if (result.error) { this.toast(result.error); return; }
-            this.toast(`<b>${member.name}</b> is now captain`);
+            this.toast(`<b>${esc(member.name)}</b> is now captain`);
             this.openCrewSheet(crewId);
             this.renderCrew();
           });
@@ -2587,8 +2721,8 @@
           ]),
         ]),
         member.role === 'pacer'
-          ? el('button', { class: 'btn btn--block', type: 'button', text: 'Demote to member', onclick: () => act((st) => M.Crew.setRole(st, crewId, memberId, 'member'), `${member.name} is a member`) })
-          : el('button', { class: 'btn btn--block', type: 'button', text: 'Make a pacer', onclick: () => act((st) => M.Crew.setRole(st, crewId, memberId, 'pacer'), `${member.name} leads the pack now`) }),
+          ? el('button', { class: 'btn btn--block', type: 'button', text: 'Demote to member', onclick: () => act((st) => M.Crew.setRole(st, crewId, memberId, 'member'), `${esc(member.name)} is a member`) })
+          : el('button', { class: 'btn btn--block', type: 'button', text: 'Make a pacer', onclick: () => act((st) => M.Crew.setRole(st, crewId, memberId, 'pacer'), `${esc(member.name)} leads the pack now`) }),
         el('button', {
           class: 'btn btn--block', type: 'button', text: 'Hand over the crew',
           onclick: () => {
@@ -2597,7 +2731,7 @@
               body: 'They take the member list, the notice board and the weekly mission. You become a member.',
               confirmLabel: 'Hand over',
             }).then((ok) => {
-              if (ok) act((st) => M.Crew.handOver(st, crewId, memberId), `${member.name} is now captain`);
+              if (ok) act((st) => M.Crew.handOver(st, crewId, memberId), `${esc(member.name)} is now captain`);
             });
           },
         }),
@@ -2610,10 +2744,14 @@
               confirmLabel: 'Remove',
               danger: true,
             }).then((ok) => {
-              if (ok) act((st) => M.Crew.remove(st, crewId, memberId), `${member.name} removed`);
+              if (ok) act((st) => M.Crew.remove(st, crewId, memberId), `${esc(member.name)} removed`);
             });
           },
         }),
+        State.data.connected ? el('button', {
+          class: 'btn btn--block', type: 'button', text: 'Report or block',
+          onclick: () => M.Account.personMenu({ id: member.id, name: member.name }),
+        }) : null,
         el('button', { class: 'btn btn--ghost btn--block', type: 'button', text: 'Back', onclick: () => this.openCrewSheet(crewId) }),
       ]));
     },
@@ -2935,13 +3073,25 @@
             ]),
           ]),
           el('div', { class: 'feed-foot' }, [
-            el('button', { class: 'chip chip--icon', type: 'button', onclick: () => this.toast('Kudos sent to <b>' + item.who + '</b>') }, [
-              this.icon('i-spark'), el('span', { text: 'Kudos' }),
-            ]),
+            s.connected && !item.me
+              ? el('button', {
+                class: 'chip chip--icon', type: 'button', 'aria-pressed': String(!!item.kudosMine),
+                'aria-label': `${item.kudosMine ? 'Take back kudos from' : 'Give kudos to'} ${item.who}`,
+                onclick: () => M.Sync.kudos(item).catch((err) => this.toast(esc(err.message))),
+              }, [this.icon('i-spark'), el('span', { text: item.kudos ? `Kudos · ${item.kudos}` : 'Kudos' })])
+              : s.connected
+                ? (a.kudos ? el('span', { class: 'chip chip--icon' }, [this.icon('i-spark'), el('span', { text: `Kudos · ${a.kudos}` })]) : null)
+                : el('button', { class: 'chip chip--icon', type: 'button', onclick: () => this.toast('Kudos sent to <b>' + esc(item.who) + '</b>') }, [
+                  this.icon('i-spark'), el('span', { text: 'Kudos' }),
+                ]),
             el('button', {
               class: 'chip chip--icon', type: 'button',
               onclick: () => { this.lastActivity = a; this.showCardPreview(a, item); },
             }, [el('span', { text: 'Card' }), this.icon('i-open')]),
+            s.connected && !item.me ? el('button', {
+              class: 'chip chip--icon feed-more', type: 'button', 'aria-label': `More about ${item.who}'s run`,
+              onclick: () => M.Account.personMenu({ id: item.whoId, name: item.who }, { run: a.serverId }),
+            }, [this.icon('i-dots')]) : null,
           ]),
         ]);
         list.appendChild(card);
@@ -2982,8 +3132,9 @@
       this.renderSplits(activity);
     },
 
-    /** Friends' runs, generated once per session so the feed feels populated. */
+    /** Friends' runs: the server's, or in the demo generated once per session. */
     friendActivities() {
+      if (State.data.connected) return State.data.feed || [];
       if (this._friendFeed) return this._friendFeed;
       const home = State.data.profile.home;
       const out = [];
@@ -3092,7 +3243,8 @@
         }).then((next) => {
           if (next === null) return;
           State.setProfileName(next);
-          this.toast(`You are now <b>${State.data.profile.name}</b>`);
+          // A real account's name is the server's to accept; sync.js says when it has.
+          if (!State.data.connected) this.toast(`You are now <b>${esc(State.data.profile.name)}</b>`);
         });
       });
 
@@ -3131,6 +3283,10 @@
       this.renderProStatus();
       this.renderFriendList();
       this.renderHistory();
+      // A real account runs on GPS only, and has an account card where the
+      // demo's reset button was.
+      $('#simSetting').hidden = s.connected && !M.Api.simulate;
+      if (s.connected) M.Account.renderCard();
     },
 
     renderFriendList() {
@@ -3140,7 +3296,9 @@
       $('#friendCount').textContent = `${friends.length} racing`;
 
       if (!friends.length) {
-        list.appendChild(el('div', { class: 'empty', text: 'No friends yet. Add one to race them.' }));
+        list.appendChild(el('div', { class: 'empty', text: State.data.connected
+          ? 'No friends yet. Add one with their friend code, or share yours from Account below.'
+          : 'No friends yet. Add one to race them.' }));
         return;
       }
 
@@ -3151,7 +3309,10 @@
             el('span', { style: 'font-weight:800;font-size:14px', text: f.name }),
             el('span', { class: 'tiny', text: `${Units.paceText(f.pace / 1000)} ${Units.paceLabel()}` }),
           ]),
-          el('button', {
+          State.data.connected ? el('button', {
+            class: 'icon-btn', type: 'button', 'aria-label': `Options for ${f.name}`,
+            onclick: () => M.Account.personMenu(f),
+          }, [this.icon('i-dots')]) : el('button', {
             class: 'chip', type: 'button', text: 'Remove',
             onclick: () => {
               this.confirm({
@@ -3162,7 +3323,7 @@
               }).then((ok) => {
                 if (!ok) return;
                 State.removeFriend(f.id);
-                this.toast(`<b>${f.name}</b> removed`);
+                this.toast(`<b>${esc(f.name)}</b> removed`);
               });
             },
           }),

@@ -10,6 +10,8 @@
     // The stored basemap choice has to be live before the first map draws.
     M.Tiles.setSource(M.State.data.mapStyle);
     M.UI.init();
+    // With a server: the sign-in screen, or the account picked up where it was.
+    if (M.Api.enabled) M.Account.init();
 
     // Offer real GPS straight away, but never block on it: the simulated
     // location keeps every screen usable if permission is refused.
@@ -18,7 +20,7 @@
         const note = document.getElementById('geoStatus');
         if (status.state === 'granted') {
           if (note) note.textContent = 'Granted';
-          M.UI.locate();
+          M.UI.locate({ quiet: M.Api.enabled });
         } else if (note) {
           note.textContent = status.state === 'denied' ? 'Denied — using simulated location' : 'Not requested';
         }

@@ -17,8 +17,10 @@ the only source of XP, and XP is the only thing that moves your **rank**.
 Around that: **crews** — find the running clubs near you, or start one and run
 it yourself.
 
-No build step and no dependencies. Open `index.html`. The only thing it ever
-fetches is map imagery, and that is optional — see **The map** below.
+No build step and no dependencies. Open `index.html`. On its own it is a
+self-contained demo whose only network use is map imagery, and that is
+optional — see **The map** below. Pointed at the server in `server/`, the
+same app is a real account on a shared map — see **The app and the server**.
 
 ---
 
@@ -33,7 +35,8 @@ python3 -m http.server 8000
 # → http://localhost:8000
 ```
 
-Everything is stored in `localStorage` on the device. Nothing is uploaded.
+In the demo everything is stored in `localStorage` on the device and nothing
+is uploaded.
 
 ### Racing a friend for real
 
@@ -48,8 +51,10 @@ Each tab now shows the other's real distance and position in the standings.
 Anyone who has not joined is run by a pace bot at the speed their weekly volume
 implies, so a race is never a dead screen.
 
-To put this on a real network, replace `_send` and the channel wiring in
-`src/js/realtime.js` with a WebSocket. Nothing else changes.
+Signed in to a server, a race is made on the server instead: each friend you
+pick gets the invite on their own phone the moment you start, and telemetry
+travels over the account's WebSocket (`src/js/api.js`, `server/src/live.js`).
+The pace bots stay, standing in for whoever has not started yet.
 
 ---
 
@@ -228,6 +233,9 @@ those runs back at 1×, 12× or 40×, which is how you capture a loop in under a
 minute during a demo. The chip at the top of the run screen always says which
 one you are on: `GPS` or `SIM`.
 
+Signed in to a server there is no simulator: until the first fix the chip
+reads `GPS…` and the clock waits with you.
+
 ---
 
 ## Layout
@@ -296,7 +304,7 @@ whichever basemap is underneath.
 
 ## Tests
 
-Seventeen checks live in the repo root. The first is plain Node; the rest drive the
+Eighteen checks live in the repo root. The first is plain Node; the rest drive the
 real app in headless Chromium and need Playwright, which the app itself does
 not — `npm i playwright`, or run with `NODE_PATH` pointing at an install that
 has it. The three marked `:8765` want `python3 -m http.server 8765` running.
@@ -319,7 +327,13 @@ node test-hero.js         the home picture swipes, and nothing a swipe could bre
 node test-crew.js         a captain's crew screen: one job per block, nothing shown twice
 node test-card.js         the record card: every layout fits, and its climb is real
 node test-native.js       the phone app: a run records in the background, the notch is clear
+node test-online.js       the app against the real server, from sign-up to deleting the account
 ```
+
+`test-online.js` starts the API from `server/` on a database of its own, so it
+also needs the server's dependencies (`cd server && npm install`) and a
+Postgres where the role may create databases (`TEST_DATABASE_URL`). The
+server has 79 tests of its own: `cd server && npm test`.
 
 `test-tiles.js` serves its own tiles from a throwaway HTTP server, so it needs
 no network and passes with the real CDN blocked.
@@ -445,12 +459,14 @@ any screen, that every reference resolves, that no sprite hard-codes a fill
 
 ## MILES Pro
 
-A paid tier exists in the app. **It is a product surface, not enforcement** —
-the app is a static front end whose state is in `localStorage`, so
-`pro.plan` is one devtools edit away for anyone who wants it. Real
-entitlement needs a server, and `Pro.verify()` in `src/js/pro.js` is the single
-function that has to change when there is one: it asks the backend, caches the
-answer, and nothing above it moves.
+A paid tier exists in the app. In the demo it is a product surface, not
+enforcement: state lives in `localStorage`, so `pro.plan` is one devtools edit
+away. Signed in to a server it is enforced: `/v1/me` says what the account has
+paid for, `Pro.verify()` reads that answer without changing, and the server
+itself refuses what is paid for and not paid — founding a crew, a race of more
+than four rivals or at a distance of your own, the time machine's history, who
+took your land, naming a plot. Purchases reach the server from the App Store
+and Google Play through RevenueCat (`server/README.md`).
 
 There are two paid tiers. **Supporter** ($2.99/mo, $29.99/yr) is expression:
 naming and colouring your own plots, and the record card's colourways.
@@ -508,7 +524,12 @@ npm install
 npm run android        # copy the app into android/ and open Android Studio
 npm run ios            # the same for Xcode (a Mac is needed for iOS)
 npm run sync           # after changing the app: copy it into both
+
+# A build for the stores talks to your server, over HTTPS:
+MILES_API_URL=https://api.example.com npm run android
 ```
+
+Without `MILES_API_URL` the phone build is the demo.
 
 What the app adds over the browser, all in `src/js/native.js`:
 
@@ -536,9 +557,74 @@ the first store upload if you want another; after that it is permanent.
 
 ---
 
+## The app and the server
+
+`server/` is the backend: accounts, runs, the shared map, crews and their
+missions, friends and the feed, live races, payments and moderation. Its own
+README covers running and deploying it.
+
+```bash
+cd server && npm install && npm start                  # needs Postgres; see server/README.md
+open "index.html?api=http://localhost:8080"            # the app, signed in to it
+```
+
+`?api=` is remembered in that browser until `?api=off`, and only works on
+`file://` or `localhost` — anywhere else a link could point the sign-in form
+at someone else's server. The phone builds take the address from
+`MILES_API_URL` instead (`npm run android`, see **The phone app**) and refuse
+anything but HTTPS.
+
+What changes once there is a server:
+
+- **An account.** The app opens on sign-up / sign-in (`src/js/account.js`):
+  a runner name, an email, a password, and confirming you are 14 or older
+  and accept the terms. A forgotten password is reset with a six-digit code
+  by email. The account card on **You** holds your friend code, a new
+  password, your data as a download, your blocked runners, signing out, and
+  deleting the account.
+- **Nothing is made up.** No seeded runs, rivals, districts, crews or
+  friends: every runner, crew and plot on the screen is real. The demo's
+  world is untouched and comes back with `?api=off`.
+- **Runs are kept on the server.** A finished run goes into an outbox and is
+  uploaded as soon as there is a connection — a run finished in a tunnel
+  arrives when the phone is back. The server decides what a loop takes,
+  with the same `land.js`, and the map is redrawn from its answer. A run the
+  server will not keep (faster than anyone runs, say) is taken off the phone
+  too, with the reason.
+- **GPS only.** The simulator never runs on a real account: a made-up run
+  must not claim real ground. For development, `?sim=1` against a server
+  started with `ALLOW_SIMULATED_RUNS=true` lets it through.
+- **The map loads a view at a time** as you pan, with everyone's ground.
+- **Crews are real crews.** Founding, joining, approving, the notice board
+  and the weekly mission all go to the server; the mission counts every
+  member's actual runs, claims and takes, and the server pays it out.
+- **Friends are added by code**, never by searching for a name. The feed is
+  their runs from the last month, with the first and last 200 m of every
+  route cut off. Kudos are real.
+- **Report and block** wherever someone's content appears: a feed card, a
+  crew's roster, a notice, a crew, your friends.
+- **Settings and progress follow the account**: units, map style, card
+  layout, quests and the rank you have seen.
+
+None of the screens talk to the server. `src/js/sync.js` fills `State.data`
+from it in exactly the shapes the demo's own data has — your id as `'me'`,
+crews and plots and friends as the screens already draw them — and sends what
+you do back. Crew actions apply on the phone at once and are confirmed or
+undone by the server a moment later. `src/js/api.js` holds the session and
+the live socket.
+
+---
+
 ## Not included
 
-This is a complete, working front end with a local data model. It has no
-backend: friends, crews and their activity are generated locally, live
-telemetry is device-local, and there is no account system. Those are the seams
-to build on.
+What a store release still needs that is not built here:
+
+- **Buying a plan in the app.** The server takes purchases from RevenueCat,
+  but the phone builds do not carry RevenueCat's SDK yet. Until they do, the
+  subscribe button says so; the free trial works.
+- **Push notifications.** A race invite reaches a friend whose app is open;
+  one whose app is closed sees it the next time they open it, for ten
+  minutes.
+- **Sign in with Apple or Google.** Email and password only. If a social
+  sign-in is added, Apple requires Sign in with Apple alongside it.
+- **A map tile provider licensed for an app in a store** (see **The map**).

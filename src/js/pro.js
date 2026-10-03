@@ -214,6 +214,12 @@
      * replayed one at a time, so no square metre is counted twice.
      */
     raiders(state) {
+      // A real map is too big to replay on the phone; the server keeps every
+      // bite and says who took what (or, on the free plan, only how much).
+      if (state.connected) {
+        const known = (state.server && state.server.raiders) || {};
+        return (known.raiders || []).map((r) => Object.assign({ color: M.Sync ? M.Sync.ownerColor(r.owner) : null }, r));
+      }
       const later = (state.territories || []).concat(state.rivalLand || []);
       const byOwner = new Map();
 
@@ -299,6 +305,7 @@
 
     /** Total ground lost to other runners, all claims counted. */
     lostTotal(state) {
+      if (state.connected) return ((state.server && state.server.raiders) || {}).lost || 0;
       return this.raiders(state).reduce((sum, r) => sum + r.area, 0);
     },
   };

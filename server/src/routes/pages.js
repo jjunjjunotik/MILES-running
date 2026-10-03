@@ -108,9 +108,9 @@ function privacy(config) {
 
 <h2>Your rights</h2>
 <ul>
-<li><b>See and take your data:</b> in the app, You → Account → Download your data, gives you everything as one file.</li>
+<li><b>See and take your data:</b> in the app, <b>Download your data</b> (on the You screen, in the Account card) gives you everything as one file.</li>
 <li><b>Correct it:</b> change your runner name in the app; delete any run.</li>
-<li><b>Delete it:</b> You → Account → Delete account, or <a href="/delete-account">on the web</a>.</li>
+<li><b>Delete it:</b> <b>Delete account</b> in the same card, or <a href="/delete-account">on the web</a>.</li>
 <li><b>Ask us anything</b> about your data at ${contact(config)}. We answer within 30 days.</li>
 </ul>
 
@@ -176,7 +176,7 @@ function support(config) {
 <h2>Subscriptions</h2>
 <p>Cancel or change a subscription in your App Store or Google Play account settings. Restoring a purchase on a new phone: sign in to the same ${app} account.</p>
 <h2>Your data</h2>
-<p>You → Account → <b>Download your data</b> gives you everything we hold about you. To delete your account, use You → Account → <b>Delete account</b> in the app, or <a href="/delete-account">delete it on the web</a>.</p>`;
+<p>On the You screen, the Account card's <b>Download your data</b> gives you everything we hold about you. To delete your account, use <b>Delete account</b> in the same card, or <a href="/delete-account">delete it on the web</a>.</p>`;
 }
 
 function deleteForm(config, message) {
@@ -184,7 +184,7 @@ function deleteForm(config, message) {
   return `<h1>Delete your ${app} account</h1>
 <p>This deletes your account and everything in it, at once: your profile, every run, the ground you hold, your crew notices, friends and blocks. Ground your loops had taken from other runners goes back to them. If you captain a crew with other runners in it, the longest-standing of them becomes captain. It cannot be undone.</p>
 <p>A subscription is billed by Apple or Google, so cancel it in your store account too — deleting the account does not stop the store charging.</p>
-<p class="muted">You can also do this in the app: You → Account → Delete account. Prefer to ask? Write to ${contact(config)} from the address on the account.</p>
+<p class="muted">You can also do this in the app: <b>Delete account</b>, in the Account card on the You screen. Prefer to ask? Write to ${contact(config)} from the address on the account.</p>
 ${message ? `<p class="note error">${esc(message)}</p>` : ''}
 <form method="post" action="/delete-account">
   <label>Email<input type="email" name="email" autocomplete="username" required></label>

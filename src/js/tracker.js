@@ -30,6 +30,16 @@
     demoSpeed: 12,
 
     /**
+     * Whether a runner with no GPS fix is moved along by the simulator. The
+     * demo always is; a signed-in account never is — a made-up run must not
+     * claim real ground — except against a development server that asks for
+     * it with ?sim=1.
+     */
+    simulate() {
+      return !(M.Api && M.Api.enabled) || M.Api.simulate;
+    },
+
+    /**
      * @param {object} options
      *   kind    'free' | 'territory' | 'race'
      *   rivals  friends to race (up to Pro.maxRivals()); race only
@@ -41,7 +51,10 @@
 
       this.active = true;
       this.kind = opts.kind || 'free';
-      this.rivals = (opts.rivals || []).slice(0, M.Pro.maxRivals());
+      // A race made on the server already has the field its host was allowed;
+      // an invitee races all of it, whatever they pay. The demo caps it here.
+      const serverRace = /^[0-9a-f-]{36}$/i.test(String(opts.room || ''));
+      this.rivals = (opts.rivals || []).slice(0, serverRace ? Infinity : M.Pro.maxRivals());
 
       this.state = {
         id: uid(),
@@ -64,6 +77,8 @@
         closure: null,
         finishedAt: null,
         source: 'sim',
+        // The server's race this run belongs to, so its result is filed there.
+        raceId: /^[0-9a-f-]{36}$/i.test(String(opts.room || '')) ? opts.room : null,
       };
 
       this._sim = {
@@ -123,6 +138,10 @@
       const realDt = (now - this._lastTick) / 1000;
       this._lastTick = now;
       const dt = this.state.source === 'gps' ? realDt : realDt * this.demoSpeed;
+
+      // No fix yet on a real account: the clock waits with the runner for the
+      // GPS rather than counting standing still as running.
+      if (this.state.source !== 'gps' && !this.simulate()) { Bus.emit('run:tick', this.state); return; }
 
       this.state.duration += dt;
 
@@ -302,6 +321,7 @@
         target: s.target,
         finished: s.finishedAt !== null,
       };
+      if (s.raceId) activity.raceId = s.raceId;
 
       if (s.kind === 'race') Object.assign(activity, resultsFor(s, field));
 

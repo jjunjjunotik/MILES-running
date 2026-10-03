@@ -90,6 +90,10 @@ function createLive(deps) {
     if (msg.type === 'join') {
       const raceId = String(msg.race || '');
       if (!(await mayJoin(ws.user.id, raceId))) { send(ws, { type: 'error', code: 'not_in_race', race: raceId }); return; }
+      // The socket may have been open since before a rename: race under the
+      // name the account has now.
+      const fresh = await db.one('select name, initials from users where id = $1', [ws.user.id]);
+      if (fresh) Object.assign(ws.user, fresh);
       if (!rooms.has(raceId)) rooms.set(raceId, new Set());
       rooms.get(raceId).add(ws);
       ws.rooms.add(raceId);

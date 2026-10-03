@@ -4,6 +4,9 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#05070a" />
+  <!-- The MILES server. Empty is the self-contained demo; scripts/build-www.js
+       fills it from MILES_API_URL for the phone builds (see src/js/api.js). -->
+  <meta name="miles-api" content="" />
   <meta name="description" content="MILES — run solo or head-to-head with a friend, share live pace, claim territory by closing loops, and level up through quests." />
   <title>MILES</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23c8ff2e'/><text x='16' y='23' font-size='19' font-weight='800' text-anchor='middle' font-family='sans-serif' fill='%2305070a'>M</text></svg>" />
@@ -453,7 +456,7 @@
               <button type="button" data-unit="mi" aria-pressed="false">MI</button>
             </div>
           </div>
-          <div class="setting">
+          <div class="setting" id="simSetting">
             <div><div class="setting-name">Simulated pace</div><div class="tiny">No GPS needed</div></div>
             <div class="seg" id="demoSpeedSeg">
               <button type="button" data-speed="1" aria-pressed="false">1×</button>
@@ -480,13 +483,18 @@
           </div>
         </div>
 
-        <div class="card stack" style="margin-top:var(--s-3)">
+        <div class="card stack" style="margin-top:var(--s-3)" id="dataCard">
           <span class="card-title">Data</span>
           <p class="tiny">Stays in this browser. Nothing is uploaded.</p>
           <button class="btn btn--danger btn--block" type="button" id="resetBtn">Reset all MILES data</button>
         </div>
       </section>
     </div>
+
+    <!-- ================= ACCOUNT =================
+         Signing up and in. Only with a server (src/js/account.js draws it);
+         it covers the whole app until a runner is signed in. -->
+    <section class="auth" id="authScreen" hidden aria-labelledby="authTitle"></section>
 
     <!-- ================= SOLO: PICK A RUN KIND ================= -->
     <div class="sheet-scrim" id="soloSheet" hidden>
@@ -593,7 +601,7 @@
         </div>
 
         <div class="card card--tight" style="margin-top:var(--s-4)">
-          <p class="tiny">
+          <p class="tiny" id="raceNote">
             <b style="color:var(--accent)">Race for real:</b> open this page in a second tab, pick the same
             friends and distance there, and the two tabs exchange live telemetry. Anyone who has not
             joined is run by a pace bot at their usual speed.
@@ -638,6 +646,7 @@
 
   <script src="src/js/core.js"></script>
   <script src="src/js/native.js"></script>
+  <script src="src/js/api.js"></script>
   <script src="src/js/clip.js"></script>
   <script src="src/js/land.js"></script>
   <script src="src/js/state.js"></script>
@@ -650,6 +659,8 @@
   <script src="src/js/tracker.js"></script>
   <script src="src/js/card.js"></script>
   <script src="src/js/ui.js"></script>
+  <script src="src/js/sync.js"></script>
+  <script src="src/js/account.js"></script>
   <script src="src/js/app.js"></script>
 </body>
 </html>

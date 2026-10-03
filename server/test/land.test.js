@@ -160,6 +160,9 @@ test('territory', async (t) => {
     const takes = await s.db.many('select * from takes where victim_user_id = $1', [a.id]);
     assert.equal(takes.length, 1);
     assert.equal(takes[0].taker_user_id, b.id);
+    const plot = (await a.api.get('/v1/land/mine')).body.claims[0];
+    close(plot.lost, Geo.polygonArea(loopA) - wantA, 'each of your plots says what it lost');
+    assert.equal(theirs.lost, undefined, 'nobody else\'s plot carries that figure');
   });
 
   await t.test('a run uploaded late is placed at the time it was run, not the time it arrived', async () => {

@@ -315,11 +315,14 @@
       const others = crew.members.filter((m) => m.id !== 'me');
       const inCrew = crew.memberIds.indexOf('me') >= 0;
 
-      // Your own contribution is measured from what you actually ran. Your
-      // team-mates' is modelled from their weekly volume, the way every other
-      // number about them in this app is, until there is a server to ask.
+      // With a server, every member's running is measured there and arrives
+      // as `missionHave`. In the demo your own contribution is measured from
+      // what you ran and your team-mates' is modelled from their weekly
+      // volume, the way every other number about them is.
       let have = 0;
-      if (mission.type === 'distance') {
+      if (typeof crew.missionHave === 'number') {
+        have = crew.missionHave;
+      } else if (mission.type === 'distance') {
         have = others.reduce((sum, m) => sum + (m.weekly || 0), 0)
           + (inCrew ? M.Stats.weekly(state).distance : 0);
       } else if (mission.type === 'claimed') {
@@ -383,6 +386,9 @@
      * a mission pays out once.
      */
     settleMission(state, crew) {
+      // On a real map the server pays out the week, once, when the run that
+      // clears it arrives; the app hears about it from the upload.
+      if (state.connected) return null;
       const status = this.missionStatus(state, crew);
       if (!status.mission || status.stale || !status.complete || status.mission.completedAt) return null;
       crew.mission.completedAt = Date.now();
@@ -580,8 +586,12 @@
         mission: null,
       };
 
-      const rand = M.rng(Date.now() % 100000);
-      for (let i = 0; i < 3; i++) crew.requests.push(Object.assign(person(rand), { at: Date.now() - i * 36e5 }));
+      // In the demo a new crew gets people knocking straight away. A real
+      // crew waits for real runners.
+      if (!state.connected) {
+        const rand = M.rng(Date.now() % 100000);
+        for (let i = 0; i < 3; i++) crew.requests.push(Object.assign(person(rand), { at: Date.now() - i * 36e5 }));
+      }
 
       state.crews.unshift(crew);
       return { crew };

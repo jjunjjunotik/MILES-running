@@ -187,13 +187,16 @@ function claimView(r, viewerId) {
     area: r.area,
     name: r.label || null,
     color: r.color || null,
+    // Only on your own plots: how much other runners have taken from it.
+    lost: r.lost === undefined ? undefined : r.lost,
   };
 }
 
 /** Every claim a runner has made, held or not. */
 async function claimsOf(q, userId) {
   const rows = await q.many(
-    `select c.*, u.name, u.initials, m.crew_id, false as hidden
+    `select c.*, u.name, u.initials, m.crew_id, false as hidden,
+            (select coalesce(sum(t.area), 0) from takes t where t.victim_claim_id = c.id) as lost
        from claims c join users u on u.id = c.user_id
        left join crew_members m on m.user_id = c.user_id
       where c.user_id = $1 order by c.claimed_at desc`, [userId]);

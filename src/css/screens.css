@@ -1643,3 +1643,99 @@
   background-size: 20px 20px;
   background-position: 0 0, 0 10px, 10px -10px, -10px 0;
 }
+
+/* --- Account ------------------------------------------------------------------
+   Only with a server (account.js). The sign-in screen covers the whole app
+   until a runner is signed in; the account card takes the place of the
+   demo's reset button. Plain ink like every other screen: the wordmark and
+   one line of what the game is, then the form. ------------------------------ */
+
+.auth {
+  position: absolute;
+  inset: 0;
+  z-index: 26;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background: var(--ink-900);
+  padding: calc(var(--inset-top) + var(--s-6)) var(--gutter) calc(var(--inset-bottom) + var(--s-5));
+  scrollbar-width: none;
+}
+.auth::-webkit-scrollbar { display: none; }
+.auth[hidden] { display: none; }
+.auth-inner {
+  max-width: 400px;
+  min-height: 100%;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s-6);
+}
+.auth-brand { padding-top: var(--s-4); }
+.auth-mark { display: block; font-size: 64px; }
+.auth-lead {
+  margin-top: var(--s-3);
+  max-width: 17em;
+  font-size: var(--t-lead);
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--text-mid);
+}
+.auth-form { display: flex; flex-direction: column; gap: var(--s-4); }
+.auth-switch { width: 100%; }
+.auth-title { font-size: var(--t-title); font-weight: 800; letter-spacing: -0.02em; margin-top: var(--s-1); }
+.auth-note { font-size: var(--t-small); font-weight: 600; line-height: 1.5; color: var(--text-mid); }
+.auth-hint { font-size: var(--t-micro); font-weight: 700; color: var(--text-lo); }
+.auth-checks { display: flex; flex-direction: column; }
+.auth-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  min-height: var(--tap);
+  padding: 10px 0;
+  font-size: var(--t-small);
+  font-weight: 600;
+  line-height: 1.45;
+  color: var(--text-mid);
+  cursor: pointer;
+}
+.auth-check input { flex: none; width: 22px; height: 22px; margin: 0; accent-color: var(--flame); }
+.auth-check a, .auth-foot a, .account-links a { color: var(--flame-ink); font-weight: 700; }
+.auth-message { font-size: var(--t-small); font-weight: 700; line-height: 1.45; }
+.auth-message[data-kind="error"] { color: #ffb4b9; }
+.auth-message[data-kind="note"] { color: var(--text-mid); }
+.auth-link {
+  align-self: center;
+  min-height: var(--tap);
+  padding: 0 var(--s-3);
+  font-size: var(--t-small);
+  font-weight: 800;
+  color: var(--flame-ink);
+}
+.auth-foot { margin-top: auto; text-align: center; font-size: var(--t-micro); font-weight: 700; color: var(--text-lo); }
+.auth-foot a, .account-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 6px;
+}
+
+.account-actions { gap: var(--s-2); margin-top: var(--s-2); }
+.account-links { text-align: center; margin-top: var(--s-1); }
+.friend-code { font-family: var(--font-num); font-size: 20px; font-weight: 700; letter-spacing: 0.12em; }
+
+/* Reporting: one reason, picked from a list that says it in plain words. */
+.report-reasons { display: flex; flex-direction: column; gap: var(--s-2); }
+.report-reason {
+  min-height: var(--tap);
+  padding: 10px 14px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--line-strong);
+  background: rgba(243, 236, 224, 0.04);
+  text-align: left;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-hi);
+}
+.report-reason[aria-pressed="true"] { border-color: var(--flame); background: rgba(242, 100, 42, 0.14); }
+.sheet-report { display: block; margin: var(--s-4) auto 0; }
+.feed-more { margin-left: auto; min-width: var(--tap); justify-content: center; }

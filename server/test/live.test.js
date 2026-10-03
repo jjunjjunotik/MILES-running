@@ -146,6 +146,13 @@ test('races and the live channel', async (t) => {
     assert.ok(await la.quiet('telemetry'), 'not echoed back to the sender');
     assert.ok(await lc.quiet('telemetry'), 'nor to anyone outside the race');
 
+    // Renamed with the socket still open: the next race carries the new name.
+    await a.api.patch('/v1/me', { name: 'Alex R' });
+    la.send({ type: 'join', race: race.id });
+    await la.next('joined');
+    la.send({ type: 'telemetry', race: race.id, telemetry: { distance: 500 } });
+    assert.equal((await lb.next('telemetry')).telemetry.name, 'Alex R');
+
     lb.close();
     const left = await la.next('left');
     assert.equal(left.from, b.id);

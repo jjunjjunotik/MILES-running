@@ -3,11 +3,11 @@
    Live race telemetry. Every runner in the field publishes distance, pace and
    position several times a second; each sees the others move in real time.
 
-   Transport is pluggable. In this build it is BroadcastChannel, so two open
-   tabs (or two windows) genuinely race each other with no server. A pace bot
-   stands in for each friend who has not joined yet, so a race is never a dead
-   screen. Swapping in a WebSocket means replacing `_send` and
-   the channel wiring below; nothing else changes.
+   Two transports. Signed in, a race made on the server runs over the
+   account's WebSocket (api.js), so friends race from their own phones. In
+   the demo it is BroadcastChannel, so two open tabs genuinely race each
+   other with no server. Either way a pace bot stands in for each friend who
+   has not joined yet, so a race is never a dead screen.
    ========================================================================== */
 
 (function (M) {
@@ -17,6 +17,8 @@
 
   const STALE_MS = 9000;      // a peer that goes quiet this long is dropped
   const TICK_MS = 1000;
+
+  const isServerRace = (room) => /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(room || ''));
 
   const Live = {
     channel: null,
@@ -33,13 +35,20 @@
       this.me = me;
       this.peers = new Map();
 
-      try {
-        if (typeof BroadcastChannel !== 'undefined') {
-          this.channel = new BroadcastChannel('miles-live-' + room);
-          this.channel.onmessage = (event) => this._receive(event.data);
+      // A race made on the server runs over the account's live socket, so the
+      // others can be on their own phones anywhere. Anything else — the demo —
+      // is BroadcastChannel between tabs.
+      if (M.Api && M.Api.signedIn() && M.Api.live && isServerRace(room)) {
+        this.transport = M.Api.live.room(room, (message) => this._receive(message));
+      } else {
+        try {
+          if (typeof BroadcastChannel !== 'undefined') {
+            this.channel = new BroadcastChannel('miles-live-' + room);
+            this.channel.onmessage = (event) => this._receive(event.data);
+          }
+        } catch (err) {
+          this.channel = null;                       // no transport: bot only
         }
-      } catch (err) {
-        this.channel = null;                       // no transport: bot only
       }
 
       this._send({ type: 'hello' });
@@ -49,6 +58,7 @@
 
     leave() {
       if (this.channel) { try { this.channel.close(); } catch (err) { /* ignore */ } }
+      if (this.transport) { this.transport.leave(); this.transport = null; }
       if (this._timer) clearInterval(this._timer);
       this.channel = null;
       this._timer = null;
@@ -62,7 +72,10 @@
     },
 
     _send(message) {
-      if (!this.channel || !this.me) return;
+      if (!this.me) return;
+      // On the server the sender is whoever the socket signed in as; it says so.
+      if (this.transport) { this.transport.send(message); return; }
+      if (!this.channel) return;
       try {
         this.channel.postMessage(Object.assign({ from: this.me.id, at: Date.now() }, message));
       } catch (err) { /* channel closed mid-flight */ }
@@ -70,6 +83,11 @@
 
     _receive(message) {
       if (!message || message.from === this.me.id) return;
+      if (message.type === 'left') {
+        // Gone from the race; the board stops waiting for them.
+        if (this.peers.delete(message.from)) Bus.emit('live:peers', this.list());
+        return;
+      }
       if (message.type === 'hello') {
         // Someone just joined: answer so they see us immediately.
         this._send({ type: 'telemetry', telemetry: this._lastTelemetry });
