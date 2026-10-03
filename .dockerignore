@@ -1,0 +1,12 @@
+# Only server/ and five files of src/js go into the API image.
+**/node_modules
+android
+ios
+assets
+www
+design
+docs
+*.png
+test-*.js
+server/test
+.git

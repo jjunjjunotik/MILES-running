@@ -136,6 +136,7 @@
     ROLES,
     CREW_TIERS,
     DAYS,
+    COLORS: CREW_COLORS,
 
     /* --- Schedule ---------------------------------------------------------- */
 

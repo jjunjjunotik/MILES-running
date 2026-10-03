@@ -1,0 +1,40 @@
+# Postgres and the API together, for trying the server on one machine:
+#
+#   docker compose -f server/docker-compose.yml up --build
+#
+# Then the API is at http://localhost:8080 and the app can use it with
+# index.html?api=http://localhost:8080
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: miles
+      POSTGRES_PASSWORD: miles
+      POSTGRES_DB: miles
+    volumes:
+      - miles-db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U miles"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ..
+      dockerfile: server/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://miles:miles@db:5432/miles
+      PUBLIC_URL: http://localhost:8080
+      # Local only: lets the app's simulated runs through, so the map can be
+      # tried without going outside. Never set this in production.
+      ALLOW_SIMULATED_RUNS: "true"
+      ADMIN_TOKEN: change-me
+      NODE_ENV: development
+    ports:
+      - "8080:8080"
+
+volumes:
+  miles-db:

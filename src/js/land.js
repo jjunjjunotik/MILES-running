@@ -77,19 +77,17 @@
 
   const Land = {
     /**
-     * How much of one claim each later claim took from it, in square metres,
-     * keyed by owner id. This replays exactly the cuts `resolve` makes, one
-     * claim at a time in the order they happened, and credits each drop in
-     * area to the claim that caused it — so ground that two people later ran
-     * over is credited once, to whoever got there first, and the total never
-     * exceeds what was actually lost.
+     * Every bite later claims took out of one claim, in the order they
+     * happened: which claim took it, whose it was, how many square metres,
+     * and when. This replays exactly the cuts `resolve` makes, one claim at a
+     * time, and credits each drop in area to the claim that caused it — so
+     * ground that two people later ran over is credited once, to whoever got
+     * there first, and the total never exceeds what was actually lost.
      *
-     * `since` narrows what is *credited* without narrowing what is replayed:
-     * every later claim still cuts, so the geometry stays right, but only cuts
-     * made at or after that moment are counted. Skipping the earlier ones
-     * instead would hand their ground to whoever came next.
+     * The server keeps these one by one, which is what lets a crew's week
+     * count only the ground taken that week.
      */
-    raiders(claim, laterClaims, origin, since) {
+    cuts(claim, laterClaims, origin) {
       const anchor = origin || claim.polygon[0];
       const ring = (claim.polygon || []).map((p) => Geo.project(p, anchor));
       if (ring.length < 3) return [];
@@ -97,7 +95,7 @@
       let pieces = [{ ring, holes: [] }];
       let standing = pieceArea(pieces[0]);
       const box = bbox(ring);
-      const taken = new Map();
+      const out = [];
 
       laterClaims
         .filter((c) => c !== claim && (c.claimedAt || 0) > (claim.claimedAt || 0))
@@ -112,14 +110,32 @@
           const lost = standing - now;
           standing = now;
           if (lost <= 1) return;
-          if (since !== undefined && (c.claimedAt || 0) < since) return;
-
-          const key = c.owner || 'unknown';
-          const prev = taken.get(key);
-          if (prev) { prev.area += lost; prev.at = Math.max(prev.at, c.claimedAt || 0); }
-          else taken.set(key, { owner: key, name: c.ownerName || 'Unknown', color: c.color, area: lost, at: c.claimedAt || 0 });
+          out.push({
+            claim: c, owner: c.owner || 'unknown', name: c.ownerName || 'Unknown',
+            color: c.color, area: lost, at: c.claimedAt || 0,
+          });
         });
 
+      return out;
+    },
+
+    /**
+     * How much of one claim each later claim took from it, in square metres,
+     * keyed by owner id: `cuts`, added up per runner.
+     *
+     * `since` narrows what is *credited* without narrowing what is replayed:
+     * every later claim still cuts, so the geometry stays right, but only cuts
+     * made at or after that moment are counted. Skipping the earlier ones
+     * instead would hand their ground to whoever came next.
+     */
+    raiders(claim, laterClaims, origin, since) {
+      const taken = new Map();
+      Land.cuts(claim, laterClaims, origin).forEach((c) => {
+        if (since !== undefined && c.at < since) return;
+        const prev = taken.get(c.owner);
+        if (prev) { prev.area += c.area; prev.at = Math.max(prev.at, c.at); }
+        else taken.set(c.owner, { owner: c.owner, name: c.name, color: c.color, area: c.area, at: c.at });
+      });
       return [...taken.values()].sort((a, b) => b.area - a.area);
     },
 

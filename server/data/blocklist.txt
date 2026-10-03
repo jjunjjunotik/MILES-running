@@ -1,0 +1,99 @@
+# Words a runner's name, a crew's name or tagline, a meeting spot, a notice or
+# a plot's name may not contain.
+#
+# A plain line matches a whole word. A line starting with ~ matches anywhere,
+# even inside a longer word or across spaces — only for words that are never
+# part of an innocent one ("assassin" contains "ass"; nothing innocent
+# contains "fuck"). Korean is written without spaces between an insult and
+# its ending, so Korean lines are almost all ~.
+#
+# Before matching, text is lower-cased, common digit and symbol swaps are
+# undone (0→o, 1→i, 3→e, 4→a, 5→s, 7→t, @→a, $→s) and repeated letters are
+# collapsed, so "fuuuck" and "f4ck" do not slip past.
+#
+# This is a starting list, not a finished one. Reports are the backstop:
+# add what they turn up.
+
+# English — anywhere
+~fuck
+~motherfuck
+~nigger
+~nigga
+~faggot
+~cocksucker
+~bitchass
+
+# English — whole words
+shit
+shitty
+bullshit
+bitch
+bitches
+bastard
+asshole
+arsehole
+cunt
+cunts
+whore
+slut
+sluts
+fag
+fags
+retard
+retarded
+kike
+spic
+chink
+twat
+wanker
+cock
+pussy
+rape
+rapist
+porn
+nazi
+dyke
+tranny
+
+# 한국어
+~씨발
+~씨바
+~씨빨
+~시발
+~시바놈
+~ㅅㅂ
+~ㅆㅂ
+~ㅆ발
+~병신
+~븅신
+~ㅂㅅ
+~좆
+~존나
+~졸라
+~개새끼
+~개새기
+~개색기
+~개색끼
+~개세끼
+~개씨발
+~씹새
+~씹년
+~씹할
+~지랄
+~니미
+~니애미
+~느금마
+~엠창
+~애미
+~애비
+~미친놈
+~미친년
+~썅
+~창녀
+~한남충
+~김치녀
+~틀딱
+~급식충
+~맘충
+~장애년
+~장애놈
