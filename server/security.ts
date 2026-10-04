@@ -19,6 +19,8 @@ const KEY_PATTERNS: { re: RegExp; mask: string }[] = [
   { re: /AIza[0-9A-Za-z_-]{35}/g, mask: "AIza***" },
   { re: /pdl_(?:live|sdbx)_apikey_[A-Za-z0-9_]{8,}/g, mask: "pdl_***_apikey_***" },
   { re: /pdl_ntfset_[A-Za-z0-9_]{8,}/g, mask: "pdl_ntfset_***" },
+  // RevenueCat 서버 비밀키. 앱용 공개 키(appl_/goog_)는 원래 앱에 들어가는 값이다.
+  { re: /\bsk_[A-Za-z0-9]{16,}/g, mask: "sk_***" },
 ];
 
 /** 로그나 오류 메시지에 키가 섞여도 밖으로 나가지 않게 지운다. */
@@ -33,6 +35,9 @@ const KEY_SHAPES: { name: string; looksRight: (value: string) => boolean }[] = [
   { name: "ANTHROPIC_API_KEY", looksRight: (v) => v.startsWith("sk-ant-") },
   { name: "GEMINI_API_KEY", looksRight: (v) => v.startsWith("AIza") },
   { name: "PADDLE_API_KEY", looksRight: (v) => v.startsWith("pdl_") },
+  { name: "REVENUECAT_SECRET_KEY", looksRight: (v) => v.startsWith("sk_") },
+  { name: "REVENUECAT_IOS_KEY", looksRight: (v) => v.startsWith("appl_") },
+  { name: "REVENUECAT_ANDROID_KEY", looksRight: (v) => v.startsWith("goog_") },
   { name: "PADDLE_WEBHOOK_SECRET", looksRight: (v) => v.startsWith("pdl_ntfset_") },
   {
     name: "PADDLE_CLIENT_TOKEN",

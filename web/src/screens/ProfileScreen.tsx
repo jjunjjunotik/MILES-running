@@ -482,7 +482,16 @@ export function ProfileScreen({
           {pending === "account" && subscription && (
             <div className="mt-12">
               <Notice tone="monitor">
-                {L("Your Pro subscription will be canceled right away, and you won't be charged again.", "Pro 구독이 바로 해지되고, 더 이상 결제되지 않아요.")}
+                {subscription.source === "paddle"
+                  ? L("Your Pro subscription will be canceled right away, and you won't be charged again.", "Pro 구독이 바로 해지되고, 더 이상 결제되지 않아요.")
+                  : (() => {
+                      // 스토어 구독은 스토어에서만 해지된다. 계정을 지워도 결제는 계속되므로 먼저 알린다.
+                      const store = subscription.source === "play_store" ? "Google Play" : "App Store";
+                      return L(
+                        `Deleting your account doesn't cancel your ${store} subscription. Cancel it in your ${store} subscriptions first, or you'll keep being charged.`,
+                        `계정을 지워도 ${store} 구독은 해지되지 않아요. 먼저 ${store} 구독 메뉴에서 해지하지 않으면 계속 결제돼요.`,
+                      );
+                    })()}
               </Notice>
             </div>
           )}

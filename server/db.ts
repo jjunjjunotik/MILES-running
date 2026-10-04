@@ -240,6 +240,25 @@ const MIGRATIONS: Migration[] = [
         ON health_article_texts(locale, category);
     `,
   },
+  {
+    version: 5,
+    name: "앱스토어·플레이스토어 구독(RevenueCat)",
+    sql: `
+      -- 휴대폰 앱의 인앱 구독. 계정마다 한 줄. RevenueCat 에서 확인한 Pro 권한 상태를 담는다.
+      -- 결제 정보(카드 등)는 애플·구글이 갖고 있고 여기에는 오지 않는다.
+      CREATE TABLE IF NOT EXISTS store_subscriptions (
+        user_id          TEXT PRIMARY KEY REFERENCES profiles(id) ON DELETE CASCADE,
+        status           TEXT NOT NULL,
+        store            TEXT,
+        product_id       TEXT,
+        billing_interval TEXT,
+        expires_at       INTEGER,
+        cancel_at        INTEGER,
+        sandbox          INTEGER NOT NULL DEFAULT 0,
+        checked_at       INTEGER NOT NULL
+      );
+    `,
+  },
 ];
 
 function migrate(database: DatabaseSync): void {

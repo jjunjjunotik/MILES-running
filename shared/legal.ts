@@ -6,7 +6,10 @@
  * LEGAL_STATUS 를 "final" 로, LEGAL_UPDATED 를 시행일로 바꾼다.
  *
  * 내용은 이 앱이 실제로 하는 일과 어긋나면 안 된다. 데이터 처리 방식을 바꾸면 여기도 고친다.
- * (사진 서버 비저장, 쿠키 두 개, 해시만 남기는 사용량, 결제는 Paddle 등)
+ * (사진 서버 비저장, 쿠키 두 개·앱 토큰, 해시만 남기는 사용량, 결제는 앱스토어·플레이스토어 등)
+ *
+ * 결제 문구는 휴대폰 앱의 인앱 구독(App Store · Google Play, RevenueCat) 기준이다.
+ * 웹 결제(Paddle)를 다시 켜면 그때의 Paddle 문구를 git 기록에서 되살려 함께 넣는다.
  */
 
 import type { Locale } from "./i18n.js";
@@ -55,8 +58,8 @@ export const PRIVACY_POLICY: LegalDoc = {
         "Nail photos you choose to analyze, and the optional note you add.",
         "The results of each analysis.",
         "If you create an account: your email address, a display name if you give one, and your settings. Passwords are stored only as a salted hash. If you sign in with Google or Apple, we store the account identifier they give us.",
-        "If you subscribe: your plan, its status and renewal dates, and the customer ID from our payment provider. We never see or store your card details.",
-        "For free scan limits: a random identifier stored in a cookie on your device, and a one-way hash of your IP address that changes every month. We use these only to count scans.",
+        "If you subscribe: your plan, which store you bought it from, its status, product and renewal dates. Payment is made through the App Store or Google Play, and we never see or store your card details.",
+        "For free scan limits: a random identifier for your device or app install, and a one-way hash of your IP address that changes every month. We use these only to count scans.",
         "Your consent to health data processing: when you gave it and which version of the wording you agreed to.",
       ],
     },
@@ -65,7 +68,7 @@ export const PRIVACY_POLICY: LegalDoc = {
       bullets: [
         "When you tap Analyze, the photo is sent to our server and passed to our AI analysis provider to create the description.",
         "We do not store the photo on our server. It is discarded once the analysis is complete.",
-        "If \"Save analyzed photos\" is on, the photo is kept only in this browser on your device. You can turn this off or delete saved photos in Profile.",
+        "If \"Save analyzed photos\" is on, the photo is kept only in the app's storage on your device. You can turn this off or delete saved photos in Profile.",
         "If you're logged in, the results (not the photo) are saved to your account. If you're not logged in, results stay on this device.",
         "Share cards include a summary only, never your photo.",
       ],
@@ -85,7 +88,8 @@ export const PRIVACY_POLICY: LegalDoc = {
       heading: "Who we share it with",
       bullets: [
         "Our AI analysis provider (Google, through the Gemini API, or Anthropic, depending on our configuration) receives the photo and note to create the description, under terms that do not allow them to use it to train their models. [Confirm the provider terms and data processing agreement in use.]",
-        "Paddle.com, our reseller and Merchant of Record, processes payments and handles taxes, invoices and refunds. Paddle collects your payment details directly and acts under its own privacy policy.",
+        "Apple (App Store) or Google (Google Play), which process subscription payments, taxes and refunds under their own terms and privacy policies.",
+        "RevenueCat, Inc. (United States), which checks store receipts for us and tells us whether your account has Pro. It receives your account's random identifier, your purchase and subscription records, and basic device and app information, but not your photos, results or card details.",
         "Google or Apple, if you choose to sign in with them.",
         "Our hosting provider, Fly.io, Inc., which runs our server and database in the United States (San Jose, California).",
         "Authorities, if the law requires it.",
@@ -102,19 +106,19 @@ export const PRIVACY_POLICY: LegalDoc = {
       bullets: [
         "Photos: not kept on our server. On your device, until you delete them.",
         "Account data and results: until you delete them or your account.",
-        "Scan counters and payment notifications: about 100 days.",
-        "Payment and tax records held by Paddle: as long as the law requires them to keep them.",
+        "Scan counters and subscription notifications: about 100 days.",
+        "Purchase records held by Apple, Google and RevenueCat: under their own retention policies and the law. When you delete your account, we ask RevenueCat to delete its record of you.",
       ],
     },
     {
-      heading: "Cookies and device storage",
+      heading: "Device storage and cookies",
       bullets: [
-        "ns_session: keeps you logged in. Set only when you log in.",
-        "ns_device: a random identifier used only to count free scans.",
-        "Browser storage on your device holds your settings, consent choice, and (if you're not logged in) your results and saved photos.",
+        "In the app, your login is kept as a session token in your device's secure storage (iOS Keychain or Android Keystore), and a random install identifier is used only to count free scans.",
+        "On the website, the ns_session cookie keeps you logged in and the ns_device cookie counts free scans.",
+        "App storage on your device holds your settings, consent choice, and (if you're not logged in) your results and saved photos. These aren't included in device backups on Android.",
       ],
       after: [
-        "We don't use advertising or analytics cookies. If you subscribe, Paddle's checkout runs in a frame on our page and may set its own cookies needed for payment.",
+        "We don't use advertising or analytics SDKs or cookies, and we don't track you across other apps or websites.",
       ],
     },
     {
@@ -186,13 +190,14 @@ export const TERMS_OF_SERVICE: LegalDoc = {
     {
       heading: "Subscriptions and payment",
       bullets: [
-        "Our order process is conducted by our online reseller Paddle.com. Paddle.com is the Merchant of Record for all our orders, and Paddle's Buyer Terms apply to your purchase.",
-        "The price, billing period and any free trial are shown before you pay. Checkout shows the final amount in your currency, including any tax.",
-        "Subscriptions renew automatically at the end of each billing period until you cancel.",
-        "If your plan includes a free trial, you won't be charged if you cancel before the trial ends. Otherwise, the first payment is taken when the trial ends.",
-        "You can cancel at any time in Profile > Plan. You keep Pro until the end of the period you've already paid for, and you won't be charged again.",
-        "Refunds are handled by Paddle under its refund policy and applicable consumer law, including any right to withdraw from a purchase where you live.",
-        "If we change the price of your plan, we'll tell you before your next renewal, and the new price applies only after that renewal.",
+        "Pro is sold as an auto-renewing subscription through the App Store or Google Play. Payment is charged to your Apple Account or Google account when you confirm the purchase, and the store's terms of sale also apply.",
+        "The price, billing period and any free trial are shown in the app before you buy, in your local currency.",
+        "Your subscription renews automatically at the end of each period unless you cancel at least 24 hours before the period ends. Your account is charged for renewal within 24 hours before the period ends.",
+        "If your plan includes a free trial, you won't be charged if you cancel at least 24 hours before the trial ends. Otherwise, the first payment is taken when the trial ends.",
+        "Manage or cancel your subscription in your App Store or Google Play account settings (Profile > Plan > Manage or cancel subscription takes you there). You keep Pro until the end of the period you've paid for.",
+        "Deleting your NailSense account or the app doesn't cancel a store subscription. Cancel it in your store account first.",
+        "Refunds are handled by Apple or Google under their refund policies and applicable consumer law.",
+        "Pro is tied to your NailSense account. If you reinstall the app or change devices, use Restore purchases while logged in.",
       ],
     },
     {
@@ -212,7 +217,7 @@ export const TERMS_OF_SERVICE: LegalDoc = {
     {
       heading: "Ending your use",
       paragraphs: [
-        "You can stop using NailSense and delete your account at any time in Profile. Deleting your account cancels an active subscription right away. We may suspend accounts that break these terms, and we'll tell you why unless the law prevents it.",
+        "You can stop using NailSense and delete your account at any time in Profile, or by following the account deletion instructions on our website. Deleting your account doesn't cancel an App Store or Google Play subscription; cancel it in your store account. We may suspend accounts that break these terms, and we'll tell you why unless the law prevents it.",
       ],
     },
     {
@@ -245,8 +250,8 @@ export const PRIVACY_POLICY_KO: LegalDoc = {
         "손톱 사진과 선택해서 적은 메모: 사진에 보이는 손톱의 겉모습을 설명하기 위해(민감정보, 별도 동의).",
         "분석 결과: 결과를 보여 주고 기록을 남기기 위해(민감정보, 별도 동의).",
         "계정 정보(이메일, 비밀번호 해시, 이름이나 닉네임, 구글·애플 계정 식별값, 설정): 회원 관리와 로그인 유지를 위해.",
-        "구독 정보(요금제, 상태, 갱신일, 결제 대행사의 고객 식별값): 유료 서비스 제공을 위해. 카드 정보는 회사가 받거나 저장하지 않습니다.",
-        "무료 사용 횟수 확인용 정보(기기 쿠키의 무작위 값, 매달 바뀌는 IP 주소의 일방향 해시): 무료 한도를 세고 부정 이용을 막기 위해.",
+        "구독 정보(요금제, 구매한 스토어, 상태, 상품, 갱신일): 유료 서비스 제공을 위해. 결제는 App Store 또는 Google Play에서 이루어지며, 카드 정보는 회사가 받거나 저장하지 않습니다.",
+        "무료 사용 횟수 확인용 정보(기기나 앱 설치마다 만든 무작위 값, 매달 바뀌는 IP 주소의 일방향 해시): 무료 한도를 세고 부정 이용을 막기 위해.",
         "동의 기록(동의 시각과 문구 버전): 동의 사실을 확인하기 위해.",
       ],
     },
@@ -255,7 +260,7 @@ export const PRIVACY_POLICY_KO: LegalDoc = {
       bullets: [
         "분석을 누르면 사진이 회사 서버를 거쳐 AI 분석 업체로 전달되어 설명을 만듭니다.",
         "회사 서버는 사진을 저장하지 않으며, 분석이 끝나면 버립니다.",
-        "\"분석한 사진 저장하기\"를 켜 두면 사진은 이 기기의 브라우저 안에만 보관됩니다. 프로필에서 끄거나 지울 수 있습니다.",
+        "\"분석한 사진 저장하기\"를 켜 두면 사진은 이 기기의 앱 저장소 안에만 보관됩니다. 프로필에서 끄거나 지울 수 있습니다.",
         "로그인한 경우 분석 결과(사진 제외)는 계정에 저장되고, 로그인하지 않은 경우 이 기기에만 남습니다.",
         "공유 카드에는 사진이 들어가지 않습니다.",
       ],
@@ -265,8 +270,8 @@ export const PRIVACY_POLICY_KO: LegalDoc = {
       bullets: [
         "사진: 서버에 보관하지 않습니다. 기기 안의 사진은 지울 때까지 남습니다.",
         "계정 정보와 분석 결과: 회원이 지우거나 탈퇴할 때까지. 탈퇴하면 지체 없이 파기합니다.",
-        "사용 횟수 기록과 결제 알림 기록: 약 100일.",
-        "결제·세금 기록: 결제 대행사(Paddle)가 관련 법령에 따른 기간 동안 보관합니다.",
+        "사용 횟수 기록과 구독 알림 기록: 약 100일.",
+        "구매 기록: Apple, Google, RevenueCat이 각자의 정책과 관련 법령에 따른 기간 동안 보관합니다. 탈퇴하면 회사는 RevenueCat에 해당 기록의 삭제를 요청합니다.",
       ],
       after: [
         "전자 파일은 복구할 수 없는 방법으로 지웁니다.",
@@ -280,9 +285,10 @@ export const PRIVACY_POLICY_KO: LegalDoc = {
       bullets: [
         "Fly.io, Inc.(미국) / 서버와 데이터베이스 운영 / 계정 정보, 분석 결과, 사용 기록 / 보유 기간은 위 3과 같음 / [연락처 확인 필요]",
         "Google LLC(미국, Gemini API) 또는 Anthropic PBC(미국) / 손톱 사진과 메모로 설명 만들기 / 사진, 메모 / 분석 처리 후 보관하지 않는 조건으로 이용 [각 업체 약관과 데이터 처리 계약 확인 필요]",
-        "Paddle.com Market Limited(영국) 및 관계사 / 결제, 세금, 환불(판매 대행) / 결제에 필요한 정보 / 관련 법령에 따른 기간",
+        "RevenueCat, Inc.(미국) / 스토어 영수증 확인과 구독 상태 관리 / 계정의 무작위 식별값, 구매·구독 기록, 기기와 앱의 기본 정보(사진·결과·카드 정보 제외) / 탈퇴 시 삭제 요청, 그 밖에는 업체 정책에 따름 [연락처와 데이터 처리 계약 확인 필요]",
       ],
       after: [
+        "구독 결제는 Apple(App Store) 또는 Google(Google Play)이 각자의 약관과 개인정보처리방침에 따라 처리합니다.",
         "국외 이전을 원하지 않으면 동의하지 않을 수 있습니다. 이 경우 사진 분석과 유료 구독을 이용할 수 없지만, 건강 정보 글 등 다른 기능은 이용할 수 있습니다.",
       ],
     },
@@ -293,14 +299,14 @@ export const PRIVACY_POLICY_KO: LegalDoc = {
       ],
     },
     {
-      heading: "6. 쿠키와 기기 저장소",
+      heading: "6. 기기 저장소와 쿠키",
       bullets: [
-        "ns_session: 로그인을 유지합니다. 로그인할 때만 만들어집니다.",
-        "ns_device: 무료 분석 횟수를 세는 데만 쓰는 무작위 값입니다.",
-        "브라우저 저장소에는 설정, 동의 여부, (로그인하지 않은 경우) 결과와 저장된 사진이 들어갑니다.",
+        "앱에서는 로그인 상태를 기기의 보안 저장소(iOS 키체인, 안드로이드 키스토어)에 세션 토큰으로 보관하고, 무료 분석 횟수는 앱 설치마다 만든 무작위 값으로 셉니다.",
+        "웹사이트에서는 ns_session 쿠키로 로그인을 유지하고, ns_device 쿠키로 무료 분석 횟수를 셉니다.",
+        "기기의 앱 저장소에는 설정, 동의 여부, (로그인하지 않은 경우) 결과와 저장된 사진이 들어갑니다. 안드로이드에서는 기기 백업에 포함되지 않습니다.",
       ],
       after: [
-        "광고나 분석용 쿠키는 쓰지 않습니다. 브라우저 설정에서 쿠키를 지울 수 있으며, 이 경우 로그인이 풀립니다.",
+        "광고나 행태 분석용 SDK·쿠키를 쓰지 않으며, 다른 앱이나 웹사이트에 걸쳐 이용자를 추적하지 않습니다.",
       ],
     },
     {
@@ -373,13 +379,14 @@ export const TERMS_OF_SERVICE_KO: LegalDoc = {
     {
       heading: "제4조 구독과 결제",
       bullets: [
-        "주문과 결제는 온라인 판매 대행사인 Paddle.com이 처리하며, Paddle이 모든 주문의 판매자(Merchant of Record)입니다. 결제에는 Paddle의 구매자 약관이 적용됩니다.",
-        "금액, 결제 주기, 무료 체험 여부는 결제 전에 표시되며, 최종 금액(세금 포함)은 결제 창에서 현지 통화로 보여 줍니다.",
-        "구독은 해지할 때까지 결제 주기마다 자동으로 갱신됩니다.",
-        "무료 체험이 있는 경우 체험 기간 안에 해지하면 결제되지 않으며, 그렇지 않으면 체험이 끝날 때 첫 결제가 이루어집니다.",
-        "프로필 > 요금제에서 언제든 해지할 수 있습니다. 해지해도 이미 결제한 기간이 끝날 때까지 Pro를 쓸 수 있고, 이후 결제되지 않습니다.",
-        "청약철회와 환불은 「전자상거래 등에서의 소비자보호에 관한 법률」 등 관련 법령과 Paddle의 환불 정책에 따릅니다.",
-        "가격이 바뀌면 다음 갱신 전에 알리며, 새 가격은 그 갱신부터 적용됩니다.",
+        "Pro는 App Store 또는 Google Play의 자동 갱신 구독으로 판매되며, 구매를 확인하면 Apple 계정 또는 Google 계정으로 결제됩니다. 각 스토어의 판매 약관도 함께 적용됩니다.",
+        "금액(현지 통화), 결제 주기, 무료 체험 여부는 구매 전에 앱에 표시됩니다.",
+        "현재 기간이 끝나기 24시간 전까지 해지하지 않으면 구독은 자동으로 갱신되며, 갱신 요금은 기간이 끝나기 전 24시간 안에 청구됩니다.",
+        "무료 체험이 있는 경우 체험이 끝나기 24시간 전까지 해지하면 결제되지 않으며, 그렇지 않으면 체험이 끝날 때 첫 결제가 이루어집니다.",
+        "구독 관리와 해지는 App Store 또는 Google Play 계정 설정에서 합니다(프로필 > 요금제 > 구독 관리·해지에서 바로 갈 수 있습니다). 해지해도 이미 결제한 기간이 끝날 때까지 Pro를 쓸 수 있습니다.",
+        "NailSense 계정이나 앱을 지워도 스토어 구독은 해지되지 않습니다. 먼저 스토어에서 해지해 주세요.",
+        "청약철회와 환불은 「전자상거래 등에서의 소비자보호에 관한 법률」 등 관련 법령과 Apple·Google의 환불 정책에 따릅니다.",
+        "Pro는 NailSense 계정에 붙습니다. 앱을 다시 설치하거나 기기를 바꾸면 로그인한 상태에서 '구매 복원'을 눌러 주세요.",
       ],
     },
     {
@@ -399,7 +406,7 @@ export const TERMS_OF_SERVICE_KO: LegalDoc = {
     {
       heading: "제7조 이용 종료",
       paragraphs: [
-        "이용자는 프로필에서 언제든 계정을 삭제할 수 있으며, 이때 이용 중인 구독은 즉시 해지됩니다. 회사는 약관을 위반한 계정의 이용을 제한할 수 있으며, 법령이 막지 않는 한 그 이유를 알립니다.",
+        "이용자는 프로필에서, 또는 웹사이트의 계정 삭제 안내에 따라 언제든 계정을 삭제할 수 있습니다. 계정을 삭제해도 App Store·Google Play 구독은 해지되지 않으므로 스토어에서 해지해 주세요. 회사는 약관을 위반한 계정의 이용을 제한할 수 있으며, 법령이 막지 않는 한 그 이유를 알립니다.",
       ],
     },
     {

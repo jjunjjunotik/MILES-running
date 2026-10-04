@@ -26,6 +26,8 @@ const PATTERNS = [
   // Paddle 서버 키와 웹훅 비밀값. 결제 창용 공개 토큰(test_/live_)은 원래 브라우저에 나가는 값이라 제외한다.
   { name: "Paddle API 키", re: /\bpdl_(live|sdbx)_apikey_[A-Za-z0-9_]{8,}/ },
   { name: "Paddle 웹훅 비밀값", re: /\bpdl_ntfset_[A-Za-z0-9_]{8,}/ },
+  // RevenueCat 서버 비밀키. 앱용 공개 키(appl_/goog_)는 앱에 들어가는 값이라 제외한다.
+  { name: "RevenueCat 비밀키", re: /\bsk_[A-Za-z0-9]{20,}/ },
 ];
 
 /**

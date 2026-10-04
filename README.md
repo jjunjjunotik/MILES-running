@@ -277,7 +277,54 @@ npm run dev
 - **약관**: 영어와 한국어 초안이 따로 있습니다(`shared/legal.ts`). 한국어 방침에는 개인정보 보호책임자,
   국외 이전, 위탁, 파기, 권익침해 구제 항목이 들어 있고, 채워야 할 곳은 `[…]` 로 표시되어 있습니다.
 
-## 유료 구독 (Paddle)
+## 인앱 구독 (휴대폰 앱 · RevenueCat)
+
+휴대폰 앱의 Pro 는 **App Store · Google Play 인앱 구독**으로 팝니다(스토어 규정상 앱 안의 디지털 구독은
+스토어 결제를 써야 합니다). 스토어 영수증 확인은 [RevenueCat](https://www.revenuecat.com) 이 맡습니다.
+아래 네 값을 넣기 전까지는 꺼져 있습니다. 무료 한도(월 3회)와 Pro 한도(하루 20회)는 웹 결제와 같습니다.
+
+| 환경변수 | 어디서 | 성격 |
+|---|---|---|
+| `REVENUECAT_SECRET_KEY` | RevenueCat › Project settings › API keys › Secret API key (`sk_…`, v1) | **비밀**. 서버에만 |
+| `REVENUECAT_WEBHOOK_AUTH` | 직접 만든 긴 무작위 문자열(16자 이상). 대시보드 웹훅의 Authorization 값과 같게 | **비밀** |
+| `REVENUECAT_IOS_KEY` | App Store 앱의 Public API key (`appl_…`) | 공개 |
+| `REVENUECAT_ANDROID_KEY` | Play Store 앱의 Public API key (`goog_…`) | 공개 |
+| `REVENUECAT_ENTITLEMENT` | 권한(Entitlement) 이름. 기본 `pro` | 공개 |
+
+**믿는 순서**: 앱이 "샀다"고 해도 Pro 를 켜지 않습니다. 앱은 구매 뒤 서버에 확인(`POST /api/billing/sync`)만
+부탁하고, 서버가 RevenueCat 에 직접 물어본 결과로 Pro 를 켭니다. 웹훅(`POST /api/billing/store-webhook`)도
+"이 계정이 바뀌었다"는 신호로만 쓰고 상태는 다시 물어 저장하므로, 웹훅 본문을 꾸며도 Pro 가 생기지 않습니다.
+
+- 구매는 **로그인한 계정**에 붙습니다(RevenueCat 사용자 아이디 = NailSense 계정 아이디).
+  다른 기기나 재설치 뒤에는 로그인하고 **구매 복원**을 누릅니다. 다른 계정으로 복원하면 Pro 가 그 계정으로 옮겨 갑니다.
+- 해지·결제 수단 변경은 **스토어에서** 합니다. 앱의 "구독 관리·해지"가 스토어 구독 화면을 엽니다.
+- **계정을 지워도 스토어 구독은 해지되지 않습니다.** 삭제 화면에서 이 사실을 먼저 알리고,
+  서버는 RevenueCat 쪽 고객 기록 삭제만 요청합니다.
+- 심사용 sandbox 구매도 Pro 로 인정합니다(App Store 심사는 sandbox 로 결제해 봅니다).
+
+### 설정 순서
+
+1. RevenueCat 프로젝트를 만들고 App Store 앱 · Play Store 앱을 추가합니다(앱 아이디 확정 후).
+2. 각 스토어에 구독 상품 두 개(월간·연간)를 만들고, RevenueCat 에서
+   Entitlement `pro` 에 붙인 뒤 Offering(current)의 Monthly · Annual 패키지로 넣습니다.
+   **상품 아이디에 `monthly` · `yearly` 를 넣으면** 서버가 기간을 알아봅니다.
+3. RevenueCat › Integrations › Webhooks: 주소 `https://<서버>/api/billing/store-webhook`,
+   Authorization 에 `REVENUECAT_WEBHOOK_AUTH` 와 같은 값.
+4. `fly secrets set REVENUECAT_SECRET_KEY=… REVENUECAT_WEBHOOK_AUTH=… REVENUECAT_IOS_KEY=… REVENUECAT_ANDROID_KEY=…`
+
+```bash
+npm run check:store   # 가짜 RevenueCat 으로: 공개 키만 내려감, 무료 한도, 구매 확인, 웹훅 인증·중복·재시도,
+                      # 체험·해지 예약·결제 문제·환불, 계정 간 이전, 만료 뒤 재확인, 계정 삭제
+npm run e2e:store     # 앱 화면으로: 로그인 안내 → 요금제(가격·체험·자동 갱신 안내) → 취소·대기 → 구매 → Pro
+                      #   → 스토어 구독 관리 → 로그아웃 → 다른 계정은 Free → 복원
+```
+
+진짜 스토어 결제 창은 실제 기기와 스토어 테스트 계정에서만 열 수 있어, 위 점검은 결제 단계만 가짜로 바꿔 돌립니다.
+
+웹 결제(Paddle) 코드는 그대로 남아 있지만, 앱만 내기로 했으므로 Paddle 값을 넣지 않으면 꺼진 채로 있습니다.
+앱 안에서는 Paddle 이 켜져 있어도 웹 결제 창을 띄우지 않습니다(스토어 심사 거절 사유).
+
+## 유료 구독 (웹 · Paddle, 지금은 쓰지 않음)
 
 **결제 업체 계정과 키를 넣기 전까지는 꺼져 있습니다.** 이때는 요금제 화면이 보이지 않고
 분석 횟수 한도도 없습니다(지금까지와 같음). 아래 다섯 값을 모두 넣으면 켜집니다.
@@ -458,8 +505,8 @@ fly apps create <앱이름>
 fly volumes create nailsense_data --region sjc --size 1
 
 # 4. 비밀값 넣기 (.env 에 있던 값들. 값이 터미널 기록에 남지 않게 주의)
-fly secrets set GEMINI_API_KEY=… PADDLE_API_KEY=… PADDLE_WEBHOOK_SECRET=… \
-  PADDLE_CLIENT_TOKEN=… PADDLE_PRICE_MONTHLY=… PADDLE_PRICE_YEARLY=…
+fly secrets set GEMINI_API_KEY=… REVENUECAT_SECRET_KEY=… REVENUECAT_WEBHOOK_AUTH=… \
+  REVENUECAT_IOS_KEY=… REVENUECAT_ANDROID_KEY=…
 
 # 5. 배포 (서버 한 대)
 fly deploy --ha=false
@@ -469,9 +516,8 @@ fly deploy --ha=false
 
 ### 배포한 뒤 바꿀 것
 
-- **Paddle 웹훅 주소**: Notifications 의 대상 주소를 `https://<앱이름>.fly.dev/api/billing/webhook` 으로.
-  이제 갱신·결제 실패·해지 확정이 앱에 바로 반영됩니다.
-- **Paddle 기본 결제 링크**: `https://<앱이름>.fly.dev`
+- **RevenueCat 웹훅 주소**: `https://<앱이름>.fly.dev/api/billing/store-webhook` (위 인앱 구독 설정 3).
+- 앱 빌드의 API 주소: `APP_API_BASE=https://<앱이름>.fly.dev npm run build:app` 뒤 `npx cap sync`.
 - **구글·애플 로그인**을 쓴다면 각 콘솔에 새 주소를 허용 출처로 추가합니다.
 
 ### 운영할 때

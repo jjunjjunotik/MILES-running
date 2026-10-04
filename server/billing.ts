@@ -5,6 +5,17 @@ import { requireUser } from "./auth.js";
 import { createRateLimiter } from "./security.js";
 import { billingConfig, paddleApiBase } from "./billing-config.js";
 import {
+  StoreError,
+  forgetStoreCustomer,
+  handleStoreWebhook,
+  refreshStoreIfStale,
+  storeConfig,
+  storeHasPro,
+  storeSubscription,
+  storeSubscriptionInfo,
+  syncStoreSubscription,
+} from "./revenuecat.js";
+import {
   dayKey,
   guestBuckets,
   monthKey,
@@ -402,12 +413,16 @@ export function scanAllowance(
   subscription: SubscriptionRow | null = req.user ? currentSubscription(req.user.id) : null,
 ): Allowance {
   const at = now();
-  if (!billingConfig().enabled) {
+  if (!paymentsEnabled()) {
     return { plan: "free", limit: null, period: "month", resetsAt: nextMonthStart(at), buckets: [] };
   }
 
   const limits = usageLimits();
-  if (req.user && hasPro(subscription, at)) {
+  const pro =
+    req.user !== undefined &&
+    (hasPro(subscription, at) ||
+      (storeConfig().enabled && storeHasPro(storeSubscription(req.user.id), at)));
+  if (req.user && pro) {
     return {
       plan: "pro",
       limit: limits.proPerDay,
@@ -526,27 +541,42 @@ function toSubscriptionInfo(row: SubscriptionRow | null): SubscriptionInfo | nul
     interval: row.interval,
     currentPeriodEnd: row.currentPeriodEnd,
     cancelAt: row.scheduledCancelAt,
+    source: "paddle",
   };
+}
+
+/** 웹 결제(Paddle)나 인앱 구독(RevenueCat) 가운데 하나라도 켜져 있는지. 켜져 있어야 한도가 걸린다. */
+export function paymentsEnabled(): boolean {
+  return billingConfig().enabled || storeConfig().enabled;
 }
 
 export async function billingStatus(req: Request, res: Response): Promise<BillingStatus> {
   const config = billingConfig();
+  const store = storeConfig();
   const limits = usageLimits();
   let subscription = req.user ? currentSubscription(req.user.id) : null;
   if (config.enabled && req.user) {
     await refreshIfStale(subscription);
     subscription = currentSubscription(req.user.id);
   }
+  if (store.enabled && req.user) await refreshStoreIfStale(req.user.id);
   const allowance = scanAllowance(req, res, subscription);
 
+  const paddleInfo = config.enabled ? toSubscriptionInfo(subscription) : null;
+  const storeInfo =
+    store.enabled && req.user ? storeSubscriptionInfo(storeSubscription(req.user.id)) : null;
+
   return {
-    enabled: config.enabled,
+    enabled: paymentsEnabled(),
     environment: config.environment,
     clientToken: config.enabled ? config.clientToken : null,
     usage: usageOf(allowance),
-    subscription: config.enabled ? toSubscriptionInfo(subscription) : null,
+    subscription: paddleInfo ?? storeInfo,
     prices: config.enabled ? await listPrices() : [],
     limits: { freePerMonth: limits.freePerMonth, proPerDay: limits.proPerDay },
+    store: store.enabled
+      ? { iosKey: store.iosKey, androidKey: store.androidKey, entitlement: store.entitlement }
+      : null,
   };
 }
 
@@ -683,6 +713,9 @@ export function handlePaddleWebhook(req: Request, res: Response): void {
 
 /** 계정을 지우기 전에 살아 있는 구독을 즉시 해지한다. 지운 계정에 계속 청구되지 않게. */
 export async function cancelForAccountDeletion(userId: string): Promise<void> {
+  // 앱스토어·플레이스토어 구독은 여기서 끊을 수 없다. RevenueCat 쪽 고객 기록만 지운다.
+  await forgetStoreCustomer(userId);
+
   const rows = db()
     .prepare(
       `SELECT id FROM subscriptions
@@ -721,7 +754,7 @@ const billingLimiter = createRateLimiter({
 });
 
 function fail(res: Response, err: unknown): void {
-  if (err instanceof BillingError) {
+  if (err instanceof BillingError || err instanceof StoreError) {
     res.status(err.status).json({ ok: false, code: err.code, error: err.message });
     return;
   }
@@ -738,6 +771,23 @@ function requireBilling(): void {
     throw new BillingError(503, "billing_unavailable", "Subscriptions aren't available right now.");
   }
 }
+
+/**
+ * 휴대폰 앱에서 구매·복원한 뒤 부른다. 앱이 보낸 내용은 믿지 않고 RevenueCat 에 직접 물어 저장한다.
+ */
+billing.post("/sync", requireUser, billingLimiter, async (req, res) => {
+  try {
+    await syncStoreSubscription(req.user!.id);
+    res.json({ ok: true, status: await billingStatus(req, res) });
+  } catch (err) {
+    fail(res, err);
+  }
+});
+
+/** RevenueCat 웹훅. 세션이 아니라 Authorization 값으로 확인한다. */
+billing.post("/store-webhook", (req, res) => {
+  void handleStoreWebhook(req, res);
+});
 
 billing.get("/status", async (req, res) => {
   try {

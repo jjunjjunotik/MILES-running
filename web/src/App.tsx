@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import type {
   FingerKey,
   NailAnalysis,
@@ -24,6 +24,15 @@ import {
 } from "../../shared/billing";
 import type { LegalDocId } from "../../shared/legal";
 import { RETURN_TAB_KEY } from "./i18n";
+import { IS_APP } from "./lib/platform";
+
+/**
+ * 휴대폰 앱은 스토어 인앱 구독 화면을 쓴다(웹 결제 창을 앱에 띄우면 스토어 심사에서 거절된다).
+ * 웹 빌드에는 이 화면과 RevenueCat 코드가 들어가지 않는다.
+ */
+const StorePlanScreen = IS_APP
+  ? lazy(() => import("./screens/StorePlanScreen").then((m) => ({ default: m.StorePlanScreen })))
+  : null;
 import {
   DEFAULT_SETTINGS,
   clearAll,
@@ -348,6 +357,7 @@ export function App() {
     } catch {
       // 서버에 닿지 못해도 이 기기에서는 나간다.
     }
+    if (IS_APP) void import("./lib/store").then((m) => m.forgetStoreUser());
     setStorageScope(null);
     setUser(null);
     setRecords([]);
@@ -401,6 +411,21 @@ export function App() {
           }}
           onBack={() => setShowAuth(false)}
         />
+      );
+    }
+
+    if (showPlan && StorePlanScreen) {
+      return (
+        <Suspense fallback={null}>
+          <StorePlanScreen
+            billing={billing}
+            user={user}
+            onBack={() => setShowPlan(false)}
+            onSignIn={() => setShowAuth(true)}
+            onBillingChange={setBilling}
+            onOpenLegal={setLegalDoc}
+          />
+        </Suspense>
       );
     }
 

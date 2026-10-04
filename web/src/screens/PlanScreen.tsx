@@ -208,6 +208,21 @@ export function PlanScreen({
       <main className="screen">
         {!billing || !billing.enabled ? (
           <p className="tier-sub mt-16">{L("Plans aren't available right now.", "지금은 요금제를 이용할 수 없어요.")}</p>
+        ) : !billing.clientToken && !billing.subscription ? (
+          // 웹 결제는 꺼져 있고 휴대폰 앱의 인앱 구독만 켜져 있을 때
+          <>
+            <section className="tier-now">
+              <div className="tier-kicker">{L("Your plan", "내 요금제")}</div>
+              <h2 className="tier-name">{isPro ? "Pro" : "Free"}</h2>
+              {usage && usageLine(usage) && <p className="tier-usage">{usageLine(usage)}</p>}
+            </section>
+            <p className="tier-sub mt-16">
+              {L(
+                "Pro is available in the NailSense app for iPhone and Android. Subscribe there with the same account.",
+                "Pro는 아이폰·안드로이드용 NailSense 앱에서 구독할 수 있어요. 같은 계정으로 앱에서 구독해 주세요.",
+              )}
+            </p>
+          </>
         ) : (
           <>
             <section className="tier-now">

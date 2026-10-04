@@ -33,9 +33,23 @@ function appApiBase(): string {
   return value;
 }
 
+/**
+ * 브라우저 테스트(npm run e2e:store) 전용: 스토어 결제 플러그인을 가짜로 바꿔 끼운다.
+ * 이 환경변수를 켜지 않은 빌드(실제 앱)에는 영향이 없다.
+ */
+const FAKE_STORE = process.env.NAILSENSE_FAKE_STORE === "1";
+
 export default defineConfig(({ mode }) => ({
   root: "web",
   plugins: [woff2Only(), react()],
+  resolve: FAKE_STORE
+    ? {
+        alias: {
+          "@revenuecat/purchases-capacitor": new URL("./scripts/fakes/purchases.ts", import.meta.url).pathname,
+          "@capacitor/app-launcher": new URL("./scripts/fakes/app-launcher.ts", import.meta.url).pathname,
+        },
+      }
+    : undefined,
   define: {
     // 웹 빌드에서는 앱 전용 코드(보안 저장소 등)가 통째로 빠지도록 상수로 박는다.
     "import.meta.env.VITE_APP_TARGET": JSON.stringify(mode === "app" ? "app" : ""),

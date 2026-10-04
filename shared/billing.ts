@@ -40,6 +40,9 @@ export interface PriceInfo {
   trial: { interval: "day" | "week" | "month" | "year"; frequency: number } | null;
 }
 
+/** 인앱 구독을 판 스토어 */
+export type StoreName = "app_store" | "play_store" | "other";
+
 export interface SubscriptionInfo {
   status: SubscriptionStatus;
   interval: BillingInterval | null;
@@ -47,10 +50,12 @@ export interface SubscriptionInfo {
   currentPeriodEnd: number | null;
   /** 해지를 예약했으면 Pro 가 끝나는 시각 */
   cancelAt: number | null;
+  /** 어디서 결제했는지. 해지·관리하는 곳이 다르다(웹 결제 창, 앱스토어, 플레이스토어). */
+  source: "paddle" | StoreName;
 }
 
 export interface BillingStatus {
-  /** 결제 기능이 설정되어 있는지. 꺼져 있으면 한도도 없다. */
+  /** 결제 기능(웹 결제나 인앱 구독)이 설정되어 있는지. 꺼져 있으면 한도도 없다. */
   enabled: boolean;
   environment: "sandbox" | "production";
   /** 결제 창(Paddle.js)용 공개 토큰. 비밀값이 아니다. */
@@ -59,6 +64,11 @@ export interface BillingStatus {
   subscription: SubscriptionInfo | null;
   prices: PriceInfo[];
   limits: { freePerMonth: number; proPerDay: number };
+  /**
+   * 휴대폰 앱의 인앱 구독(RevenueCat) 설정. 공개 키만 담는다(비밀키는 서버에만 있다).
+   * 꺼져 있으면 null.
+   */
+  store: { iosKey: string | null; androidKey: string | null; entitlement: string } | null;
 }
 
 /** 체험 기간을 "7-day" 처럼 읽기 좋게 */

@@ -39,6 +39,7 @@ import {
 } from "./billing.js";
 import { billingConfig, missingBillingSettings } from "./billing-config.js";
 import { pruneUsage } from "./usage.js";
+import { missingStoreSettings, storeConfig } from "./revenuecat.js";
 import { localeMiddleware } from "./i18n.js";
 import { DB_PATH, db } from "./db.js";
 import { seedArticles } from "./seed-articles.js";
@@ -376,6 +377,17 @@ app.listen(PORT, () => {
   } else if (missing.length > 0) {
     console.warn(
       `[결제] 설정이 일부만 되어 있어 결제를 끈 채로 동작합니다. 빠진 값: ${missing.join(", ")}`,
+    );
+  }
+
+  const store = storeConfig();
+  const missingStore = missingStoreSettings();
+  if (store.enabled) {
+    const platforms = [store.iosKey && "iOS", store.androidKey && "Android"].filter(Boolean).join(" · ");
+    console.log(`인앱 구독: RevenueCat (${platforms}) · 권한 이름 ${store.entitlement} · 무료 사용 한도 적용`);
+  } else if (missingStore.length > 0) {
+    console.warn(
+      `[인앱 구독] 설정이 일부만 되어 있어 끈 채로 동작합니다. 빠진 값: ${missingStore.join(", ")}`,
     );
   }
 
