@@ -16,8 +16,10 @@ import {
 } from "./auth.js";
 import { createRateLimiter } from "./security.js";
 import {
+  APPLE_BUNDLE_ID,
   APPLE_CLIENT_ID,
   GOOGLE_CLIENT_ID,
+  GOOGLE_IOS_CLIENT_ID,
   OAuthError,
   appleEnabled,
   googleEnabled,
@@ -102,8 +104,13 @@ api.get("/auth/providers", (_req, res) => {
     ok: true,
     providers: {
       password: true,
-      google: googleEnabled() ? { clientId: GOOGLE_CLIENT_ID } : false,
-      apple: appleEnabled() ? { clientId: APPLE_CLIENT_ID } : false,
+      google: googleEnabled()
+        ? { clientId: GOOGLE_CLIENT_ID, iosClientId: GOOGLE_IOS_CLIENT_ID || null }
+        : false,
+      // clientId: 웹(Services ID). native: 아이폰 앱에서 네이티브 애플 로그인을 받을 수 있는지
+      apple: appleEnabled()
+        ? { clientId: APPLE_CLIENT_ID || null, native: APPLE_BUNDLE_ID.length > 0 }
+        : false,
     },
   });
 });

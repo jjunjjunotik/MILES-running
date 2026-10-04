@@ -184,6 +184,24 @@ try {
   check(!("sessionToken" in webBody), "웹 응답 본문에는 토큰 없음");
   check(!web.headers.get("access-control-allow-origin"), "같은 출처 요청에는 CORS 헤더 없음");
 
+  console.log("서버: 스토어용 공개 페이지");
+  for (const [route, en, ko] of [
+    ["/privacy", "Privacy Policy", "개인정보처리방침"],
+    ["/terms", "Terms of Service", "이용약관"],
+    ["/delete-account", "Delete your NailSense account", "NailSense 계정 삭제"],
+    ["/support", "NailSense support", "NailSense 고객 지원"],
+  ]) {
+    const enPage = await fetch(`${API}${route}?lang=en`);
+    const enHtml = await enPage.text();
+    const koHtml = await (await fetch(`${API}${route}`, { headers: { "Accept-Language": "ko-KR,ko" } })).text();
+    check(
+      enPage.ok && enHtml.includes(`<h1>${en}</h1>`) && koHtml.includes(`<h1>${ko}</h1>`) && !/<script/i.test(enHtml + koHtml),
+      `${route}: 로그인 없이 열림, 영어·한국어, 스크립트 없음`,
+    );
+  }
+  const deletion = await (await fetch(`${API}/delete-account?lang=en`)).text();
+  check(/doesn't cancel an App Store or Google Play subscription/.test(deletion), "계정 삭제 페이지: 스토어 구독은 따로 해지해야 한다는 안내");
+
   console.log("브라우저: 다른 출처에서 띄운 앱 화면");
   browser = await chromium.launch(
     process.env.CHROMIUM_PATH ? { executablePath: process.env.CHROMIUM_PATH } : {},

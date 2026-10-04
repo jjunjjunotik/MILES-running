@@ -124,7 +124,10 @@ export async function signInWithApplePopup(clientId: string): Promise<{
 
   const result = await api.signIn();
   const person = result.user?.name;
-  const name = [person?.lastName, person?.firstName].filter(Boolean).join("");
+  // 한국어는 성+이름을 붙여서, 영어는 이름 성 순서로.
+  const name = KO
+    ? [person?.lastName, person?.firstName].filter(Boolean).join("")
+    : [person?.firstName, person?.lastName].filter(Boolean).join(" ");
 
   return {
     idToken: result.authorization?.id_token,

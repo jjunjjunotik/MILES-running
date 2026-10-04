@@ -13,8 +13,11 @@ import {
   type Providers,
 } from "../lib/server";
 import { mountGoogleButton, signInWithApplePopup } from "../lib/social";
-import { AppleLogoIcon, BackIcon } from "../components/Icons";
+import { IS_APP } from "../lib/platform";
+import { AppleLogoIcon, BackIcon, GoogleLogoIcon } from "../components/Icons";
 import { L } from "../i18n";
+
+type NativeSocial = typeof import("../lib/nativeSocial");
 
 type Mode = "login" | "signup";
 
@@ -23,7 +26,10 @@ type Mode = "login" | "signup";
  *
  * 비밀번호는 이 화면을 떠나면 어디에도 남지 않는다. 상태에만 잠깐 있다가
  * 요청과 함께 사라지고, 기기에 저장하지 않는다. 로그인 유지는 서버가 내려 주는
- * httpOnly 쿠키가 맡는다.
+ * httpOnly 쿠키(웹) 또는 보안 저장소의 토큰(앱)이 맡는다.
+ *
+ * 구글 · 애플: 웹은 각 회사의 스크립트로, 휴대폰 앱은 운영체제의 로그인 화면(네이티브)으로 한다.
+ * 어느 쪽이든 받은 ID 토큰을 서버가 검증한다.
  */
 export function AuthScreen({
   onSignedIn,
@@ -42,6 +48,26 @@ export function AuthScreen({
   /** 이메일 폼은 접어 둔다. 대부분은 소셜 버튼 하나로 끝나기 때문이다. */
   const [emailOpen, setEmailOpen] = useState(false);
   const googleSlot = useRef<HTMLDivElement>(null);
+  /** 앱에서만 불러오는 네이티브 로그인 모듈 */
+  const [native, setNative] = useState<NativeSocial | null>(null);
+
+  useEffect(() => {
+    if (!IS_APP) return;
+    let cancelled = false;
+    void import("../lib/nativeSocial").then((module) => {
+      if (!cancelled) setNative(module);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const nativeShown = native && providers ? native.nativeButtons(providers) : null;
+  /** 이 기기에서 실제로 보여 줄 버튼 */
+  const showGoogle = IS_APP ? Boolean(nativeShown?.google) : Boolean(providers?.google);
+  const showApple = IS_APP
+    ? Boolean(nativeShown?.apple)
+    : Boolean(providers?.apple && providers.apple.clientId);
 
   useEffect(() => {
     let cancelled = false;
@@ -50,6 +76,7 @@ export function AuthScreen({
         if (cancelled) return;
         setProviders(found);
         // 소셜이 하나도 없으면 이메일 폼을 처음부터 펼쳐 둔다.
+        // (앱에서는 기기마다 보이는 버튼이 달라 아래 효과에서 다시 판단한다.)
         if (!found.google && !found.apple) setEmailOpen(true);
       })
       .catch(() => {
@@ -63,10 +90,14 @@ export function AuthScreen({
     };
   }, []);
 
-  // 구글 버튼은 구글이 직접 그린다. 설정돼 있을 때만 스크립트를 불러온다.
+  useEffect(() => {
+    if (IS_APP && nativeShown && !nativeShown.google && !nativeShown.apple) setEmailOpen(true);
+  }, [nativeShown?.google, nativeShown?.apple]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 웹: 구글 버튼은 구글이 직접 그린다. 설정돼 있을 때만 스크립트를 불러온다.
   useEffect(() => {
     const google = providers?.google;
-    if (!google || !googleSlot.current) return;
+    if (IS_APP || !google || !googleSlot.current) return;
     void mountGoogleButton({
       clientId: google.clientId,
       parent: googleSlot.current,
@@ -87,13 +118,35 @@ export function AuthScreen({
     );
   }, [providers, onSignedIn]);
 
+  /** 앱: 운영체제의 구글 계정 선택 화면 */
+  async function nativeGoogleSignIn() {
+    if (!native || !providers || busy) return;
+    setBusy(true);
+    setError(null);
+    try {
+      const idToken = await native.nativeGoogleIdToken(providers);
+      onSignedIn(await signInWithGoogle(idToken), false);
+    } catch (err) {
+      setError(
+        err instanceof ServerError
+          ? err.message
+          : L("Google sign-in was cancelled or failed.", "구글 로그인이 취소되었거나 실패했어요."),
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function appleSignIn() {
     const apple = providers?.apple;
     if (!apple || busy) return;
     setBusy(true);
     setError(null);
     try {
-      const result = await signInWithApplePopup(apple.clientId);
+      const result =
+        IS_APP && native
+          ? await native.nativeApple(providers!)
+          : await signInWithApplePopup(apple.clientId ?? "");
       const user = await signInWithApple(result);
       onSignedIn(user, false);
     } catch (err) {
@@ -156,9 +209,19 @@ export function AuthScreen({
       </p>
 
       <div className="social">
-        {providers?.google && <div ref={googleSlot} className="google-slot" />}
+        {showGoogle && IS_APP && (
+          <button
+            className="btn btn-secondary"
+            onClick={() => void nativeGoogleSignIn()}
+            disabled={busy}
+          >
+            <GoogleLogoIcon size={19} weight="bold" />
+            {L("Continue with Google", "Google로 계속하기")}
+          </button>
+        )}
+        {showGoogle && !IS_APP && <div ref={googleSlot} className="google-slot" />}
 
-        {providers?.apple && (
+        {showApple && (
           <button
             className="btn btn-apple"
             onClick={() => void appleSignIn()}
@@ -169,7 +232,7 @@ export function AuthScreen({
           </button>
         )}
 
-        {(providers?.google || providers?.apple) && !emailOpen && (
+        {(showGoogle || showApple) && !emailOpen && (
           <>
             <div className="divider">{L("or", "또는")}</div>
             <button

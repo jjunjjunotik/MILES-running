@@ -1,0 +1,16 @@
+<!--
+  NailSense 앱 아이콘 원본. 고치면 `npm run make:icons` 로 모든 크기를 다시 만든다.
+  - id="bg" 사각형이 배경(안드로이드 적응형 아이콘의 배경색으로도 쓰인다). 빼면 전경만 남는다.
+  - 손톱 하나와 "관찰"을 뜻하는 네 모서리 표시. 의료 기호(십자 등)는 쓰지 않는다.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" width="1024" height="1024">
+  <rect id="bg" x="0" y="0" width="1024" height="1024" fill="#2a45c2"/>
+  <g fill="none" stroke="#ffffff" stroke-opacity="0.6" stroke-width="40" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M232 352 V232 H352"/>
+    <path d="M672 232 H792 V352"/>
+    <path d="M792 672 V792 H672"/>
+    <path d="M352 792 H232 V672"/>
+  </g>
+  <path d="M388 742 V470 C388 374 442 318 512 318 C582 318 636 374 636 470 V742 Z" fill="#ffffff"/>
+  <path d="M432 742 C432 676 468 640 512 640 C556 640 592 676 592 742 Z" fill="#c8d1f6"/>
+</svg>

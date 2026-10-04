@@ -7,8 +7,9 @@ android {
         applicationId "com.nailsense.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        // 스토어에 올릴 때마다 늘어나야 한다. 클라우드 빌드(codemagic.yaml)가 APP_VERSION_CODE 로 넘긴다.
+        versionCode((System.getenv("APP_VERSION_CODE") ?: "1") as int)
+        versionName(System.getenv("APP_VERSION_NAME") ?: "1.0.0")
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +17,25 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    /**
+     * 출시용 서명. 업로드 키(keystore)는 저장소에 넣지 않는다.
+     * 클라우드 빌드가 환경변수(CM_KEYSTORE_PATH 등)로 넘겨줄 때만 서명하고, 없으면 서명하지 않은 채로 만든다.
+     */
+    signingConfigs {
+        if (System.getenv("CM_KEYSTORE_PATH")) {
+            release {
+                storeFile file(System.getenv("CM_KEYSTORE_PATH"))
+                storePassword System.getenv("CM_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("CM_KEY_ALIAS")
+                keyPassword System.getenv("CM_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
+            if (System.getenv("CM_KEYSTORE_PATH")) {
+                signingConfig signingConfigs.release
+            }
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

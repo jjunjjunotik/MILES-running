@@ -70,7 +70,8 @@ export async function verifyIdToken(options: {
   token: string;
   jwksUrl: string;
   issuers: string[];
-  audience: string;
+  /** 받아들이는 수신자(aud). 웹과 휴대폰 앱은 클라이언트 아이디가 달라 여러 개일 수 있다. */
+  audience: string | string[];
   nonce?: string;
 }): Promise<VerifiedIdToken> {
   const parts = options.token.split(".");
@@ -117,9 +118,10 @@ export async function verifyIdToken(options: {
   }
 
   const audience = payload.aud;
+  const accepted = (Array.isArray(options.audience) ? options.audience : [options.audience]).filter(Boolean);
   const audienceOk = Array.isArray(audience)
-    ? audience.includes(options.audience)
-    : audience === options.audience;
+    ? audience.some((value) => accepted.includes(value))
+    : typeof audience === "string" && accepted.includes(audience);
   if (!audienceOk) {
     throw new OAuthError("bad_token", "This sign-in was issued for a different app.");
   }
@@ -152,6 +154,11 @@ export async function verifyIdToken(options: {
 /* ---------------------------------- 구글 ---------------------------------- */
 
 export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID?.trim() ?? "";
+/**
+ * 아이폰 앱의 구글 로그인은 iOS 용 클라이언트 아이디로 토큰이 나온다. 안드로이드 앱은 웹 클라이언트
+ * 아이디(GOOGLE_CLIENT_ID)로 나오므로 따로 둘 필요가 없다. 공개되는 값이다.
+ */
+export const GOOGLE_IOS_CLIENT_ID = process.env.GOOGLE_IOS_CLIENT_ID?.trim() ?? "";
 const GOOGLE_JWKS = process.env.GOOGLE_JWKS_URL ?? "https://www.googleapis.com/oauth2/v3/certs";
 const GOOGLE_ISSUERS = (process.env.GOOGLE_ISSUERS ?? "https://accounts.google.com,accounts.google.com")
   .split(",")
@@ -170,13 +177,18 @@ export async function verifyGoogleToken(idToken: string): Promise<VerifiedIdToke
     token: idToken,
     jwksUrl: GOOGLE_JWKS,
     issuers: GOOGLE_ISSUERS,
-    audience: GOOGLE_CLIENT_ID,
+    audience: [GOOGLE_CLIENT_ID, GOOGLE_IOS_CLIENT_ID],
   });
 }
 
 /* ---------------------------------- 애플 ---------------------------------- */
 
 export const APPLE_CLIENT_ID = process.env.APPLE_CLIENT_ID?.trim() ?? "";
+/**
+ * 아이폰 앱의 애플 로그인(네이티브)은 앱 번들 아이디가 수신자(aud)가 된다.
+ * 웹용 Services ID(APPLE_CLIENT_ID)와 다르다. 공개되는 값이다.
+ */
+export const APPLE_BUNDLE_ID = process.env.APPLE_BUNDLE_ID?.trim() ?? "";
 const APPLE_TEAM_ID = process.env.APPLE_TEAM_ID?.trim() ?? "";
 const APPLE_KEY_ID = process.env.APPLE_KEY_ID?.trim() ?? "";
 const APPLE_PRIVATE_KEY = (process.env.APPLE_PRIVATE_KEY ?? "").replace(/\\n/g, "\n").trim();
@@ -188,7 +200,7 @@ const APPLE_ISSUERS = (process.env.APPLE_ISSUERS ?? "https://appleid.apple.com")
   .filter(Boolean);
 
 export function appleEnabled(): boolean {
-  return APPLE_CLIENT_ID.length > 0;
+  return APPLE_CLIENT_ID.length > 0 || APPLE_BUNDLE_ID.length > 0;
 }
 
 /** 코드 교환에는 애플 개발자 키(.p8)로 직접 서명한 JWT 가 client_secret 자리에 들어간다. */
@@ -243,6 +255,10 @@ export async function verifyAppleLogin(input: {
   let idToken = input.idToken;
 
   if (!idToken && input.code) {
+    // 코드 교환은 웹 방식에서만 쓴다(웹용 Services ID 필요). 앱은 id_token 을 바로 보낸다.
+    if (!APPLE_CLIENT_ID) {
+      throw new OAuthError("bad_token", "We couldn't verify your sign-in.");
+    }
     const body = new URLSearchParams({
       client_id: APPLE_CLIENT_ID,
       client_secret: appleClientSecret(),
@@ -269,7 +285,7 @@ export async function verifyAppleLogin(input: {
     token: idToken,
     jwksUrl: APPLE_JWKS,
     issuers: APPLE_ISSUERS,
-    audience: APPLE_CLIENT_ID,
+    audience: [APPLE_CLIENT_ID, APPLE_BUNDLE_ID],
     nonce: input.nonce,
   });
 }

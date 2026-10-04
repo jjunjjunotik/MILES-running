@@ -1,0 +1,100 @@
+# 클라우드 빌드 (Codemagic). Mac 이 없어도 iOS 앱을 만들어 TestFlight 에 올릴 수 있다.
+#
+# 처음 한 번 Codemagic 웹에서 할 일 (README "휴대폰 앱 출시" 참고)
+#   1. 이 저장소를 Codemagic 에 연결한다.
+#   2. Teams › Integrations › Developer Portal 에 App Store Connect API 키를 넣고 이름을 아래 integrations 와 같게 한다.
+#   3. Code signing identities › Android keystores 에 업로드 키를 올리고 reference 이름을 아래와 같게 한다.
+#   4. Environment variables 에 그룹 google_play 를 만들고 GCLOUD_SERVICE_ACCOUNT_CREDENTIALS(서비스 계정 JSON)를 넣는다.
+#   5. 앱 아이디(com.nailsense.app)를 바꿨다면 아래 BUNDLE_ID · PACKAGE_NAME 도 바꾼다.
+#
+# 비밀값(키, 인증서, 서비스 계정)은 이 파일이 아니라 Codemagic 에만 둔다.
+
+definitions:
+  env: &app_env
+    APP_API_BASE: https://nailsense.fly.dev
+    BUNDLE_ID: com.nailsense.app
+    PACKAGE_NAME: com.nailsense.app
+    APP_VERSION_NAME: 1.0.0
+  scripts:
+    - &install
+      name: 의존성 설치
+      script: npm ci
+    - &checks
+      name: 점검 (타입, 비밀값)
+      script: npm run typecheck && npm run check:secrets
+    - &build_web
+      name: 앱 화면 빌드
+      script: npm run build:app
+
+workflows:
+  ios-testflight:
+    name: iOS → TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: NailSense App Store Connect
+    environment:
+      node: 22
+      xcode: latest
+      vars:
+        <<: *app_env
+        # App Store Connect › 앱 정보의 Apple ID(숫자). 앱을 만든 뒤 채운다.
+        APP_STORE_APPLE_ID: "0000000000"
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.nailsense.app
+    scripts:
+      - *install
+      - *checks
+      - *build_web
+      - name: iOS 프로젝트에 반영
+        script: npx cap sync ios
+      - name: 서명 프로필 적용
+        script: xcode-project use-profiles --project ios/App/App.xcodeproj
+      - name: 빌드 번호 올리기
+        script: |
+          cd ios/App
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || echo 0)
+          agvtool new-version -all $((LATEST + 1))
+          agvtool new-marketing-version "$APP_VERSION_NAME"
+      - name: ipa 만들기
+        script: xcode-project build-ipa --project ios/App/App.xcodeproj --scheme App
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true
+
+  android-internal:
+    name: Android → Google Play 내부 테스트
+    instance_type: linux_x2
+    max_build_duration: 45
+    environment:
+      node: 22
+      java: 21
+      vars:
+        <<: *app_env
+      android_signing:
+        - nailsense_upload_key
+      groups:
+        - google_play
+    scripts:
+      - *install
+      - *checks
+      - *build_web
+      - name: 안드로이드 프로젝트에 반영
+        script: npx cap sync android
+      - name: 버전 코드 정하기
+        script: |
+          LATEST=$(google-play get-latest-build-number --package-name "$PACKAGE_NAME" || echo 0)
+          echo "APP_VERSION_CODE=$((LATEST + 1))" >> "$CM_ENV"
+      - name: 출시용 번들(aab) 만들기
+        script: cd android && ./gradlew bundleRelease
+    artifacts:
+      - android/app/build/outputs/bundle/release/*.aab
+    publishing:
+      google_play:
+        credentials: $GCLOUD_SERVICE_ACCOUNT_CREDENTIALS
+        track: internal
+        submit_as_draft: true

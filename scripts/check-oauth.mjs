@@ -19,6 +19,9 @@ const JWKS_PORT = 8850;
 const API_PORT = 8851;
 const CLIENT_ID = "test-client-id.apps.googleusercontent.com";
 const ISSUER = "https://accounts.test";
+const IOS_CLIENT_ID = "test-ios-client.apps.googleusercontent.com";
+const BUNDLE_ID = "com.example.nailsense";
+const APPLE_ISSUER = "https://appleid.test";
 
 const { publicKey, privateKey } = crypto.generateKeyPairSync("rsa", {
   modulusLength: 2048,
@@ -62,6 +65,12 @@ const server = spawn("npx", ["tsx", "server/index.ts"], {
     GOOGLE_CLIENT_ID: CLIENT_ID,
     GOOGLE_JWKS_URL: `http://127.0.0.1:${JWKS_PORT}/certs`,
     GOOGLE_ISSUERS: ISSUER,
+    // 휴대폰 앱: 아이폰 구글 로그인은 iOS 클라이언트 아이디로, 애플 네이티브 로그인은 번들 아이디로 토큰이 나온다.
+    GOOGLE_IOS_CLIENT_ID: IOS_CLIENT_ID,
+    APPLE_BUNDLE_ID: BUNDLE_ID,
+    APPLE_CLIENT_ID: "",
+    APPLE_JWKS_URL: `http://127.0.0.1:${JWKS_PORT}/certs`,
+    APPLE_ISSUERS: APPLE_ISSUER,
   },
   stdio: "ignore",
   detached: true,
@@ -165,11 +174,45 @@ const meJson = await me.json();
 if (meJson.user?.id !== userId) problems.push("소셜 로그인 세션이 유지되지 않았습니다.");
 console.log(`  ok  세션 유지 → ${meJson.user?.email}`);
 
-// 제공자 목록: 애플은 설정하지 않았으므로 꺼져 있어야 한다.
+console.log("휴대폰 앱(네이티브) 토큰");
+await check("아이폰 구글 로그인(iOS 클라이언트 아이디)", true, {
+  idToken: makeToken(base({ aud: IOS_CLIENT_ID, sub: "google-ios-1", email: "ios@example.com" })),
+});
+await check("빈 수신자는 거절", false, { idToken: makeToken(base({ aud: "" })) });
+
+const apple = async (label, expectOk, body) => {
+  const response = await post("/api/auth/apple", body);
+  const json = await response.json().catch(() => ({}));
+  const ok = response.ok && json.ok === true;
+  if (ok !== expectOk) problems.push(`${label}: 기대 ${expectOk ? "통과" : "거절"} · 실제 ${response.status}`);
+  console.log(`${ok === expectOk ? "  ok" : "실패"}  ${label} → ${response.status}${json.code ? ` (${json.code})` : ""}`);
+  return json;
+};
+const appleToken = (over = {}) =>
+  makeToken({
+    iss: APPLE_ISSUER,
+    aud: BUNDLE_ID,
+    sub: "apple-user-1",
+    email: "apple@example.com",
+    email_verified: "true",
+    exp: Math.floor(Date.now() / 1000) + 600,
+    ...over,
+  });
+const appleUser = await apple("아이폰 애플 로그인(번들 아이디)", true, { idToken: appleToken(), name: "Kim" });
+if (appleUser.user?.provider !== "apple") problems.push("애플 계정으로 표시되지 않습니다.");
+await apple("다른 앱의 번들 아이디", false, { idToken: appleToken({ aud: "com.other.app" }) });
+await apple("애플 발급자가 아님", false, { idToken: appleToken({ iss: ISSUER }) });
+await apple("웹용 Services ID 없이 코드 교환", false, { code: "some-code" });
+
+// 제공자 목록: 웹용 애플(Services ID)은 없고, 아이폰 네이티브 애플 로그인은 켜져 있어야 한다.
 const providers = await (await fetch(`${API}/api/auth/providers`)).json();
-if (!providers.providers?.google) problems.push("구글이 켜져 있다고 나오지 않습니다.");
-if (providers.providers?.apple !== false) problems.push("설정하지 않은 애플이 켜져 있다고 나옵니다.");
-console.log(`  ok  제공자 목록 → 구글 ${Boolean(providers.providers?.google)} / 애플 ${Boolean(providers.providers?.apple)}`);
+if (providers.providers?.google?.iosClientId !== IOS_CLIENT_ID) problems.push("구글 iOS 클라이언트 아이디가 내려오지 않습니다.");
+if (providers.providers?.apple?.native !== true || providers.providers?.apple?.clientId !== null) {
+  problems.push("애플 제공자 정보가 예상과 다릅니다(웹 없음, 네이티브 있음).");
+}
+const providersText = JSON.stringify(providers);
+if (/PRIVATE|BEGIN|secret/i.test(providersText)) problems.push("제공자 목록에 비밀값처럼 보이는 것이 있습니다.");
+console.log(`  ok  제공자 목록 → 구글 ${Boolean(providers.providers?.google)} / 애플 네이티브 ${providers.providers?.apple?.native}`);
 
 try {
   process.kill(-server.pid, "SIGKILL");

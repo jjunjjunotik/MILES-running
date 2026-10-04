@@ -13,3 +13,9 @@ data/
 demo/
 .env.*
 dist-app/
+# 안드로이드 업로드 키와 iOS 서명 파일은 저장소에 넣지 않는다.
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision

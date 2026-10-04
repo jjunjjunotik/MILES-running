@@ -6,6 +6,7 @@
  */
 export {
   AppleLogoIcon,
+  GoogleLogoIcon,
   ArrowDownIcon,
   ArrowUpIcon,
   CameraIcon,

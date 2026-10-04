@@ -34,8 +34,10 @@ export interface AuthUser {
 
 export interface Providers {
   password: boolean;
-  google: { clientId: string } | false;
-  apple: { clientId: string } | false;
+  /** iosClientId: 아이폰 앱의 네이티브 구글 로그인용(없으면 아이폰 앱에서는 구글 버튼을 숨긴다) */
+  google: { clientId: string; iosClientId: string | null } | false;
+  /** clientId: 웹용 Services ID(없으면 웹에서 숨김). native: 아이폰 앱의 네이티브 애플 로그인 가능 */
+  apple: { clientId: string | null; native: boolean } | false;
 }
 
 export interface ServerPreferences {

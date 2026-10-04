@@ -41,6 +41,7 @@ import { billingConfig, missingBillingSettings } from "./billing-config.js";
 import { pruneUsage } from "./usage.js";
 import { missingStoreSettings, storeConfig } from "./revenuecat.js";
 import { localeMiddleware } from "./i18n.js";
+import { publicPages } from "./public-pages.js";
 import { DB_PATH, db } from "./db.js";
 import { seedArticles } from "./seed-articles.js";
 
@@ -318,6 +319,9 @@ function markImageRef(scanId: string, keep: boolean): void {
     .prepare("UPDATE nail_scans SET image_ref = ?, image_stored = 1 WHERE id = ?")
     .run(scanId, scanId);
 }
+
+// 스토어 등록에 필요한 공개 페이지(개인정보처리방침, 약관, 계정 삭제, 고객 지원)
+app.use(publicPages);
 
 // 프로덕션 빌드 결과를 같은 서버에서 서빙한다.
 const distDir = path.resolve(here, "../dist");
