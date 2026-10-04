@@ -12,3 +12,4 @@ data/
 .smoke/
 demo/
 .env.*
+dist-app/

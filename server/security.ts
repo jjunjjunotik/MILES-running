@@ -233,7 +233,7 @@ export function sameOriginOnly(
     return;
   }
 
-  if (host === req.get("host") || allowed.includes(origin)) {
+  if (host === req.get("host") || allowed.includes(origin) || isAppOrigin(origin)) {
     next();
     return;
   }
@@ -252,6 +252,50 @@ export function sameOriginOnly(
     code: "bad_request",
     error: "This request isn't allowed.",
   });
+}
+
+/**
+ * 휴대폰 앱(Capacitor) 화면의 출처. iOS 는 capacitor://localhost, 안드로이드는 https://localhost.
+ * APP_ORIGINS 로 바꿀 수 있다(쉼표로 나열).
+ */
+export function appOrigins(): string[] {
+  const configured = (process.env.APP_ORIGINS ?? "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean);
+  return configured.length > 0 ? configured : ["capacitor://localhost", "https://localhost"];
+}
+
+function isAppOrigin(origin: string): boolean {
+  return appOrigins().includes(origin);
+}
+
+/**
+ * 앱 화면은 서버와 출처가 달라 CORS 허락이 필요하다.
+ *
+ * 앱은 쿠키가 아니라 Authorization 헤더의 토큰으로 로그인하므로 쿠키 전송은 허락하지 않는다
+ * (Access-Control-Allow-Credentials 를 주지 않는다). 그래서 이 출처를 흉내 낸 페이지가 있어도
+ * 사용자의 웹 세션 쿠키를 쓸 수 없다.
+ */
+export function appCors(req: Request, res: Response, next: NextFunction): void {
+  const origin = req.get("origin");
+  if (!origin || !isAppOrigin(origin)) {
+    next();
+    return;
+  }
+  res.setHeader("Access-Control-Allow-Origin", origin);
+  res.setHeader("Vary", "Origin");
+  if (req.method === "OPTIONS") {
+    res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE");
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Authorization, Content-Type, X-NailSense-Locale, X-NailSense-Client, X-NailSense-Device",
+    );
+    res.setHeader("Access-Control-Max-Age", "600");
+    res.status(204).end();
+    return;
+  }
+  next();
 }
 
 const LOOPBACK_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);

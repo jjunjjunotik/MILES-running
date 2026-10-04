@@ -1,7 +1,7 @@
 import crypto from "node:crypto";
 import type { Request, Response } from "express";
 import { db, now } from "./db.js";
-import { readCookie } from "./auth.js";
+import { isAppClient, readCookie } from "./auth.js";
 
 /**
  * 분석 횟수 한도.
@@ -98,8 +98,15 @@ function hashed(kind: string, value: string): string {
   return `${kind}:${digest}`;
 }
 
-/** 이 기기를 가리키는 무작위 아이디. 없으면 만들어 쿠키로 남긴다. */
+/**
+ * 이 기기를 가리키는 무작위 아이디. 없으면 만들어 쿠키로 남긴다.
+ * 휴대폰 앱은 쿠키를 쓰지 않으므로, 설치할 때 만든 아이디를 X-NailSense-Device 로 보낸다.
+ * (아이디는 지우고 다시 만들 수 있으므로 IP 한도가 함께 걸린다.)
+ */
 function deviceId(req: Request, res: Response): string {
+  const fromApp = isAppClient(req) ? req.get("x-nailsense-device") : undefined;
+  if (fromApp && /^[A-Za-z0-9_-]{16,64}$/.test(fromApp)) return fromApp;
+
   const existing = readCookie(req, DEVICE_COOKIE);
   if (existing && /^[A-Za-z0-9_-]{16,64}$/.test(existing)) return existing;
 

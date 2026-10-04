@@ -200,7 +200,12 @@ try {
   await shot("06-cancel-sheet");
   await page.click('.sheet button:has-text("Cancel Pro")');
   await page.waitForSelector("text=You'll keep Pro until", { timeout: 10000 });
-  check(await visible('button:has-text("Keep my subscription")'), "해지 예약 후 철회 버튼");
+  check(
+    await page
+      .waitForSelector('button:has-text("Keep my subscription")', { timeout: 5000 })
+      .then(() => true, () => false),
+    "해지 예약 후 철회 버튼",
+  );
   await shotFull("07-plan-canceling");
   await page.click('button:has-text("Keep my subscription")');
   await page.waitForSelector("text=Your subscription will keep renewing.", { timeout: 10000 });

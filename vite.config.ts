@@ -19,9 +19,28 @@ function woff2Only(): Plugin {
   };
 }
 
-export default defineConfig({
+/**
+ * 휴대폰 앱용 빌드(`vite build --mode app`)가 부를 API 서버 주소.
+ * 앱 안의 화면은 서버와 출처가 달라 주소를 알아야 한다. https 만 받는다.
+ */
+function appApiBase(): string {
+  const value = (process.env.APP_API_BASE ?? "https://nailsense.fly.dev").replace(/\/+$/, "");
+  const url = new URL(value);
+  const local = ["localhost", "127.0.0.1", "10.0.2.2"].includes(url.hostname);
+  if (url.protocol !== "https:" && !local) {
+    throw new Error(`APP_API_BASE 는 https 주소여야 합니다: ${value}`);
+  }
+  return value;
+}
+
+export default defineConfig(({ mode }) => ({
   root: "web",
   plugins: [woff2Only(), react()],
+  define: {
+    // 웹 빌드에서는 앱 전용 코드(보안 저장소 등)가 통째로 빠지도록 상수로 박는다.
+    "import.meta.env.VITE_APP_TARGET": JSON.stringify(mode === "app" ? "app" : ""),
+    "import.meta.env.VITE_API_BASE": JSON.stringify(mode === "app" ? appApiBase() : ""),
+  },
   server: {
     port: 5173,
     proxy: {
@@ -34,9 +53,10 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: "../dist",
+    // 앱 화면은 dist-app 에 따로 만든다. 서버가 서빙하는 dist 와 섞이지 않게.
+    outDir: mode === "app" ? "../dist-app" : "../dist",
     emptyOutDir: true,
     // 작은 글꼴 조각도 data: 로 넣지 않는다. 서버 CSP 가 글꼴은 자기 출처에서만 받는다.
     assetsInlineLimit: (file) => (/\.woff2?$/.test(file) ? false : undefined),
   },
-});
+}));

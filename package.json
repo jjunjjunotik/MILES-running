@@ -22,10 +22,17 @@
     "check:billing": "node scripts/check-billing.mjs",
     "e2e:billing": "node scripts/e2e-billing.mjs",
     "check:paddle": "node scripts/check-paddle.mjs",
-    "smoke:ko": "node scripts/smoke-ko.mjs"
+    "smoke:ko": "node scripts/smoke-ko.mjs",
+    "build:app": "tsc -p tsconfig.json --noEmit && vite build --mode app && npm run check:secrets",
+    "cap:sync": "npm run build:app && cap sync",
+    "check:app": "node scripts/check-app.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",
+    "@aparajita/capacitor-secure-storage": "^8.0.1",
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/ios": "^8.5.2",
     "@fontsource/ibm-plex-mono": "^5.3.0",
     "@fontsource/ibm-plex-sans": "^5.3.0",
     "@fontsource/ibm-plex-sans-kr": "^5.3.0",
@@ -38,6 +45,7 @@
     "zod": "^4.6.2"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.2",
     "@types/express": "^5.0.3",
     "@types/node": "^22.18.0",
     "@types/react": "^19.2.0",

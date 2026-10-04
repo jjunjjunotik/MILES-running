@@ -58,7 +58,14 @@ function walk(dir) {
 }
 
 // 1) 빌드 산출물 — 브라우저로 그대로 나가는 것들
-for (const dir of ["dist", "demo"]) walk(dir);
+for (const dir of [
+  "dist",
+  "demo",
+  "dist-app",
+  // 앱 안에 담기는 화면 사본
+  "android/app/src/main/assets/public",
+  "ios/App/App/public",
+]) walk(dir);
 
 // 2) git 이 추적 중인 파일 — 커밋되면 남에게 보인다
 let tracked = [];

@@ -3,6 +3,7 @@ import { HEALTH_CONSENT_VERSION, type UsageInfo } from "../../../shared/billing"
 import { buildDemoAnalysis } from "../../../shared/demo";
 import { hasConsent } from "./consent";
 import { L, LOCALE } from "../i18n";
+import { FETCH_CREDENTIALS, apiUrl, platformHeaders } from "./platform";
 
 /**
  * 서버 없이 동작하는 빌드(단일 HTML 데모)에서만 true.
@@ -60,9 +61,13 @@ export async function analyze(args: AnalyzeArgs): Promise<AnalyzeResult> {
 
   let response: Response;
   try {
-    response = await fetch("/api/analyze", {
+    response = await fetch(apiUrl("/analyze"), {
       method: "POST",
-      headers: { "Content-Type": "application/json", "X-NailSense-Locale": LOCALE },
+      headers: {
+        "Content-Type": "application/json",
+        "X-NailSense-Locale": LOCALE,
+        ...platformHeaders(),
+      },
       body: JSON.stringify({
         image: args.base64,
         mediaType: args.mediaType,
@@ -73,7 +78,7 @@ export async function analyze(args: AnalyzeArgs): Promise<AnalyzeResult> {
         // 동의 화면을 거친 경우에만 실린다. 없으면 서버가 분석을 거절한다.
         consentVersion: hasConsent() ? HEALTH_CONSENT_VERSION : undefined,
       }),
-      credentials: "same-origin",
+      credentials: FETCH_CREDENTIALS,
       signal: args.signal,
     });
   } catch (err) {
@@ -123,7 +128,10 @@ export async function health(): Promise<HealthInfo | null> {
   if (STANDALONE_DEMO) return { configured: false, demoAvailable: true };
 
   try {
-    const response = await fetch("/api/health");
+    const response = await fetch(apiUrl("/health"), {
+      credentials: FETCH_CREDENTIALS,
+      headers: platformHeaders(),
+    });
     if (!response.ok) return null;
     return (await response.json()) as HealthInfo;
   } catch {

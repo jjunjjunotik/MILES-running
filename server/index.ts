@@ -23,6 +23,7 @@ import {
   auditCredentials,
   createRateLimiter,
   redact,
+  appCors,
   sameOriginOnly,
   securityHeaders,
 } from "./security.js";
@@ -53,6 +54,8 @@ app.disable("x-powered-by");
 app.use(securityHeaders);
 // 응답 문구의 언어(영어/한국어)를 정한다. 오류 문구도 여기서 바뀐다.
 app.use(localeMiddleware);
+// 휴대폰 앱 화면(다른 출처)에서 오는 API 요청을 허락한다.
+app.use("/api", appCors);
 
 /**
  * 결제 업체(Paddle)의 웹훅. 서명을 원본 본문으로 검증해야 하므로 JSON 파서보다 먼저,

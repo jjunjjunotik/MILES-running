@@ -9,6 +9,8 @@ import { db, now } from "./db.js";
  * 1. 비밀번호 원문은 어디에도 남기지 않는다. scrypt 해시와 사용자별 솔트만 저장한다.
  * 2. 세션 토큰은 브라우저 쿠키(httpOnly)에만 있고, 서버에는 그 해시만 둔다.
  *    데이터베이스 파일이 새어도 그것만으로 남의 세션을 흉내 낼 수 없다.
+ *    휴대폰 앱은 쿠키 대신 같은 토큰을 응답 본문으로 한 번 받아 기기의 보안 저장소
+ *    (iOS 키체인, 안드로이드 키스토어)에 두고, 요청마다 Authorization: Bearer 로 보낸다.
  * 3. 가입 여부를 알려 주지 않는다. 로그인 실패 메시지는 언제나 같은 문장이다.
  */
 
@@ -163,7 +165,36 @@ function setSessionCookie(res: Response, token: string, maxAgeMs: number): void 
   });
 }
 
-export function startSession(res: Response, userId: string): void {
+/**
+ * 휴대폰 앱에서 온 요청인지. 앱은 X-NailSense-Client: app 을 붙인다.
+ * 이 헤더는 누구나 붙일 수 있지만, 붙이면 쿠키 대신 토큰을 받을 뿐이라 얻는 것이 없다.
+ * 토큰은 자동으로 실려 가지 않으므로 다른 사이트가 사용자 몰래 쓸 수도 없다(CSRF 없음).
+ */
+export function isAppClient(req: Request): boolean {
+  return req.get("x-nailsense-client") === "app";
+}
+
+function bearerToken(req: Request): string | null {
+  const header = req.get("authorization");
+  if (!header) return null;
+  const match = /^Bearer ([A-Za-z0-9_-]{20,128})$/.exec(header.trim());
+  return match ? match[1]! : null;
+}
+
+/** 쿠키 또는 Authorization 헤더에 실려 온 세션 토큰 */
+function sessionToken(req: Request): string | null {
+  return bearerToken(req) ?? readCookie(req, COOKIE_NAME);
+}
+
+/**
+ * 세션을 만든다. 브라우저에는 httpOnly 쿠키로, 앱에는 응답 본문에 실을 토큰으로 준다.
+ * 돌려준 객체를 응답 JSON 에 펼쳐 넣는다. 브라우저일 때는 빈 객체다.
+ */
+export function startSession(
+  req: Request,
+  res: Response,
+  userId: string,
+): { sessionToken?: string } {
   const token = crypto.randomBytes(32).toString("base64url");
   const created = now();
   db()
@@ -172,11 +203,17 @@ export function startSession(res: Response, userId: string): void {
        VALUES (?, ?, ?, ?, ?)`,
     )
     .run(hashToken(token), userId, created, created + SESSION_MS, created);
+  if (isAppClient(req)) {
+    // 응답이 중간 캐시에 남지 않게 한다. 토큰이 본문에 있다.
+    res.setHeader("Cache-Control", "no-store");
+    return { sessionToken: token };
+  }
   setSessionCookie(res, token, SESSION_MS);
+  return {};
 }
 
 export function endSession(req: Request, res: Response): void {
-  const token = readCookie(req, COOKIE_NAME);
+  const token = sessionToken(req);
   if (token) {
     db().prepare("DELETE FROM sessions WHERE token_hash = ?").run(hashToken(token));
   }
@@ -189,7 +226,7 @@ export function endAllSessions(userId: string): void {
 }
 
 function lookupSession(req: Request): { user: AuthUser; tokenHash: string } | null {
-  const token = readCookie(req, COOKIE_NAME);
+  const token = sessionToken(req);
   if (!token) return null;
 
   const tokenHash = hashToken(token);

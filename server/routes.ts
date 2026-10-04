@@ -72,8 +72,8 @@ api.post("/auth/signup", authLimiter, (req, res) => {
       typeof req.body?.displayName === "string" ? req.body.displayName : "";
 
     const user = createAccount(email, password, displayName);
-    startSession(res, user.id);
-    res.status(201).json({ ok: true, user });
+    const session = startSession(req, res, user.id);
+    res.status(201).json({ ok: true, user, ...session });
   } catch (err) {
     fail(res, err);
   }
@@ -85,8 +85,8 @@ api.post("/auth/login", authLimiter, (req, res) => {
     const password =
       typeof req.body?.password === "string" ? req.body.password : "";
     const user = authenticate(email, password);
-    startSession(res, user.id);
-    res.json({ ok: true, user });
+    const session = startSession(req, res, user.id);
+    res.json({ ok: true, user, ...session });
   } catch (err) {
     fail(res, err);
   }
@@ -124,8 +124,8 @@ api.post("/auth/google", authLimiter, async (req, res) => {
       emailVerified: verified.emailVerified,
       name: verified.name,
     });
-    startSession(res, user.id);
-    res.json({ ok: true, user });
+    const session = startSession(req, res, user.id);
+    res.json({ ok: true, user, ...session });
   } catch (err) {
     fail(res, err);
   }
@@ -153,8 +153,8 @@ api.post("/auth/apple", authLimiter, async (req, res) => {
       emailVerified: verified.emailVerified,
       name,
     });
-    startSession(res, user.id);
-    res.json({ ok: true, user });
+    const session = startSession(req, res, user.id);
+    res.json({ ok: true, user, ...session });
   } catch (err) {
     fail(res, err);
   }

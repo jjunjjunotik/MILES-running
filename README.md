@@ -435,6 +435,7 @@ npm run smoke:ko            # 한국어 기기: 한국어 화면·동의 두 가
 ```bash
 npm run check:billing       # 동의·한도·결제 거래·웹훅 서명/중복/순서·해지·계정 삭제
 npm run build && npm run e2e:billing   # 같은 흐름을 화면으로: 한도 안내 → 요금제 → 결제 창 → Pro → 해지·철회
+npm run check:app           # 앱 방식: 앱 출처 CORS, 토큰 로그인·로그아웃, 앱 빌드 화면으로 가입→분석→기록
 ```
 
 ## 배포 (Fly.io)
@@ -482,6 +483,37 @@ fly deploy --ha=false
   실제 판매를 열 수 없습니다. 도메인을 사서 `fly certs add <도메인>` 으로 연결하고, Paddle 도메인 승인을 받은 뒤
   `PADDLE_ENV=production` 과 live 키로 바꿉니다. 이때 Cloudflare 같은 CDN 을 도메인 앞에 두면
   화면 파일이 한국에서도 가까운 곳에서 나갑니다.
+
+## 휴대폰 앱 (iOS · 안드로이드)
+
+같은 화면을 [Capacitor](https://capacitorjs.com) 로 감싸 앱으로 만듭니다. 앱 안에는 화면 파일(`dist-app`)이
+들어 있고, 분석·계정 API 는 배포한 서버를 부릅니다.
+
+```bash
+npm run build:app          # 앱용 화면 빌드 (기본 API 주소: https://nailsense.fly.dev)
+APP_API_BASE=https://내서버 npm run build:app   # 다른 서버를 쓸 때 (https 만)
+npx cap sync               # android/ · ios/ 프로젝트에 화면과 플러그인 반영
+npm run check:app          # 앱 방식(다른 출처 + 토큰 로그인) 점검
+```
+
+**웹과 다른 점**
+
+| | 웹 | 앱 |
+|---|---|---|
+| 로그인 유지 | httpOnly 쿠키 | 세션 토큰을 iOS 키체인 · 안드로이드 키스토어에 보관, `Authorization: Bearer` 로 전송 |
+| 출처 | 서버와 같음 | `capacitor://localhost`(iOS), `https://localhost`(안드로이드). 서버가 이 출처만 CORS 로 허락 (`APP_ORIGINS` 로 변경) |
+| 무료 한도의 기기 구분 | `ns_device` 쿠키 | 설치할 때 만든 무작위 아이디(`X-NailSense-Device`) + IP 한도 |
+
+- 앱은 쿠키 전송을 허락받지 않으므로(`Access-Control-Allow-Credentials` 없음), 앱 출처를 흉내 내도 웹 세션은 못 씁니다.
+- 앱 전용 코드(보안 저장소)는 웹 빌드에 들어가지 않습니다.
+- 안드로이드는 카메라 권한을 요청하지 않습니다(시스템 카메라 앱으로 찍음). 기록·사진이 기기 백업으로 나가지 않게 `allowBackup` 을 껐습니다.
+- iOS 는 카메라 · 사진 보관함 사용 이유 문구와 영어 · 한국어 지원(`CFBundleLocalizations`)을 넣었습니다.
+
+**아직 확정할 것**: 앱 아이디 `com.nailsense.app` 은 임시입니다. 스토어에 한 번 올리면 바꿀 수 없으므로
+첫 업로드 전에 정해 `capacitor.config.ts`, `android/app/build.gradle`, iOS 프로젝트에서 함께 바꿉니다.
+
+**빌드 확인 상태**: 안드로이드 디버그 APK 는 이 저장소에서 빌드되는 것까지 확인했습니다(실기기 · 에뮬레이터 실행은 아직).
+iOS 는 Mac 이 없어 아직 빌드하지 않았습니다. 클라우드 빌드(Codemagic 등) 설정은 다음 단계입니다.
 
 ## 분석 프로바이더
 
