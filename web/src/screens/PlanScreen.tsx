@@ -23,6 +23,7 @@ import {
 import { ServerError, type AuthUser } from "../lib/server";
 import { BackIcon, CheckIcon } from "../components/Icons";
 import { Notice, Sheet, TopBar } from "../components/ui";
+import { L } from "../i18n";
 
 /**
  * 요금제 화면.
@@ -33,9 +34,15 @@ import { Notice, Sheet, TopBar } from "../components/ui";
  */
 
 const INTERVAL_NAME: Record<BillingInterval, string> = {
-  month: "Monthly",
-  year: "Yearly",
+  month: L("Monthly", "월간"),
+  year: L("Yearly", "연간"),
 };
+
+/** 체험 기간을 한국어로: "7일", "1개월" */
+function trialKo(trial: NonNullable<PriceInfo["trial"]>): string {
+  const unit = { day: "일", week: "주", month: "개월", year: "년" }[trial.interval];
+  return `${trial.frequency}${unit}`;
+}
 
 const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -99,7 +106,7 @@ export function PlanScreen({
         onBillingChange(status);
         if (status.usage.plan === "pro") {
           setActivating(false);
-          setMessage("You're on Pro now. Thanks for supporting NailSense.");
+          setMessage(L("You're on Pro now. Thanks for supporting NailSense.", "이제 Pro예요. NailSense를 응원해 주셔서 고마워요."));
           return;
         }
       } catch {
@@ -110,7 +117,10 @@ export function PlanScreen({
     if (!mounted.current) return;
     setActivating(false);
     setMessage(
-      "Your payment went through, but Pro hasn't shown up yet. It usually appears within a few minutes. If it doesn't, contact support.",
+      L(
+        "Your payment went through, but Pro hasn't shown up yet. It usually appears within a few minutes. If it doesn't, contact support.",
+        "결제는 완료됐지만 아직 Pro로 바뀌지 않았어요. 보통 몇 분 안에 반영돼요. 그래도 안 되면 고객 지원에 문의해 주세요.",
+      ),
     );
   }
 
@@ -129,7 +139,7 @@ export function PlanScreen({
         },
       });
     } catch (err) {
-      failWith(err, "We couldn't open checkout. Please try again in a moment.");
+      failWith(err, L("We couldn't open checkout. Please try again in a moment.", "결제 창을 열지 못했어요. 잠시 후 다시 시도해 주세요."));
       setBusy(false);
     }
   }
@@ -143,12 +153,12 @@ export function PlanScreen({
       const end = status.subscription?.cancelAt;
       setMessage(
         end
-          ? `Your subscription is canceled. You'll keep Pro until ${formatBillingDate(end)}, and you won't be charged again.`
-          : "Your subscription is canceled.",
+          ? L(`Your subscription is canceled. You'll keep Pro until ${formatBillingDate(end)}, and you won't be charged again.`, `구독을 해지했어요. ${formatBillingDate(end)}까지 Pro를 그대로 쓸 수 있고, 더 이상 결제되지 않아요.`)
+          : L("Your subscription is canceled.", "구독을 해지했어요."),
       );
       setConfirmCancel(false);
     } catch (err) {
-      failWith(err, "We couldn't cancel your subscription. Please try again in a moment.");
+      failWith(err, L("We couldn't cancel your subscription. Please try again in a moment.", "구독을 해지하지 못했어요. 잠시 후 다시 시도해 주세요."));
     } finally {
       setBusy(false);
     }
@@ -159,9 +169,9 @@ export function PlanScreen({
     setError(null);
     try {
       onBillingChange(await resumeSubscription());
-      setMessage("Your subscription will keep renewing.");
+      setMessage(L("Your subscription will keep renewing.", "구독이 계속 갱신돼요."));
     } catch (err) {
-      failWith(err, "We couldn't update your subscription. Please try again in a moment.");
+      failWith(err, L("We couldn't update your subscription. Please try again in a moment.", "구독을 바꾸지 못했어요. 잠시 후 다시 시도해 주세요."));
     } finally {
       setBusy(false);
     }
@@ -181,27 +191,27 @@ export function PlanScreen({
       }
     } catch (err) {
       popup?.close();
-      failWith(err, "We couldn't open the billing page. Please try again in a moment.");
+      failWith(err, L("We couldn't open the billing page. Please try again in a moment.", "결제 관리 페이지를 열지 못했어요. 잠시 후 다시 시도해 주세요."));
     }
   }
 
   return (
     <>
       <TopBar
-        title="Plan"
+        title={L("Plan", "요금제")}
         left={
-          <button className="icon-btn" onClick={onBack} aria-label="Back">
+          <button className="icon-btn" onClick={onBack} aria-label={L("Back", "돌아가기")}>
             <BackIcon size={22} />
           </button>
         }
       />
       <main className="screen">
         {!billing || !billing.enabled ? (
-          <p className="tier-sub mt-16">Plans aren't available right now.</p>
+          <p className="tier-sub mt-16">{L("Plans aren't available right now.", "지금은 요금제를 이용할 수 없어요.")}</p>
         ) : (
           <>
             <section className="tier-now">
-              <div className="tier-kicker">Your plan</div>
+              <div className="tier-kicker">{L("Your plan", "내 요금제")}</div>
               <h2 className="tier-name">{isPro ? "Pro" : "Free"}</h2>
               {usage && usageLine(usage) && (
                 <p className="tier-usage">{usageLine(usage)}</p>
@@ -221,7 +231,7 @@ export function PlanScreen({
             )}
             {activating && (
               <div className="mt-16" role="status">
-                <Notice>Confirming your payment…</Notice>
+                <Notice>{L("Confirming your payment…", "결제를 확인하고 있어요…")}</Notice>
               </div>
             )}
             {error && (
@@ -233,27 +243,27 @@ export function PlanScreen({
             {subscription?.status === "past_due" && (
               <div className="mt-16">
                 <Notice tone="monitor">
-                  <strong>Your last payment didn't go through.</strong> Update your
-                  payment method to keep Pro.
+                  <strong>{L("Your last payment didn't go through.", "지난 결제가 처리되지 않았어요.")}</strong>{" "}
+                  {L("Update your payment method to keep Pro.", "Pro를 계속 쓰려면 결제 수단을 바꿔 주세요.")}
                 </Notice>
               </div>
             )}
 
             {subscription ? (
               <section className="sec">
-                <h3 className="sec-title">Manage</h3>
+                <h3 className="sec-title">{L("Manage", "관리")}</h3>
                 <div className="list">
                   <button className="row" onClick={() => void managePayment()} disabled={busy}>
                     <div className="row-main">
-                      <div className="row-title">Payment method and receipts</div>
-                      <div className="row-sub">Opens our payment provider, Paddle</div>
+                      <div className="row-title">{L("Payment method and receipts", "결제 수단과 영수증")}</div>
+                      <div className="row-sub">{L("Opens our payment provider, Paddle", "결제 대행사 Paddle 페이지가 열려요")}</div>
                     </div>
                   </button>
                   {subscription.cancelAt ? (
                     <button className="row" onClick={() => void resume()} disabled={busy}>
                       <div className="row-main">
-                        <div className="row-title">Keep my subscription</div>
-                        <div className="row-sub">Undo the cancellation and keep renewing</div>
+                        <div className="row-title">{L("Keep my subscription", "구독 유지하기")}</div>
+                        <div className="row-sub">{L("Undo the cancellation and keep renewing", "해지를 취소하고 계속 갱신해요")}</div>
                       </div>
                     </button>
                   ) : (
@@ -264,8 +274,8 @@ export function PlanScreen({
                         disabled={busy}
                       >
                         <div className="row-main">
-                          <div className="row-title">Cancel subscription</div>
-                          <div className="row-sub">You keep Pro until the end of this period</div>
+                          <div className="row-title">{L("Cancel subscription", "구독 해지")}</div>
+                          <div className="row-sub">{L("You keep Pro until the end of this period", "이번 결제 기간이 끝날 때까지 Pro가 유지돼요")}</div>
                         </div>
                       </button>
                     )
@@ -289,15 +299,17 @@ export function PlanScreen({
             )}
 
             <p className="fineprint mt-24">
-              Warning-sign checks and advice on when to see a doctor are always free, on
-              every plan.
+              {L(
+                "Warning-sign checks and advice on when to see a doctor are always free, on every plan.",
+                "위험 신호 점검과 진료 안내는 어떤 요금제에서든 늘 무료예요.",
+              )}
             </p>
             <div className="legal-links">
               <button className="link link-quiet" onClick={() => onOpenLegal("terms")}>
-                Terms of Service
+                {L("Terms of Service", "이용약관")}
               </button>
               <button className="link link-quiet" onClick={() => onOpenLegal("privacy")}>
-                Privacy Policy
+                {L("Privacy Policy", "개인정보처리방침")}
               </button>
             </div>
           </>
@@ -305,14 +317,16 @@ export function PlanScreen({
       </main>
 
       {confirmCancel && subscription && (
-        <Sheet label="Cancel subscription" onClose={() => !busy && setConfirmCancel(false)}>
-          <h3>Cancel Pro?</h3>
+        <Sheet label={L("Cancel subscription", "구독 해지")} onClose={() => !busy && setConfirmCancel(false)}>
+          <h3>{L("Cancel Pro?", "Pro를 해지할까요?")}</h3>
           <p>
             {subscription.currentPeriodEnd
-              ? `You'll keep Pro until ${formatBillingDate(subscription.currentPeriodEnd)}. `
+              ? L(`You'll keep Pro until ${formatBillingDate(subscription.currentPeriodEnd)}. `, `${formatBillingDate(subscription.currentPeriodEnd)}까지는 Pro가 유지돼요. `)
               : ""}
-            After that you'll move to Free, with {billing?.limits.freePerMonth} scans a
-            month. Your history stays.
+            {L(
+              `After that you'll move to Free, with ${billing?.limits.freePerMonth} scans a month. Your history stays.`,
+              `그 뒤에는 한 달에 ${billing?.limits.freePerMonth}번 분석할 수 있는 무료 요금제로 바뀌어요. 기록은 그대로 남아요.`,
+            )}
           </p>
           <div className="btn-row mt-16">
             <button
@@ -320,10 +334,10 @@ export function PlanScreen({
               onClick={() => setConfirmCancel(false)}
               disabled={busy}
             >
-              Keep Pro
+              {L("Keep Pro", "Pro 유지")}
             </button>
             <button className="btn btn-danger" onClick={() => void cancel()} disabled={busy}>
-              Cancel Pro
+              {L("Cancel Pro", "Pro 해지")}
             </button>
           </div>
         </Sheet>
@@ -346,15 +360,21 @@ function SubscriptionLine({
 
   let text: string;
   if (subscription.cancelAt) {
-    text = `Ends ${formatBillingDate(subscription.cancelAt)}. You won't be charged again.`;
+    text = L(`Ends ${formatBillingDate(subscription.cancelAt)}. You won't be charged again.`, `${formatBillingDate(subscription.cancelAt)}에 끝나요. 더 이상 결제되지 않아요.`);
   } else if (subscription.status === "trialing" && end) {
-    text = `Free trial until ${formatBillingDate(end)}${price ? `, then ${perInterval(price)}` : ""}.`;
+    text = L(
+      `Free trial until ${formatBillingDate(end)}${price ? `, then ${perInterval(price)}` : ""}.`,
+      `${formatBillingDate(end)}까지 무료 체험${price ? `, 이후 ${perInterval(price)}` : ""}.`,
+    );
   } else if (subscription.status === "paused") {
-    text = "Paused.";
+    text = L("Paused.", "일시 정지됨.");
   } else if (end) {
-    text = `Renews ${formatBillingDate(end)}${price ? ` at ${perInterval(price)}` : ""}.`;
+    text = L(
+      `Renews ${formatBillingDate(end)}${price ? ` at ${perInterval(price)}` : ""}.`,
+      `${formatBillingDate(end)}에 갱신${price ? ` (${perInterval(price)})` : ""}.`,
+    );
   } else {
-    text = "Active.";
+    text = L("Active.", "이용 중.");
   }
 
   return (
@@ -398,22 +418,25 @@ function UpgradeSection({
       <ul className="tier-points">
         <li>
           <CheckIcon size={16} weight="bold" />
-          <span>Up to {billing.limits.proPerDay} scans a day</span>
+          <span>{L(`Up to ${billing.limits.proPerDay} scans a day`, `하루 ${billing.limits.proPerDay}번까지 분석`)}</span>
         </li>
         <li>
           <CheckIcon size={16} weight="bold" />
-          <span>Everything in Free</span>
+          <span>{L("Everything in Free", "무료 요금제의 모든 기능")}</span>
         </li>
       </ul>
       <p className="tier-free">
-        Free includes {billing.limits.freePerMonth} scans a month with full results.
+        {L(
+          `Free includes ${billing.limits.freePerMonth} scans a month with full results.`,
+          `무료 요금제는 한 달에 ${billing.limits.freePerMonth}번, 결과 전체를 볼 수 있어요.`,
+        )}
       </p>
 
       {prices.length === 0 ? (
-        <p className="fineprint">Prices couldn't be loaded. Please try again later.</p>
+        <p className="fineprint">{L("Prices couldn't be loaded. Please try again later.", "가격을 불러오지 못했어요. 잠시 후 다시 시도해 주세요.")}</p>
       ) : (
         <>
-          <div className="price-options" role="radiogroup" aria-label="Billing period">
+          <div className="price-options" role="radiogroup" aria-label={L("Billing period", "결제 주기")}>
             {prices.map((price) => {
               const active = selected?.interval === price.interval;
               return (
@@ -428,9 +451,9 @@ function UpgradeSection({
                   <span className="po-price">{perInterval(price)}</span>
                   <span className="po-note">
                     {price.trial
-                      ? `${trialLabel(price.trial)} free trial`
+                      ? L(`${trialLabel(price.trial)} free trial`, `${trialKo(price.trial)} 무료 체험`)
                       : price.interval === "year" && saving
-                        ? `Save ${saving}%`
+                        ? L(`Save ${saving}%`, `${saving}% 할인`)
                         : " "}
                   </span>
                 </button>
@@ -442,17 +465,26 @@ function UpgradeSection({
             <ul className="disclosure">
               <li>
                 {selected.trial
-                  ? `Free for ${trialDuration(selected.trial)}, then ${perInterval(selected)} plus any applicable tax. If you cancel during the trial, you won't be charged.`
-                  : `${perInterval(selected)} plus any applicable tax, charged today.`}
+                  ? L(
+                      `Free for ${trialDuration(selected.trial)}, then ${perInterval(selected)} plus any applicable tax. If you cancel during the trial, you won't be charged.`,
+                      `${trialKo(selected.trial)} 동안 무료, 이후 ${perInterval(selected)}(세금 별도)이 청구돼요. 체험 중에 해지하면 결제되지 않아요.`,
+                    )
+                  : L(
+                      `${perInterval(selected)} plus any applicable tax, charged today.`,
+                      `${perInterval(selected)}(세금 별도)이 오늘 결제돼요.`,
+                    )}
               </li>
               <li>
-                Renews automatically every {selected.interval} until you cancel. Cancel
-                anytime in Profile &gt; Plan and keep Pro until the end of the period
-                you've paid for.
+                {L(
+                  `Renews automatically every ${selected.interval} until you cancel. Cancel anytime in Profile > Plan and keep Pro until the end of the period you've paid for.`,
+                  `해지할 때까지 ${selected.interval === "month" ? "매달" : "매년"} 자동으로 갱신돼요. 프로필 > 요금제에서 언제든 해지할 수 있고, 결제한 기간이 끝날 때까지 Pro가 유지돼요.`,
+                )}
               </li>
               <li>
-                Paddle, our reseller, handles payment and shows the final price in your
-                currency.
+                {L(
+                  "Paddle, our reseller, handles payment and shows the final price in your currency.",
+                  "결제는 판매 대행사 Paddle이 처리하며, 최종 금액은 결제 창에서 원화 등 현지 통화로 보여 드려요.",
+                )}
               </li>
             </ul>
           )}
@@ -466,29 +498,33 @@ function UpgradeSection({
                   onChange={(event) => onAgree(event.target.checked)}
                 />
                 <span>
-                  I agree to the Terms of Service and understand Pro renews
-                  automatically until I cancel.
+                  {L(
+                    "I agree to the Terms of Service and understand Pro renews automatically until I cancel.",
+                    "이용약관에 동의하며, 해지할 때까지 Pro가 자동으로 갱신된다는 것을 확인했습니다.",
+                  )}
                 </span>
               </label>
               <button className="link" onClick={() => onOpenLegal("terms")}>
-                Read the Terms of Service
+                {L("Read the Terms of Service", "이용약관 보기")}
               </button>
               <button
                 className="btn btn-primary mt-12"
                 disabled={!agreed || busy || !selected}
                 onClick={onSubscribe}
               >
-                {selected?.trial ? "Start free trial" : "Continue to payment"}
+                {selected?.trial ? L("Start free trial", "무료 체험 시작") : L("Continue to payment", "결제하기")}
               </button>
             </>
           ) : (
             <>
               <p className="fineprint">
-                Log in or create an account to subscribe, so Pro works on every device
-                you use.
+                {L(
+                  "Log in or create an account to subscribe, so Pro works on every device you use.",
+                  "구독하려면 로그인하거나 계정을 만들어 주세요. 어느 기기에서든 Pro를 쓸 수 있어요.",
+                )}
               </p>
               <button className="btn btn-primary mt-12" onClick={onSignIn}>
-                Log in to subscribe
+                {L("Log in to subscribe", "로그인하고 구독하기")}
               </button>
             </>
           )}

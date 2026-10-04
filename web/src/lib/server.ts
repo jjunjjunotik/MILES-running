@@ -1,6 +1,7 @@
 import type { NailAnalysis, NailRecord } from "../../../shared/analysis";
 import type { ArticleCategory } from "../../../shared/articles";
 import { STANDALONE_DEMO } from "./api";
+import { L, LOCALE } from "../i18n";
 
 /**
  * 서버 API 클라이언트.
@@ -80,7 +81,7 @@ export async function request<T>(
   init: RequestInit = {},
 ): Promise<T> {
   if (STANDALONE_DEMO) {
-    throw new ServerError("Server features aren't available in the demo build.", "demo", 0);
+    throw new ServerError(L("Server features aren't available in the demo build.", "데모 빌드에서는 서버 기능을 쓸 수 없습니다."), "demo", 0);
   }
 
   let response: Response;
@@ -90,12 +91,14 @@ export async function request<T>(
       credentials: "same-origin",
       headers: {
         ...(init.body ? { "Content-Type": "application/json" } : {}),
+        // 서버가 오류 문구와 건강 정보 글을 이 언어로 돌려준다.
+        "X-NailSense-Locale": LOCALE,
         ...init.headers,
       },
     });
   } catch {
     throw new ServerError(
-      "Couldn't reach the server. Please check your connection.",
+      L("Couldn't reach the server. Please check your connection.", "서버에 연결하지 못했습니다. 네트워크를 확인해 주세요."),
       "network",
       0,
     );
@@ -111,7 +114,7 @@ export async function request<T>(
   if (!response.ok || (body as { ok?: boolean })?.ok === false) {
     const payload = (body ?? {}) as { error?: string; code?: string };
     throw new ServerError(
-      payload.error ?? "The request couldn't be completed.",
+      payload.error ?? L("The request couldn't be completed.", "요청을 처리하지 못했습니다."),
       payload.code ?? "server_error",
       response.status,
     );

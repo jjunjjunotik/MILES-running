@@ -626,9 +626,9 @@ api.get("/articles", (req, res) => {
     const category = typeof req.query.category === "string" ? req.query.category : "";
     const query = typeof req.query.q === "string" ? req.query.q.trim() : "";
 
-    let sql = `SELECT id, slug, category, title, summary, tags
-                 FROM health_articles WHERE 1 = 1`;
-    const params: string[] = [];
+    let sql = `SELECT slug AS id, slug, category, title, summary, tags
+                 FROM health_article_texts WHERE locale = ?`;
+    const params: string[] = [req.locale];
 
     if (category && category !== "all") {
       sql += " AND category = ?";
@@ -652,10 +652,10 @@ api.get("/articles/:slug", (req, res) => {
   try {
     const row = db()
       .prepare(
-        `SELECT id, slug, category, title, summary, body, tags, updated_at AS updatedAt
-           FROM health_articles WHERE slug = ?`,
+        `SELECT slug AS id, slug, category, title, summary, body, tags, updated_at AS updatedAt
+           FROM health_article_texts WHERE slug = ? AND locale = ?`,
       )
-      .get(String(req.params.slug));
+      .get(String(req.params.slug), req.locale);
     if (!row) {
       res.status(404).json({ ok: false, code: "not_found", error: "Guide not found." });
       return;

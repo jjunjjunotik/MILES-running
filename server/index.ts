@@ -38,6 +38,7 @@ import {
 } from "./billing.js";
 import { billingConfig, missingBillingSettings } from "./billing-config.js";
 import { pruneUsage } from "./usage.js";
+import { localeMiddleware } from "./i18n.js";
 import { DB_PATH, db } from "./db.js";
 import { seedArticles } from "./seed-articles.js";
 
@@ -50,6 +51,8 @@ const ALLOW_DEMO = process.env.ALLOW_DEMO_FALLBACK !== "false";
 app.set("trust proxy", process.env.TRUST_PROXY === "true" ? 1 : false);
 app.disable("x-powered-by");
 app.use(securityHeaders);
+// 응답 문구의 언어(영어/한국어)를 정한다. 오류 문구도 여기서 바뀐다.
+app.use(localeMiddleware);
 
 /**
  * 결제 업체(Paddle)의 웹훅. 서명을 원본 본문으로 검증해야 하므로 JSON 파서보다 먼저,
@@ -155,6 +158,7 @@ app.post("/api/analyze", sameOriginOnly, analyzeLimiter, async (req, res) => {
       ? FINGER_LABELS[fingerKey].toLowerCase()
       : "finger not specified",
     note: typeof note === "string" ? note.slice(0, 300) : "",
+    locale: req.locale,
   };
 
   /**
@@ -222,7 +226,7 @@ app.post("/api/analyze", sameOriginOnly, analyzeLimiter, async (req, res) => {
           "The analysis service isn't set up yet. Please contact the app's administrator.",
       });
     }
-    const analysis = buildDemoAnalysis(image.length % 13);
+    const analysis = buildDemoAnalysis(image.length % 13, req.locale);
     if (!record) {
       return finish(200, { ok: true, demo: true, model: "demo", analysis });
     }

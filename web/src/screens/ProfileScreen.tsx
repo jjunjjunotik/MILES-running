@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import {
-  DISCLAIMER_LONG,
   type NailRecord,
 } from "../../../shared/analysis";
+import {
+  DISCLAIMER_LONG,
+} from "../labels";
 import {
   clearImagesOnly,
   clearScopedImages,
@@ -24,6 +26,7 @@ import type { BillingStatus } from "../../../shared/billing";
 import type { LegalDocId } from "../../../shared/legal";
 import { consentGivenAt, withdrawConsent } from "../lib/consent";
 import { formatBillingDate, usageLine } from "../lib/billing";
+import { L, localePreference, setLocalePreference } from "../i18n";
 
 type PendingAction = "photos" | "all" | "account" | "consent" | null;
 
@@ -68,6 +71,8 @@ export function ProfileScreen({
   /** 이 기기에서 건강 데이터 처리에 동의한 시각 */
   const [consentAt, setConsentAt] = useState<number | null>(() => consentGivenAt());
   const subscription = billing?.subscription ?? null;
+  /** 화면 언어 고르기. 바꾸면 페이지를 다시 불러온다. */
+  const language = localePreference();
 
   useEffect(() => {
     if (STANDALONE_DEMO || !user) return;
@@ -83,14 +88,14 @@ export function ProfileScreen({
       const count = await importScans(found);
       setImported(
         count > 0
-          ? `Moved ${count} ${count === 1 ? "scan" : "scans"} from this device to your account.`
-          : "There were no new scans to move.",
+          ? L(`Moved ${count} ${count === 1 ? "scan" : "scans"} from this device to your account.`, `이 기기에 있던 기록 ${count}건을 계정으로 가져왔어요.`)
+          : L("There were no new scans to move.", "가져올 새 기록이 없었어요."),
       );
       setLocalCount(0);
       await onChanged();
     } catch (err) {
       setImported(
-        err instanceof ServerError ? err.message : "We couldn't move your scans.",
+        err instanceof ServerError ? err.message : L("We couldn't move your scans.", "기록을 가져오지 못했어요."),
       );
     } finally {
       setBusy(false);
@@ -109,12 +114,12 @@ export function ProfileScreen({
           await clearScopedImages();
           await clearServerImages();
         }
-        setDone("All saved photos were deleted. Your scan history is still here.");
+        setDone(L("All saved photos were deleted. Your scan history is still here.", "저장된 사진을 모두 지웠어요. 분석 기록은 그대로 있어요."));
         await onChanged();
       } else if (action === "all") {
         await clearScopedImages();
         await onDeleteAll();
-        setDone("All scans and photos were deleted.");
+        setDone(L("All scans and photos were deleted.", "모든 기록과 사진을 지웠어요."));
       } else if (action === "consent") {
         // 계정에 남은 동의 기록도 함께 거둔다. 다음 분석 전에 다시 묻는다.
         if (!STANDALONE_DEMO && user) await savePreferences({ healthConsent: false });
@@ -136,15 +141,15 @@ export function ProfileScreen({
         setError(
           err instanceof ServerError
             ? err.message
-            : "We couldn't delete your account.",
+            : L("We couldn't delete your account.", "계정을 삭제하지 못했어요."),
         );
         setBusy(false);
         return;
       }
       setDone(
         action === "consent"
-          ? "We couldn't update your consent. Please try again in a moment."
-          : "Delete didn't work. Please try again in a moment.",
+          ? L("We couldn't update your consent. Please try again in a moment.", "동의 상태를 바꾸지 못했어요. 잠시 후 다시 시도해 주세요.")
+          : L("Delete didn't work. Please try again in a moment.", "삭제하지 못했어요. 잠시 후 다시 시도해 주세요."),
       );
     } finally {
       setBusy(false);
@@ -154,36 +159,36 @@ export function ProfileScreen({
 
   return (
     <>
-      <TopBar title="Profile" />
+      <TopBar title={L("Profile", "프로필")} />
       <main className="screen">
         {user ? (
           <section className="account">
             <div style={{ minWidth: 0 }}>
-              <div className="name">{user.displayName || "No name"}</div>
+              <div className="name">{user.displayName || L("No name", "이름 없음")}</div>
               <div className="sub">{user.email}</div>
             </div>
             <button
               className="btn btn-secondary btn-sm"
               onClick={() => void onSignOut()}
             >
-              Log out
+              {L("Log out", "로그아웃")}
             </button>
           </section>
         ) : !STANDALONE_DEMO ? (
           <section className="account">
             <div>
-              <div className="name">Saving on this device</div>
+              <div className="name">{L("Saving on this device", "이 기기에 저장 중")}</div>
               <div className="sub">
-                Create an account to see your history on other devices.
+                {L("Create an account to see your history on other devices.", "계정을 만들면 다른 기기에서도 기록을 볼 수 있어요.")}
               </div>
             </div>
             {onSignIn && (
               <button
                 className="btn btn-primary btn-sm signin-btn"
                 onClick={onSignIn}
-                aria-label="Log in or create an account"
+                aria-label={L("Log in or create an account", "로그인 또는 계정 만들기")}
               >
-                Log in
+                {L("Log in", "로그인")}
               </button>
             )}
           </section>
@@ -191,17 +196,19 @@ export function ProfileScreen({
 
         {localCount > 0 && (
           <div className="import-box">
-            <div className="t">{localCount} {localCount === 1 ? "scan" : "scans"} saved on this device</div>
+            <div className="t">{L(`${localCount} ${localCount === 1 ? "scan" : "scans"} saved on this device`, `이 기기에 남아 있는 기록 ${localCount}건`)}</div>
             <p>
-              These were saved before you had an account. Move them to your
-              account to see them on other devices.
+              {L(
+                "These were saved before you had an account. Move them to your account to see them on other devices.",
+                "계정을 만들기 전에 저장한 기록이에요. 계정으로 가져오면 다른 기기에서도 볼 수 있어요.",
+              )}
             </p>
             <button
               className="btn btn-primary btn-sm"
               onClick={() => void importLocal()}
               disabled={busy}
             >
-              Move to account
+              {L("Move to account", "계정으로 가져오기")}
             </button>
           </div>
         )}
@@ -214,7 +221,7 @@ export function ProfileScreen({
 
         {billing?.enabled && onOpenPlan && (
           <section className="sec" style={{ marginTop: 28 }}>
-            <h3 className="sec-title">Plan</h3>
+            <h3 className="sec-title">{L("Plan", "요금제")}</h3>
             <div className="list">
               <button className="row plan-row" onClick={onOpenPlan}>
                 <div className="row-main">
@@ -223,14 +230,14 @@ export function ProfileScreen({
                   </div>
                   <div className="row-sub">
                     {subscription?.cancelAt
-                      ? `Pro ends ${formatBillingDate(subscription.cancelAt)}`
+                      ? L(`Pro ends ${formatBillingDate(subscription.cancelAt)}`, `Pro 종료 예정: ${formatBillingDate(subscription.cancelAt)}`)
                       : subscription?.status === "past_due"
-                        ? "Payment needs attention"
+                        ? L("Payment needs attention", "결제 확인이 필요해요")
                         : usageLine(billing.usage)}
                   </div>
                 </div>
                 <span className="row-end">
-                  {billing.usage.plan === "pro" ? "Manage" : "See Pro"}
+                  {billing.usage.plan === "pro" ? L("Manage", "관리") : L("See Pro", "Pro 보기")}
                 </span>
                 <ChevronIcon size={18} className="chev" />
               </button>
@@ -240,7 +247,7 @@ export function ProfileScreen({
 
         <section className="sec" style={{ marginTop: 28 }}>
           <label className="field-label" htmlFor="nickname">
-            Nickname <span className="opt">(optional)</span>
+            {L("Nickname", "닉네임")} <span className="opt">{L("(optional)", "(선택)")}</span>
           </label>
           <input
             id="nickname"
@@ -253,37 +260,37 @@ export function ProfileScreen({
             }
           />
           <p className="field-help">
-            Shown on your results and share cards.
-            {user ? " Saved to your account, so it follows you to other devices." : ""}
+            {L("Shown on your results and share cards.", "결과 화면과 공유 카드에 표시돼요.")}
+            {user ? L(" Saved to your account, so it follows you to other devices.", " 계정에 저장되어 다른 기기에서도 이어져요.") : ""}
           </p>
         </section>
 
         <section className="sec">
-          <h3 className="sec-title">Your history</h3>
+          <h3 className="sec-title">{L("Your history", "기록 요약")}</h3>
           <ul className="list">
             <li className="row">
               <div className="row-main">
-                <div className="row-title">Scans</div>
-                <div className="row-sub">Results saved so far</div>
+                <div className="row-title">{L("Scans", "분석 기록")}</div>
+                <div className="row-sub">{L("Results saved so far", "지금까지 저장된 관찰 결과")}</div>
               </div>
-              <span className="row-end num">{records.length}</span>
+              <span className="row-end num">{L(`${records.length}`, `${records.length}건`)}</span>
             </li>
             <li className="row">
               <div className="row-main">
-                <div className="row-title">Saved photos</div>
-                <div className="row-sub">Kept on this device only</div>
+                <div className="row-title">{L("Saved photos", "저장된 사진")}</div>
+                <div className="row-sub">{L("Kept on this device only", "이 기기 안에만 보관돼요")}</div>
               </div>
-              <span className="row-end num">{photoCount}</span>
+              <span className="row-end num">{L(`${photoCount}`, `${photoCount}장`)}</span>
             </li>
           </ul>
         </section>
 
         <section className="sec">
-          <h3 className="sec-title">Settings</h3>
+          <h3 className="sec-title">{L("Settings", "설정")}</h3>
           <div className="list">
             <ToggleRow
-              label="Save analyzed photos"
-              sub="When off, only results are kept and photos aren't saved."
+              label={L("Save analyzed photos", "분석한 사진 저장하기")}
+              sub={L("When off, only results are kept and photos aren't saved.", "끄면 결과만 남고 사진은 기기에 저장하지 않아요.")}
               on={settings.keepPhotos}
               onToggle={() =>
                 onChangeSettings({
@@ -293,8 +300,8 @@ export function ProfileScreen({
               }
             />
             <ToggleRow
-              label="Expand result details"
-              sub="Show each area's details open on the result screen."
+              label={L("Expand result details", "결과 항목 펼쳐 보기")}
+              sub={L("Show each area's details open on the result screen.", "결과 화면에서 항목 설명을 처음부터 펼쳐 둬요.")}
               on={settings.expandByDefault}
               onToggle={() =>
                 onChangeSettings({
@@ -304,21 +311,44 @@ export function ProfileScreen({
               }
             />
           </div>
+          <div className="pick-group mt-16" role="group" aria-label={L("Language", "언어")}>
+            <div className="field-label">{L("Language", "언어")}</div>
+            <div className="chips">
+              {(
+                [
+                  ["auto", L("Device setting", "기기 설정")],
+                  ["en", "English"],
+                  ["ko", "한국어"],
+                ] as const
+              ).map(([value, label]) => (
+                <button
+                  key={value}
+                  className="chip"
+                  aria-pressed={language === value}
+                  onClick={() => {
+                    if (value !== language) setLocalePreference(value);
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
         </section>
 
         <section className="sec">
-          <h3 className="sec-title">Your data</h3>
+          <h3 className="sec-title">{L("Your data", "내 데이터")}</h3>
           <div className="list">
             <button className="row" onClick={() => setPending("photos")}>
               <div className="row-main">
-                <div className="row-title">Delete photos only</div>
-                <div className="row-sub">Keeps your scan history, removes the photos</div>
+                <div className="row-title">{L("Delete photos only", "사진만 삭제")}</div>
+                <div className="row-sub">{L("Keeps your scan history, removes the photos", "분석 기록은 남기고 사진만 지워요")}</div>
               </div>
             </button>
             <button className="row danger" onClick={() => setPending("all")}>
               <div className="row-main">
-                <div className="row-title">Delete all history</div>
-                <div className="row-sub">Removes every result and photo</div>
+                <div className="row-title">{L("Delete all history", "전체 기록 삭제")}</div>
+                <div className="row-sub">{L("Removes every result and photo", "모든 분석 결과와 사진을 지워요")}</div>
               </div>
             </button>
           </div>
@@ -330,24 +360,24 @@ export function ProfileScreen({
         </section>
 
         <section className="sec">
-          <h3 className="sec-title">Privacy</h3>
+          <h3 className="sec-title">{L("Privacy", "개인정보")}</h3>
           <QA
-            title="Photos stay on this device"
-            body="Nail photos are used only for analysis and are never stored on our server."
+            title={L("Photos stay on this device", "사진은 이 기기에만 남아요")}
+            body={L("Nail photos are used only for analysis and are never stored on our server.", "손톱 사진은 분석할 때만 쓰고 서버에 저장하지 않아요.")}
           />
           <QA
-            title="Only you see your history"
-            body="Only you can view or delete your scans."
+            title={L("Only you see your history", "내 기록은 나만 봐요")}
+            body={L("Only you can view or delete your scans.", "기록은 본인만 보고 지울 수 있어요.")}
           />
           {!STANDALONE_DEMO && (
             <div className="list mt-8">
               <div className="row">
                 <div className="row-main">
-                  <div className="row-title">Consent to process nail photos</div>
+                  <div className="row-title">{L("Consent to process nail photos", "손톱 사진 처리 동의")}</div>
                   <div className="row-sub">
                     {consentAt
-                      ? `Given ${formatBillingDate(consentAt)}`
-                      : "Not given. We'll ask before your next scan."}
+                      ? L(`Given ${formatBillingDate(consentAt)}`, `${formatBillingDate(consentAt)}에 동의함`)
+                      : L("Not given. We'll ask before your next scan.", "동의하지 않음. 다음 분석 전에 다시 여쭤볼게요.")}
                   </div>
                 </div>
                 {consentAt && (
@@ -355,7 +385,7 @@ export function ProfileScreen({
                     className="btn btn-secondary btn-sm"
                     onClick={() => setPending("consent")}
                   >
-                    Withdraw
+                    {L("Withdraw", "철회")}
                   </button>
                 )}
               </div>
@@ -363,13 +393,13 @@ export function ProfileScreen({
                 <>
                   <button className="row" onClick={() => onOpenLegal("privacy")}>
                     <div className="row-main">
-                      <div className="row-title">Privacy Policy</div>
+                      <div className="row-title">{L("Privacy Policy", "개인정보처리방침")}</div>
                     </div>
                     <ChevronIcon size={18} className="chev" />
                   </button>
                   <button className="row" onClick={() => onOpenLegal("terms")}>
                     <div className="row-main">
-                      <div className="row-title">Terms of Service</div>
+                      <div className="row-title">{L("Terms of Service", "이용약관")}</div>
                     </div>
                     <ChevronIcon size={18} className="chev" />
                   </button>
@@ -380,26 +410,29 @@ export function ProfileScreen({
         </section>
 
         <section className="sec">
-          <h3 className="sec-title">About</h3>
-          <QA title="Not a diagnosis" body={DISCLAIMER_LONG} />
+          <h3 className="sec-title">{L("About", "이 앱에 대해")}</h3>
+          <QA title={L("Not a diagnosis", "진단하지 않아요")} body={DISCLAIMER_LONG} />
           <QA
-            title="What is the observation index?"
-            body="A reference number from 0 to 100 for how even the nail looks in the photo. It is not a health score, and it only means something when comparing photos taken in similar conditions."
+            title={L("What is the observation index?", "관찰 지표는 무엇인가요?")}
+            body={L(
+              "A reference number from 0 to 100 for how even the nail looks in the photo. It is not a health score, and it only means something when comparing photos taken in similar conditions.",
+              "사진 속 손톱 겉모습이 얼마나 고르게 보이는지를 0에서 100 사이로 나타낸 참고 수치예요. 건강 점수가 아니고, 같은 환경에서 찍은 사진끼리 비교할 때만 의미가 있어요.",
+            )}
           />
         </section>
 
         {user && (
           <section className="sec">
-            <h3 className="sec-title">Account</h3>
+            <h3 className="sec-title">{L("Account", "계정")}</h3>
             <div className="list">
               <button
                 className="row danger"
                 onClick={() => setPending("account")}
               >
                 <div className="row-main">
-                  <div className="row-title">Delete account</div>
+                  <div className="row-title">{L("Delete account", "계정 삭제")}</div>
                   <div className="row-sub">
-                    Removes your account and all scans. This can't be undone.
+                    {L("Removes your account and all scans. This can't be undone.", "계정과 모든 분석 기록이 지워져요. 되돌릴 수 없어요.")}
                   </div>
                 </div>
               </button>
@@ -414,12 +447,12 @@ export function ProfileScreen({
         <Sheet
           label={
             pending === "photos"
-              ? "Delete photos"
+              ? L("Delete photos", "사진 삭제")
               : pending === "all"
-                ? "Delete all history"
+                ? L("Delete all history", "전체 기록 삭제")
                 : pending === "consent"
-                  ? "Withdraw consent"
-                  : "Delete account"
+                  ? L("Withdraw consent", "동의 철회")
+                  : L("Delete account", "계정 삭제")
           }
           onClose={() => {
             if (busy) return;
@@ -430,27 +463,26 @@ export function ProfileScreen({
         >
           <h3>
             {pending === "photos"
-              ? "Delete all saved photos?"
+              ? L("Delete all saved photos?", "저장된 사진을 모두 지울까요?")
               : pending === "all"
-                ? "Delete all history?"
+                ? L("Delete all history?", "모든 기록을 지울까요?")
                 : pending === "consent"
-                  ? "Withdraw consent?"
-                  : "Delete your account?"}
+                  ? L("Withdraw consent?", "동의를 철회할까요?")
+                  : L("Delete your account?", "계정을 삭제할까요?")}
           </h3>
           <p>
             {pending === "photos"
-              ? `${photoCount} ${photoCount === 1 ? "photo" : "photos"} on this device will be deleted. Your results stay.`
+              ? L(`${photoCount} ${photoCount === 1 ? "photo" : "photos"} on this device will be deleted. Your results stay.`, `이 기기에 저장된 사진 ${photoCount}장이 지워져요. 분석 결과는 그대로 남아요.`)
               : pending === "all"
-                ? `${records.length} ${records.length === 1 ? "scan" : "scans"} and their photos will be deleted. This can't be undone.`
+                ? L(`${records.length} ${records.length === 1 ? "scan" : "scans"} and their photos will be deleted. This can't be undone.`, `분석 기록 ${records.length}건과 사진이 모두 지워져요. 되돌릴 수 없어요.`)
                 : pending === "consent"
-                  ? "We won't analyze any more photos until you agree again before your next scan. Your saved history isn't deleted; you can delete it under Your data."
-                  : "Your account, all scans and the photos on this device will be deleted. This can't be undone."}
+                  ? L("We won't analyze any more photos until you agree again before your next scan. Your saved history isn't deleted; you can delete it under Your data.", "다음 분석 전에 다시 동의하기 전까지는 사진을 분석하지 않아요. 저장된 기록은 지워지지 않으니, 지우려면 내 데이터에서 삭제해 주세요.")
+                  : L("Your account, all scans and the photos on this device will be deleted. This can't be undone.", "계정과 모든 분석 기록, 이 기기의 사진이 함께 지워져요. 되돌릴 수 없어요.")}
           </p>
           {pending === "account" && subscription && (
             <div className="mt-12">
               <Notice tone="monitor">
-                Your Pro subscription will be canceled right away, and you won't be
-                charged again.
+                {L("Your Pro subscription will be canceled right away, and you won't be charged again.", "Pro 구독이 바로 해지되고, 더 이상 결제되지 않아요.")}
               </Notice>
             </div>
           )}
@@ -459,8 +491,8 @@ export function ProfileScreen({
             <div className="mt-16">
               <label className="field-label" htmlFor="confirm-delete">
                 {user?.hasPassword
-                  ? "Enter your password to confirm"
-                  : `Type ${user?.email} to confirm`}
+                  ? L("Enter your password to confirm", "확인을 위해 비밀번호를 입력해 주세요")
+                  : L(`Type ${user?.email} to confirm`, `확인을 위해 ${user?.email} 을(를) 그대로 입력해 주세요`)}
               </label>
               <input
                 id="confirm-delete"
@@ -487,14 +519,14 @@ export function ProfileScreen({
               }}
               disabled={busy}
             >
-              Cancel
+              {L("Cancel", "취소")}
             </button>
             <button
               className="btn btn-danger"
               disabled={busy}
               onClick={() => void run(pending)}
             >
-              {pending === "consent" ? "Withdraw" : "Delete"}
+              {pending === "consent" ? L("Withdraw", "철회") : L("Delete", "삭제")}
             </button>
           </div>
         </Sheet>

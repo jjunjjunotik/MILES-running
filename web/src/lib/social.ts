@@ -1,3 +1,4 @@
+import { KO, L, LOCALE } from "../i18n";
 /**
  * 구글 · 애플 로그인 버튼을 띄우는 부분.
  *
@@ -7,8 +8,9 @@
  */
 
 const GOOGLE_SRC = "https://accounts.google.com/gsi/client";
-const APPLE_SRC =
-  "https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/en_US/appleid.auth.js";
+const APPLE_SRC = `https://appleid.cdn-apple.com/appleauth/static/jsapi/appleid/1/${
+  KO ? "ko_KR" : "en_US"
+}/appleid.auth.js`;
 
 declare global {
   interface Window {
@@ -60,7 +62,7 @@ function loadScript(src: string): Promise<void> {
     script.onload = () => resolve();
     script.onerror = () => {
       loaded.delete(src);
-      reject(new Error("Couldn't load the sign-in provider."));
+      reject(new Error(L("Couldn't load the sign-in provider.", "로그인 제공자를 불러오지 못했습니다.")));
     };
     document.head.appendChild(script);
   });
@@ -77,7 +79,7 @@ export async function mountGoogleButton(options: {
 }): Promise<void> {
   await loadScript(GOOGLE_SRC);
   const api = window.google?.accounts.id;
-  if (!api) throw new Error("Couldn't load Google sign-in.");
+  if (!api) throw new Error(L("Couldn't load Google sign-in.", "구글 로그인을 불러오지 못했습니다."));
 
   api.initialize({
     client_id: options.clientId,
@@ -99,7 +101,7 @@ export async function mountGoogleButton(options: {
     size: "large",
     shape: "rectangular",
     text: "continue_with",
-    locale: "en",
+    locale: LOCALE,
     width: Math.min(options.parent.clientWidth || 320, 400),
   });
 }
@@ -111,7 +113,7 @@ export async function signInWithApplePopup(clientId: string): Promise<{
 }> {
   await loadScript(APPLE_SRC);
   const api = window.AppleID?.auth;
-  if (!api) throw new Error("Couldn't load Apple sign-in.");
+  if (!api) throw new Error(L("Couldn't load Apple sign-in.", "애플 로그인을 불러오지 못했습니다."));
 
   api.init({
     clientId,

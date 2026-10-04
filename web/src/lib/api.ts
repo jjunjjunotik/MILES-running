@@ -2,6 +2,7 @@ import type { AnalyzeResponse, NailAnalysis } from "../../../shared/analysis";
 import { HEALTH_CONSENT_VERSION, type UsageInfo } from "../../../shared/billing";
 import { buildDemoAnalysis } from "../../../shared/demo";
 import { hasConsent } from "./consent";
+import { L, LOCALE } from "../i18n";
 
 /**
  * 서버 없이 동작하는 빌드(단일 HTML 데모)에서만 true.
@@ -52,7 +53,7 @@ export async function analyze(args: AnalyzeArgs): Promise<AnalyzeResult> {
       throw new DOMException("Cancelled", "AbortError");
     }
     return {
-      analysis: buildDemoAnalysis(args.base64.length % 13),
+      analysis: buildDemoAnalysis(args.base64.length % 13, LOCALE),
       demo: true,
     };
   }
@@ -61,7 +62,7 @@ export async function analyze(args: AnalyzeArgs): Promise<AnalyzeResult> {
   try {
     response = await fetch("/api/analyze", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: { "Content-Type": "application/json", "X-NailSense-Locale": LOCALE },
       body: JSON.stringify({
         image: args.base64,
         mediaType: args.mediaType,
@@ -78,7 +79,7 @@ export async function analyze(args: AnalyzeArgs): Promise<AnalyzeResult> {
   } catch (err) {
     if (err instanceof DOMException && err.name === "AbortError") throw err;
     throw new ApiError(
-      "Couldn't reach the analysis server. Please check your connection.",
+      L("Couldn't reach the analysis server. Please check your connection.", "분석 서버에 연결하지 못했습니다. 네트워크를 확인해 주세요."),
       "network",
     );
   }
@@ -87,7 +88,7 @@ export async function analyze(args: AnalyzeArgs): Promise<AnalyzeResult> {
   try {
     body = (await response.json()) as AnalyzeResponse;
   } catch {
-    throw new ApiError("Couldn't read the server response.", "upstream_error");
+    throw new ApiError(L("Couldn't read the server response.", "서버 응답을 읽지 못했습니다."), "upstream_error");
   }
 
   if (!body.ok) {

@@ -1,3 +1,4 @@
+import { L } from "../i18n";
 /**
  * 보내기 전에 이 기기에서 먼저 보는 사진 상태.
  *
@@ -42,10 +43,10 @@ export class ImageError extends Error {}
  */
 export async function prepareImage(file: File): Promise<PreparedImage> {
   if (!file.type.startsWith("image/")) {
-    throw new ImageError("Please choose an image file.");
+    throw new ImageError(L("Please choose an image file.", "이미지 파일만 올릴 수 있습니다."));
   }
   if (file.size > 25 * 1024 * 1024) {
-    throw new ImageError("That photo is too large. Please use one under 25 MB.");
+    throw new ImageError(L("That photo is too large. Please use one under 25 MB.", "사진이 너무 큽니다. 25MB 이하로 시도해 주세요."));
   }
 
   const bitmap = await loadBitmap(file);
@@ -57,7 +58,7 @@ export async function prepareImage(file: File): Promise<PreparedImage> {
   canvas.width = width;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new ImageError("Couldn't process the image.");
+  if (!ctx) throw new ImageError(L("Couldn't process the image.", "이미지를 처리하지 못했습니다."));
   ctx.drawImage(bitmap, 0, 0, width, height);
   if ("close" in bitmap) bitmap.close();
 
@@ -66,7 +67,7 @@ export async function prepareImage(file: File): Promise<PreparedImage> {
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(resolve, "image/jpeg", QUALITY),
   );
-  if (!blob) throw new ImageError("Couldn't convert the image.");
+  if (!blob) throw new ImageError(L("Couldn't convert the image.", "이미지를 변환하지 못했습니다."));
 
   return {
     base64: await blobToBase64(blob),
@@ -130,9 +131,9 @@ function measureQuality(
   const sharpness = count > 0 ? (diff / count) * 100 : 0;
 
   const issues: string[] = [];
-  if (brightness < 0.18) issues.push("The photo is dark");
-  if (brightness > 0.93) issues.push("The light is so strong the nail looks washed out");
-  if (sharpness < 1.1) issues.push("It looks out of focus");
+  if (brightness < 0.18) issues.push(L("The photo is dark", "사진이 어두워요"));
+  if (brightness > 0.93) issues.push(L("The light is so strong the nail looks washed out", "빛이 너무 강해 하얗게 날아갔어요"));
+  if (sharpness < 1.1) issues.push(L("It looks out of focus", "초점이 흐려 보여요"));
 
   return {
     brightness,
@@ -141,7 +142,7 @@ function measureQuality(
     issues,
     hint:
       issues.length > 0
-        ? "Retake it near a bright window with the nail filling at least half the frame."
+        ? L("Retake it near a bright window with the nail filling at least half the frame.", "밝은 창가에서 손톱이 화면의 절반 이상을 채우도록 다시 찍으면 더 잘 볼 수 있어요.")
         : null,
   };
 }
@@ -164,7 +165,7 @@ async function loadBitmap(file: File): Promise<ImageBitmap | HTMLImageElement> {
     };
     img.onerror = () => {
       URL.revokeObjectURL(url);
-      reject(new ImageError("Couldn't read the image."));
+      reject(new ImageError(L("Couldn't read the image.", "이미지를 읽지 못했습니다.")));
     };
     img.src = url;
   });
@@ -178,7 +179,7 @@ export function blobToBase64(blob: Blob): Promise<string> {
       const comma = result.indexOf(",");
       resolve(comma >= 0 ? result.slice(comma + 1) : result);
     };
-    reader.onerror = () => reject(new ImageError("Couldn't read the image."));
+    reader.onerror = () => reject(new ImageError(L("Couldn't read the image.", "이미지를 읽지 못했습니다.")));
     reader.readAsDataURL(blob);
   });
 }

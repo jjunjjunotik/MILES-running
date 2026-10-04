@@ -1,12 +1,15 @@
 import { useState } from "react";
 import {
+  type Metric,
+} from "../../../shared/analysis";
+import {
   CONFIDENCE_LABELS,
   METRIC_DESCRIPTIONS,
   METRIC_LABELS,
-  type Metric,
-} from "../../../shared/analysis";
+} from "../labels";
 import { ChevronIcon } from "./Icons";
 import { StatusTag } from "./ui";
+import { L } from "../i18n";
 
 export function MetricList({
   metrics,
@@ -56,16 +59,16 @@ export function MetricList({
               <div>
                 <div className="metric-inner">
                   <div>
-                    <h5>What the photo shows</h5>
+                    <h5>{L("What the photo shows", "사진에서 보이는 것")}</h5>
                     <p>{metric.observation}</p>
                   </div>
                   <div>
-                    <h5>General information</h5>
+                    <h5>{L("General information", "일반적인 정보")}</h5>
                     <p>{metric.explanation}</p>
                   </div>
                   <div className="scope">
-                    <div>Visibility: {CONFIDENCE_LABELS[metric.confidence]}</div>
-                    <div>What we looked at: {METRIC_DESCRIPTIONS[metric.key]}</div>
+                    <div>{L("Visibility:", "확인 정도:")} {CONFIDENCE_LABELS[metric.confidence]}</div>
+                    <div>{L("What we looked at:", "살펴본 범위:")} {METRIC_DESCRIPTIONS[metric.key]}</div>
                   </div>
                 </div>
               </div>

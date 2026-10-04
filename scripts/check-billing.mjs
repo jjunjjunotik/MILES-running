@@ -96,7 +96,7 @@ function client() {
   };
 }
 
-const CONSENT = "2026-10";
+const CONSENT = "2026-10.2";
 const scanBody = (extra = {}) => ({
   image: Buffer.from("not really a photo").toString("base64"),
   mediaType: "image/jpeg",

@@ -90,7 +90,7 @@ async function analyzeNailPhoto(input: AnalyzeInput): Promise<NailAnalysis> {
       );
     }
 
-    return normalize(parsed);
+    return normalize(parsed, input.locale);
   } catch (err) {
     if (err instanceof AnalyzeError) throw err;
     if (err instanceof Anthropic.RateLimitError) {

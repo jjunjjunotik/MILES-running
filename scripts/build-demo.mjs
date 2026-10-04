@@ -24,7 +24,7 @@ const TMP_DIR = path.join(OUT_DIR, ".build");
 const FONT_LINKS = [
   '<link rel="preconnect" href="https://fonts.googleapis.com" referrerpolicy="no-referrer">',
   '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin referrerpolicy="no-referrer">',
-  '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;600&display=swap" referrerpolicy="no-referrer">',
+  '<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500&family=IBM+Plex+Sans:wght@400;600&family=IBM+Plex+Sans+KR:wght@400;600&display=swap" referrerpolicy="no-referrer">',
 ].join("\n");
 
 /** 직접 호스팅용 글꼴 CSS 를 빈 CSS 로 바꿔 끼운다. */

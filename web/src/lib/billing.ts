@@ -6,6 +6,7 @@ import type {
 } from "../../../shared/billing";
 import { STANDALONE_DEMO } from "./api";
 import { request } from "./server";
+import { INTL_LOCALE, KO, LOCALE } from "../i18n";
 
 /**
  * 요금제와 결제.
@@ -157,13 +158,13 @@ export async function openCheckout(options: {
   const dark = window.matchMedia?.("(prefers-color-scheme: dark)").matches ?? false;
   paddle.Checkout.open({
     transactionId: options.transactionId,
-    settings: { displayMode: "overlay", theme: dark ? "dark" : "light", locale: "en" },
+    settings: { displayMode: "overlay", theme: dark ? "dark" : "light", locale: LOCALE },
   });
 }
 
 /* --------------------------------- 표시용 --------------------------------- */
 
-const DATE = new Intl.DateTimeFormat("en-US", {
+const DATE = new Intl.DateTimeFormat(INTL_LOCALE, {
   month: "short",
   day: "numeric",
   year: "numeric",
@@ -174,13 +175,20 @@ export function formatBillingDate(at: number): string {
 }
 
 export function perInterval(price: PriceInfo): string {
-  return `${price.amount} a ${price.interval}`;
+  return KO
+    ? `${price.interval === "month" ? "월" : "연"} ${price.amount}`
+    : `${price.amount} a ${price.interval}`;
 }
 
 /** "2 of 3 free scans left this month" 같은 남은 횟수 문장. 한도가 없으면 null */
 export function usageLine(usage: UsageInfo): string | null {
   if (usage.limit === null) return null;
   const left = Math.max(usage.limit - usage.used, 0);
+  if (KO) {
+    const span = usage.period === "day" ? "오늘" : "이번 달";
+    const kind = usage.plan === "free" ? " 무료" : "";
+    return `${span}${kind} 분석 ${usage.limit}회 중 ${left}회 남음`;
+  }
   const span = usage.period === "day" ? "today" : "this month";
   const kind = usage.plan === "free" ? " free" : "";
   return `${left} of ${usage.limit}${kind} ${usage.limit === 1 ? "scan" : "scans"} left ${span}`;

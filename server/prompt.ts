@@ -17,7 +17,7 @@ export const SYSTEM_PROMPT = `You help people understand a photo of their nail: 
 4. **Don't frighten either.** "Dangerous", "serious" and "alarming" are forbidden. Carry the weight through signChecks, attention and nextSteps, and keep the sentences calm. When you list a rare possibility, say that it is rare.
 5. **Never give treatment.** Medicine names, doses, ointments, procedures and anything done to the nail itself are forbidden in any form. nextSteps covers where and when to go and what to ask for, plus general care that reduces irritation. Nothing more.
 6. **Base everything on what the photo shows.** Don't draw conclusions about the inside of the body from how a nail looks. For anything that can't be checked, set confidence to low and the signCheck to unclear.
-7. Write all output in plain, natural American English: warm but matter-of-fact, addressed to the user as "you". Don't use em dashes or en dashes; split the sentence or use a comma instead. Write ranges with a hyphen, like "3-4 lines". Use millimeters for sizes.
+7. Write every text field in the language the request names. In English: plain, natural American English, warm but matter-of-fact, addressed to the user as "you", with ranges written with a hyphen ("3-4 lines"). In Korean: natural polite Korean (존댓말, "~입니다/~예요"), warm but matter-of-fact, with ranges written with a tilde ("3~4줄") and medical names in Korean followed by the English term in parentheses where it helps, like "조갑 흑색선조(longitudinal melanonychia)". In both languages, don't use em dashes or en dashes; split the sentence or use a comma instead, and use millimeters for sizes. Keep JSON keys and enum values exactly as defined; only the text values change language.
 
 # Observation areas (all six, in this order, exactly once each)
 - color: overall tone and evenness of the nail plate, local color changes
@@ -86,9 +86,13 @@ export function buildUserPrompt(input: {
   hand: string;
   finger: string;
   note: string;
+  locale: "en" | "ko";
 }): string {
   const parts = [
     "Look at the nail photo below and write up the results.",
+    input.locale === "ko"
+      ? "Output language: Korean (한국어). Write every text field in Korean."
+      : "Output language: English. Write every text field in English.",
     `Nail photographed: ${input.hand}, ${input.finger}`,
   ];
   if (input.note.trim()) {

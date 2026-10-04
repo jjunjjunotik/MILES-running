@@ -1,12 +1,15 @@
 import {
-  ATTENTION_LABELS,
-  DISCLAIMER_SHORT,
-  METRIC_LABELS,
-  STATUS_LABELS,
   type Attention,
   type NailAnalysis,
   type Status,
 } from "../../../shared/analysis";
+import {
+  ATTENTION_LABELS,
+  DISCLAIMER_SHORT,
+  METRIC_LABELS,
+  STATUS_LABELS,
+} from "../labels";
+import { L } from "../i18n";
 
 const W = 1080;
 /** 측정용 캔버스 높이. 실제 카드 높이는 그려 본 뒤 내용에 맞춰 정한다. */
@@ -39,13 +42,24 @@ const STATUS_TONE: Record<Status, Attention> = {
   consult: "consult",
 };
 
+// 라틴 글자는 IBM Plex Sans, 한글은 IBM Plex Sans KR 로 그린다.
 const SANS =
-  '"IBM Plex Sans", -apple-system, "Segoe UI", system-ui, sans-serif';
+  '"IBM Plex Sans", "IBM Plex Sans KR", -apple-system, "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", system-ui, sans-serif';
 const MONO = '"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace';
 
-const INDEX_NOTE =
-  "A reference number for how even the nail looks in the photo. It is not a health score.";
-const FINDINGS_NOTE = "See what was found and what to watch for in the app.";
+const INDEX_NOTE = L(
+  "A reference number for how even the nail looks in the photo. It is not a health score.",
+  "사진 속 겉모습이 얼마나 고르게 보이는지 나타낸 참고 수치예요. 건강 점수가 아니에요.",
+);
+const FINDINGS_NOTE = L(
+  "See what was found and what to watch for in the app.",
+  "무엇이 보였는지와 지켜볼 변화는 앱에서 확인할 수 있어요.",
+);
+const INDEX_TITLE = L("Observation index", "관찰 지표");
+const KEEP_GOING = L(
+  "If a change keeps going, talk to a healthcare professional.",
+  "변화가 이어지면 의료 전문가와 상담하세요.",
+);
 
 /**
  * 공유용 카드 이미지를 캔버스로 직접 그린다.
@@ -64,7 +78,7 @@ export async function renderShareCard(
   probe.width = W;
   probe.height = MEASURE_H;
   const probeCtx = probe.getContext("2d");
-  if (!probeCtx) throw new Error("Couldn't make the card.");
+  if (!probeCtx) throw new Error(L("Couldn't make the card.", "카드를 만들지 못했습니다."));
   const contentBottom = paint(probeCtx, MEASURE_H, analysis, meta);
 
   const height = Math.round(contentBottom + BOTTOM_PAD);
@@ -72,13 +86,13 @@ export async function renderShareCard(
   canvas.width = W;
   canvas.height = height;
   const ctx = canvas.getContext("2d");
-  if (!ctx) throw new Error("Couldn't make the card.");
+  if (!ctx) throw new Error(L("Couldn't make the card.", "카드를 만들지 못했습니다."));
   paint(ctx, height, analysis, meta);
 
   const blob = await new Promise<Blob | null>((resolve) =>
     canvas.toBlob(resolve, "image/png"),
   );
-  if (!blob) throw new Error("Couldn't make the card.");
+  if (!blob) throw new Error(L("Couldn't make the card.", "카드를 만들지 못했습니다."));
   return blob;
 }
 
@@ -93,7 +107,7 @@ async function loadCardFonts(
 ): Promise<void> {
   if (typeof document === "undefined" || !("fonts" in document)) return;
   const text = [
-    "NailSense Observation index Findings 0123456789/",
+    `NailSense ${INDEX_TITLE} ${L("Findings", "짚어 본 특징 건 님의")} 0123456789/`,
     analysis.headline,
     meta.dateLabel,
     meta.partLabel,
@@ -101,7 +115,7 @@ async function loadCardFonts(
     INDEX_NOTE,
     FINDINGS_NOTE,
     DISCLAIMER_SHORT,
-    "If a change keeps going, talk to a healthcare professional.",
+    KEEP_GOING,
     ...analysis.metrics.map(
       (metric) => METRIC_LABELS[metric.key] + STATUS_LABELS[metric.status],
     ),
@@ -157,7 +171,7 @@ function paint(
   ctx.fillStyle = INK.ink3;
   ctx.font = `400 26px ${SANS}`;
   const subject = meta.nickname
-    ? `${meta.nickname}, ${meta.partLabel.toLowerCase()}`
+    ? L(`${meta.nickname}, ${meta.partLabel.toLowerCase()}`, `${meta.nickname}님의 ${meta.partLabel}`)
     : meta.partLabel;
   ctx.fillText(subject, PAD, y);
 
@@ -183,7 +197,7 @@ function paint(
   // 관찰 지표. 링이나 막대 없이 숫자로만 적는다.
   ctx.fillStyle = INK.ink;
   ctx.font = `600 27px ${SANS}`;
-  ctx.fillText("Observation index", PAD, y + 12);
+  ctx.fillText(INDEX_TITLE, PAD, y + 12);
   const value = String(Math.round(analysis.observationScore));
   ctx.font = `500 25px ${MONO}`;
   const ofW = ctx.measureText("/100").width;
@@ -207,7 +221,7 @@ function paint(
     y = rule(ctx, y);
     ctx.fillStyle = INK.ink;
     ctx.font = `600 27px ${SANS}`;
-    ctx.fillText(`Findings (${findings.length})`, PAD, y);
+    ctx.fillText(L(`Findings (${findings.length})`, `짚어 본 특징 ${findings.length}건`), PAD, y);
     y += 58;
 
     for (const finding of findings) {
@@ -242,7 +256,7 @@ function paint(
   ctx.font = `400 23px ${SANS}`;
   y = wrapText(
     ctx,
-    `${DISCLAIMER_SHORT} If a change keeps going, talk to a healthcare professional.`,
+    `${DISCLAIMER_SHORT} ${KEEP_GOING}`,
     PAD,
     y,
     inner,
@@ -361,7 +375,7 @@ export async function shareOrDownload(
 
   if (nav.canShare?.({ files: [file] }) && typeof nav.share === "function") {
     try {
-      await nav.share({ files: [file], title: "NailSense result" });
+      await nav.share({ files: [file], title: L("NailSense result", "NailSense 관찰 결과") });
       return "shared";
     } catch (err) {
       // 사용자가 시트를 닫은 경우는 실패가 아니다.

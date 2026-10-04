@@ -1,11 +1,13 @@
 import {
-  LIKELIHOOD_LABELS,
-  METRIC_LABELS,
-  SIGN_STATE_LABELS,
   type Finding,
   type Likelihood,
   type SignState,
 } from "../../../shared/analysis";
+import {
+  LIKELIHOOD_LABELS,
+  METRIC_LABELS,
+  SIGN_STATE_LABELS,
+} from "../labels";
 import {
   CheckIcon,
   ClockIcon,
@@ -15,6 +17,7 @@ import {
   WarningCircleIcon,
 } from "./Icons";
 import { AttentionTag, Empty } from "./ui";
+import { L } from "../i18n";
 
 /**
  * 눈에 띈 특징을 하나씩 펼쳐 보여 준다.
@@ -29,8 +32,8 @@ export function FindingList({ findings }: { findings: Finding[] }) {
     return (
       <Empty
         icon={<EyeIcon size={26} />}
-        title="Nothing in this photo stood out"
-        body="That only covers what the photo shows. See how each of the six areas looked under By area below."
+        title={L("Nothing in this photo stood out", "이번 사진에서 따로 짚을 만한 특징은 없었어요")}
+        body={L("That only covers what the photo shows. See how each of the six areas looked under By area below.", "사진에서 확인되는 범위 안에서의 이야기예요. 아래 항목별 관찰에서 6가지를 어떻게 봤는지 확인할 수 있어요.")}
       />
     );
   }
@@ -81,14 +84,14 @@ function FindingCard({ finding }: { finding: Finding }) {
 
       {patternNames.length > 0 && (
         <p className="terms">
-          <span className="k">Also called</span>
+          <span className="k">{L("Also called", "이 모습을 부르는 이름")}</span>
           {patternNames.join(", ")}
         </p>
       )}
 
       {possibilities.length > 0 && (
         <section className="fpart">
-          <h5>Conditions that can look like this</h5>
+          <h5>{L("Conditions that can look like this", "이런 모습을 만들 수 있는 상태")}</h5>
           <ol className="poss">
             {possibilities.map((item) => (
               <li key={item.name}>
@@ -106,7 +109,7 @@ function FindingCard({ finding }: { finding: Finding }) {
             <p className="limit">
               <InfoIcon size={15} />
               <span>
-                This scan can't tell these apart.{" "}
+                {L("This scan can't tell these apart.", "사진만으로는 이 중 어느 쪽인지 가릴 수 없어요.")}{" "}
                 {finding.cannotTell}
               </span>
             </p>
@@ -117,9 +120,9 @@ function FindingCard({ finding }: { finding: Finding }) {
       {signChecks.length > 0 && (
         <section className="fpart">
           <h5>
-            Warning sign check
+            {L("Warning sign check", "위험 신호 점검")}
             {presentCount > 0 && (
-              <span className="tag tone-soon">{presentCount} seen</span>
+              <span className="tag tone-soon">{L(`${presentCount} seen`, `${presentCount}개 보임`)}</span>
             )}
           </h5>
           <ul className="signs">
@@ -143,7 +146,7 @@ function FindingCard({ finding }: { finding: Finding }) {
 
       {nextSteps.length > 0 && (
         <section className="fpart">
-          <h5>What to do</h5>
+          <h5>{L("What to do", "이렇게 해 보세요")}</h5>
           <ol className="plan">
             {nextSteps.map((step) => (
               <li key={step}>
@@ -156,7 +159,7 @@ function FindingCard({ finding }: { finding: Finding }) {
 
       {watchFor.length > 0 && (
         <section className="fpart">
-          <h5>See a doctor if you notice</h5>
+          <h5>{L("See a doctor if you notice", "이런 변화가 보이면 다시 진료를")}</h5>
           <ul>
             {watchFor.map((signal) => (
               <li key={signal}>{signal}</li>
@@ -169,7 +172,7 @@ function FindingCard({ finding }: { finding: Finding }) {
         <p className="finding-foot">
           <ClockIcon size={16} />
           <span>
-            Check again: <b>{finding.timeframe}</b>
+            {L("Check again:", "다시 볼 시점:")} <b>{finding.timeframe}</b>
           </span>
         </p>
       )}

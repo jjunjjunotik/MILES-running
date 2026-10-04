@@ -7,13 +7,14 @@ import {
   ScanIcon,
   type Icon,
 } from "./Icons";
+import { L } from "../i18n";
 
 const TABS: { key: Tab; label: string; Glyph: Icon }[] = [
-  { key: "home", label: "Home", Glyph: HomeIcon },
-  { key: "scan", label: "Scan", Glyph: ScanIcon },
-  { key: "history", label: "History", Glyph: HistoryIcon },
-  { key: "library", label: "Learn", Glyph: LibraryIcon },
-  { key: "profile", label: "Profile", Glyph: ProfileIcon },
+  { key: "home", label: L("Home", "홈"), Glyph: HomeIcon },
+  { key: "scan", label: L("Scan", "스캔"), Glyph: ScanIcon },
+  { key: "history", label: L("History", "기록"), Glyph: HistoryIcon },
+  { key: "library", label: L("Learn", "정보"), Glyph: LibraryIcon },
+  { key: "profile", label: L("Profile", "프로필"), Glyph: ProfileIcon },
 ];
 
 export function TabBar({
@@ -24,7 +25,7 @@ export function TabBar({
   onChange: (tab: Tab) => void;
 }) {
   return (
-    <nav className="tabbar" aria-label="Main">
+    <nav className="tabbar" aria-label={L("Main", "주요 화면")}>
       {TABS.map(({ key, label, Glyph }) => {
         const current = active === key;
         return (

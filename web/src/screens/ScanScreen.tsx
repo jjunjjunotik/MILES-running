@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import {
   FINGER_KEYS,
-  FINGER_LABELS,
   type FingerKey,
 } from "../../../shared/analysis";
+import {
+  FINGER_LABELS,
+} from "../labels";
 import type { ResultView } from "../App";
 import { analyze, ApiError } from "../lib/api";
 import { ImageError, prepareImage, type PreparedImage } from "../lib/image";
@@ -23,11 +25,12 @@ import { ConsentSheet } from "../components/ConsentSheet";
 import { giveConsent, hasConsent, withdrawConsent } from "../lib/consent";
 import { formatBillingDate, usageExhausted, usageLine } from "../lib/billing";
 import type { UsageInfo } from "../../../shared/billing";
+import { L } from "../i18n";
 
 const STEPS = [
-  "Checking the photo",
-  "Looking at each area",
-  "Writing up notes and tips",
+  L("Checking the photo", "사진 확인하기"),
+  L("Looking at each area", "항목별로 살펴보기"),
+  L("Writing up notes and tips", "설명과 팁 정리하기"),
 ];
 
 /**
@@ -83,6 +86,7 @@ export function ScanScreen({
   online = true,
   signedIn = false,
   usage = null,
+  provider = null,
   onUsage,
   onOpenPlan,
   onSignIn,
@@ -95,6 +99,8 @@ export function ScanScreen({
   signedIn?: boolean;
   /** 이번 기간의 사용량. 한도가 없거나 아직 모르면 null */
   usage?: UsageInfo | null;
+  /** 동의 창에서 밝힐 분석 업체 */
+  provider?: string | null;
   onUsage?: (usage: UsageInfo) => void;
   onOpenPlan?: () => void;
   onSignIn?: () => void;
@@ -156,7 +162,7 @@ export function ScanScreen({
       setError(
         err instanceof ImageError
           ? err.message
-          : "We couldn't open that photo. Please try another one.",
+          : L("We couldn't open that photo. Please try another one.", "사진을 불러오지 못했습니다. 다른 사진으로 시도해 주세요."),
       );
     }
   }
@@ -254,7 +260,7 @@ export function ScanScreen({
       setError(
         err instanceof ApiError
           ? err.message
-          : "We couldn't get a result from this photo. Please try another one.",
+          : L("We couldn't get a result from this photo. Please try another one.", "이 사진으로는 결과를 만들지 못했어요. 다른 사진으로 다시 시도해 주세요."),
       );
     } finally {
       setBusy(false);
@@ -265,7 +271,7 @@ export function ScanScreen({
   if (busy) {
     return (
       <>
-        <TopBar title="Analyzing" />
+        <TopBar title={L("Analyzing", "분석 중")} />
         <main className="screen">
           {/* 진행 상황을 화면 낭독기에도 알린다. */}
           <div role="status" aria-live="polite">
@@ -276,11 +282,11 @@ export function ScanScreen({
                 <div className="thumb" aria-hidden="true" />
               )}
               <div>
-                <div className="an-title">Looking at your photo</div>
+                <div className="an-title">{L("Looking at your photo", "사진을 살펴보고 있어요")}</div>
                 <div className="an-sub">
                   {attempt > 1
-                    ? "This is taking longer than usual. We're still trying, so you can leave it running."
-                    : "This usually takes 10 to 30 seconds."}
+                    ? L("This is taking longer than usual. We're still trying, so you can leave it running.", "생각보다 오래 걸리고 있어요. 계속 시도하고 있으니 그대로 두셔도 돼요.")
+                    : L("This usually takes 10 to 30 seconds.", "보통 10~30초 정도 걸려요.")}
                 </div>
               </div>
             </div>
@@ -304,8 +310,8 @@ export function ScanScreen({
 
             {attempt > 1 && (
               <p className="retry-note">
-                Attempt {attempt}.
-                {attempt > 4 && lastReason ? ` Server said: ${lastReason}` : ""}
+                {L(`Attempt ${attempt}.`, `${attempt}번째 시도 중이에요.`)}
+                {attempt > 4 && lastReason ? L(` Server said: ${lastReason}`, ` 서버 응답: ${lastReason}`) : ""}
               </p>
             )}
           </div>
@@ -329,7 +335,7 @@ export function ScanScreen({
             className="btn btn-secondary mt-24"
             onClick={() => abort.current?.abort()}
           >
-            Stop
+            {L("Stop", "그만두기")}
           </button>
         </main>
       </>
@@ -338,7 +344,7 @@ export function ScanScreen({
 
   return (
     <>
-      <TopBar title="Scan a nail" />
+      <TopBar title={L("Scan a nail", "손톱 스캔")} />
       <main className="screen">
         <input
           ref={fileInput}
@@ -359,7 +365,7 @@ export function ScanScreen({
         <button
           type="button"
           className={`picker${dragging ? " dragging" : ""}`}
-          aria-label={image ? "Choose a different photo" : "Choose a nail photo"}
+          aria-label={image ? L("Choose a different photo", "사진 다시 고르기") : L("Choose a nail photo", "손톱 사진 고르기")}
           onDragOver={(event) => {
             event.preventDefault();
             setDragging(true);
@@ -373,12 +379,12 @@ export function ScanScreen({
           onClick={() => fileInput.current?.click()}
         >
           {image ? (
-            <img src={image.previewUrl} alt="Preview of the selected nail photo" />
+            <img src={image.previewUrl} alt={L("Preview of the selected nail photo", "선택한 손톱 사진 미리보기")} />
           ) : (
             <span className="picker-empty">
               <CameraIcon size={30} />
-              <strong>Add a photo of your nail</strong>
-              <span>Tap to choose, or drop a file here</span>
+              <strong>{L("Add a photo of your nail", "손톱 사진을 올려 주세요")}</strong>
+              <span>{L("Tap to choose, or drop a file here", "눌러서 고르거나 파일을 끌어다 놓으세요")}</span>
             </span>
           )}
         </button>
@@ -389,14 +395,14 @@ export function ScanScreen({
             onClick={() => cameraInput.current?.click()}
           >
             <CameraIcon size={19} />
-            Camera
+            {L("Camera", "촬영")}
           </button>
           <button
             className="btn btn-secondary"
             onClick={() => fileInput.current?.click()}
           >
             <AlbumIcon size={19} />
-            {image ? "Replace" : "Library"}
+            {image ? L("Replace", "다시 고르기") : L("Library", "앨범")}
           </button>
         </div>
 
@@ -411,27 +417,27 @@ export function ScanScreen({
             <Notice tone="monitor">
               <strong>{image.quality.issues.join(", ")}</strong>
               <br />
-              {image.quality.hint} You can still analyze it, but fewer areas
-              may be visible.
+              {image.quality.hint}{" "}
+              {L("You can still analyze it, but fewer areas may be visible.", "이대로도 분석할 수 있지만, 볼 수 있는 항목이 줄어들 수 있어요.")}
             </Notice>
           </div>
         )}
 
         <details className="how-to mt-8">
           <summary>
-            <ChevronIcon size={16} />Tips for a good photo
+            <ChevronIcon size={16} />{L("Tips for a good photo", "잘 찍는 방법")}
           </summary>
           <ul>
-            <li>Use bright, natural light and avoid shadows.</li>
-            <li>Get close so one nail fills at least half the frame.</li>
-            <li>Remove polish or gel so the nail plate is visible.</li>
-            <li>Include the skin around the nail so more areas can be checked.</li>
+            <li>{L("Use bright, natural light and avoid shadows.", "밝은 자연광 아래에서, 그림자가 지지 않게 찍어 주세요.")}</li>
+            <li>{L("Get close so one nail fills at least half the frame.", "손톱 하나가 화면의 절반 이상을 채우도록 가까이 찍어 주세요.")}</li>
+            <li>{L("Remove polish or gel so the nail plate is visible.", "매니큐어나 젤을 지운 상태여야 손톱판이 보여요.")}</li>
+            <li>{L("Include the skin around the nail so more areas can be checked.", "손톱 주변 피부까지 함께 나오면 더 많은 항목을 볼 수 있어요.")}</li>
           </ul>
         </details>
 
         <section className="sec">
-          <h3 className="sec-title">Which nail is it?</h3>
-          <div className="pick-group" role="group" aria-label="Hand">
+          <h3 className="sec-title">{L("Which nail is it?", "어느 손톱인가요?")}</h3>
+          <div className="pick-group" role="group" aria-label={L("Hand", "손")}>
             <div className="chips">
               {(["left", "right"] as const).map((value) => (
                 <button
@@ -440,12 +446,12 @@ export function ScanScreen({
                   aria-pressed={hand === value}
                   onClick={() => setHand(value)}
                 >
-                  {value === "left" ? "Left hand" : "Right hand"}
+                  {value === "left" ? L("Left hand", "왼손") : L("Right hand", "오른손")}
                 </button>
               ))}
             </div>
           </div>
-          <div className="pick-group" role="group" aria-label="Finger">
+          <div className="pick-group" role="group" aria-label={L("Finger", "손가락")}>
             <div className="chips">
               {FINGER_KEYS.map((key) => (
                 <button
@@ -463,26 +469,26 @@ export function ScanScreen({
 
         <section className="sec">
           <label className="field-label" htmlFor="scan-note">
-            Note <span className="opt">(optional)</span>
+            {L("Note", "메모")} <span className="opt">{L("(optional)", "(선택)")}</span>
           </label>
           <textarea
             id="scan-note"
             className="field"
             rows={3}
             maxLength={300}
-            placeholder="Recent changes or anything bothering you"
+            placeholder={L("Recent changes or anything bothering you", "최근 변화나 신경 쓰이는 점")}
             value={note}
             onChange={(event) => setNote(event.target.value)}
           />
           <p className="field-help">
-            Helps you compare the next time you photograph this nail.
+            {L("Helps you compare the next time you photograph this nail.", "적어 두면 다음에 같은 손톱을 찍었을 때 비교하기 좋아요.")}
           </p>
         </section>
 
         {demoMode && (
           <div className="mt-24">
             <Notice tone="accent">
-              Demo mode. You'll see sample results instead of a real analysis.
+              {L("Demo mode. You'll see sample results instead of a real analysis.", "데모 모드예요. 실제 사진 분석 대신 샘플 결과를 보여 드려요.")}
             </Notice>
           </div>
         )}
@@ -501,7 +507,7 @@ export function ScanScreen({
               disabled={!image || !online}
               onClick={() => void run()}
             >
-              Analyze
+              {L("Analyze", "분석 시작")}
             </button>
             {usage && usageLine(usage) && (
               <p className="usage-line">
@@ -510,7 +516,7 @@ export function ScanScreen({
                   <>
                     {" · "}
                     <button className="link" onClick={onOpenPlan}>
-                      See Pro
+                      {L("See Pro", "Pro 보기")}
                     </button>
                   </>
                 )}
@@ -522,26 +528,27 @@ export function ScanScreen({
         {usageExhausted(usage) ? null : !online ? (
           <p className="scan-hint">
             <OfflineIcon size={16} />
-            You can analyze once you're back online
+            {L("You can analyze once you're back online", "네트워크가 연결되면 분석할 수 있어요")}
           </p>
         ) : !image ? (
           <p className="scan-hint">
             <InfoIcon size={16} />
-            Choose a photo first
+            {L("Choose a photo first", "먼저 사진을 골라 주세요")}
           </p>
         ) : null}
 
         <p className="fineprint mt-24">
-          Your photo passes through our server only for analysis and is never stored there.
+          {L("Your photo passes through our server only for analysis and is never stored there.", "사진은 분석할 때만 이 앱의 서버를 거치고 서버에는 저장되지 않아요.")}
           {settings.keepPhotos
-            ? " After analysis, it's saved on this device only."
-            : " With your current settings, only the result is kept, not the photo."}
+            ? L(" After analysis, it's saved on this device only.", " 분석이 끝난 사진은 이 기기에만 함께 저장돼요.")
+            : L(" With your current settings, only the result is kept, not the photo.", " 지금 설정에서는 사진을 기기에 저장하지 않고 결과만 남겨요.")}
         </p>
       </main>
 
       {askConsent && (
         <ConsentSheet
           signedIn={signedIn}
+          provider={provider}
           onClose={() => setAskConsent(false)}
           onAgree={() => {
             giveConsent();
@@ -571,25 +578,25 @@ function QuotaPanel({
     <div className="quota mt-24" role="status">
       <div className="t">
         {pro
-          ? `You've reached today's limit of ${usage.limit} scans`
-          : `You've used your ${usage.limit} free ${usage.limit === 1 ? "scan" : "scans"} this month`}
+          ? L(`You've reached today's limit of ${usage.limit} scans`, `오늘 분석 한도 ${usage.limit}회를 모두 썼어요`)
+          : L(`You've used your ${usage.limit} free ${usage.limit === 1 ? "scan" : "scans"} this month`, `이번 달 무료 분석 ${usage.limit}회를 모두 썼어요`)}
       </div>
       <p>
         {pro
-          ? "You can scan again tomorrow (the limit resets at midnight UTC)."
-          : `They reset on ${formatBillingDate(usage.resetsAt)}.`}{" "}
-        Your past results, including warning-sign checks, are still in History.
+          ? L("You can scan again tomorrow (the limit resets at midnight UTC).", "내일 다시 분석할 수 있어요(한국 시간 오전 9시에 다시 채워져요).")
+          : L(`They reset on ${formatBillingDate(usage.resetsAt)}.`, `${formatBillingDate(usage.resetsAt)}에 다시 채워져요.`)}{" "}
+        {L("Your past results, including warning-sign checks, are still in History.", "위험 신호 점검을 포함한 지난 결과는 기록에서 그대로 볼 수 있어요.")}
       </p>
       {!pro && (
         <div className={signedIn || !onSignIn ? "mt-12" : "btn-row mt-12"}>
           {!signedIn && onSignIn && (
             <button className="btn btn-secondary" onClick={onSignIn}>
-              Log in
+              {L("Log in", "로그인")}
             </button>
           )}
           {onOpenPlan && (
             <button className="btn btn-primary" onClick={onOpenPlan}>
-              See Pro
+              {L("See Pro", "Pro 보기")}
             </button>
           )}
         </div>

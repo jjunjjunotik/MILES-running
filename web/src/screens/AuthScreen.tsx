@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
-import { DISCLAIMER_SHORT } from "../../../shared/analysis";
+import {
+  DISCLAIMER_SHORT,
+} from "../labels";
 import {
   ServerError,
   fetchProviders,
@@ -12,6 +14,7 @@ import {
 } from "../lib/server";
 import { mountGoogleButton, signInWithApplePopup } from "../lib/social";
 import { AppleLogoIcon, BackIcon } from "../components/Icons";
+import { L } from "../i18n";
 
 type Mode = "login" | "signup";
 
@@ -74,13 +77,13 @@ export function AuthScreen({
           .then((user) => onSignedIn(user, false))
           .catch((err) =>
             setError(
-              err instanceof ServerError ? err.message : "Google sign-in failed.",
+              err instanceof ServerError ? err.message : L("Google sign-in failed.", "구글 로그인에 실패했어요."),
             ),
           )
           .finally(() => setBusy(false));
       },
     }).catch(() =>
-      setError("Google sign-in couldn't load. Please continue with email."),
+      setError(L("Google sign-in couldn't load. Please continue with email.", "구글 로그인을 불러오지 못했어요. 이메일로 계속해 주세요.")),
     );
   }, [providers, onSignedIn]);
 
@@ -97,7 +100,7 @@ export function AuthScreen({
       setError(
         err instanceof ServerError
           ? err.message
-          : "Apple sign-in was cancelled or failed.",
+          : L("Apple sign-in was cancelled or failed.", "애플 로그인이 취소되었거나 실패했어요."),
       );
     } finally {
       setBusy(false);
@@ -121,7 +124,7 @@ export function AuthScreen({
       setError(
         err instanceof ServerError
           ? err.message
-          : "Something went wrong while signing in. Please try again in a moment.",
+          : L("Something went wrong while signing in. Please try again in a moment.", "로그인 중 문제가 생겼습니다. 잠시 후 다시 시도해 주세요."),
       );
     } finally {
       setBusy(false);
@@ -132,7 +135,7 @@ export function AuthScreen({
     <main className="screen auth">
       <div className="flow-top">
         {onBack ? (
-          <button className="icon-btn" onClick={onBack} aria-label="Back" style={{ marginLeft: -10 }}>
+          <button className="icon-btn" onClick={onBack} aria-label={L("Back", "돌아가기")} style={{ marginLeft: -10 }}>
             <BackIcon size={22} />
           </button>
         ) : (
@@ -143,11 +146,13 @@ export function AuthScreen({
       </div>
 
       <h2 className="auth-title">
-        {mode === "login" ? "Log in" : "Create account"}
+        {mode === "login" ? L("Log in", "로그인") : L("Create account", "계정 만들기")}
       </h2>
       <p className="auth-lede">
-        Your history is saved to your account and follows you to new devices.
-        You can keep using the app without logging in.
+        {L(
+          "Your history is saved to your account and follows you to new devices. You can keep using the app without logging in.",
+          "기록이 계정에 저장되어 기기를 바꿔도 이어져요. 로그인하지 않아도 앱은 그대로 쓸 수 있어요.",
+        )}
       </p>
 
       <div className="social">
@@ -160,18 +165,18 @@ export function AuthScreen({
             disabled={busy}
           >
             <AppleLogoIcon size={19} weight="fill" />
-            Continue with Apple
+            {L("Continue with Apple", "Apple로 계속하기")}
           </button>
         )}
 
         {(providers?.google || providers?.apple) && !emailOpen && (
           <>
-            <div className="divider">or</div>
+            <div className="divider">{L("or", "또는")}</div>
             <button
               className="btn btn-secondary"
               onClick={() => setEmailOpen(true)}
             >
-              Continue with email
+              {L("Continue with email", "이메일로 계속하기")}
             </button>
           </>
         )}
@@ -188,7 +193,7 @@ export function AuthScreen({
           {mode === "signup" && (
             <div>
               <label className="field-label" htmlFor="auth-name">
-                Name or nickname <span className="opt">(optional)</span>
+                {L("Name or nickname", "이름 또는 닉네임")} <span className="opt">{L("(optional)", "(선택)")}</span>
               </label>
               <input
                 id="auth-name"
@@ -199,13 +204,13 @@ export function AuthScreen({
                 autoComplete="nickname"
                 maxLength={40}
               />
-              <p className="field-help">Shown on your results.</p>
+              <p className="field-help">{L("Shown on your results.", "결과 화면에 표시돼요.")}</p>
             </div>
           )}
 
           <div>
             <label className="field-label" htmlFor="auth-email">
-              Email
+              {L("Email", "이메일")}
             </label>
             <input
               id="auth-email"
@@ -221,7 +226,7 @@ export function AuthScreen({
 
           <div>
             <label className="field-label" htmlFor="auth-password">
-              Password
+              {L("Password", "비밀번호")}
             </label>
             <input
               id="auth-password"
@@ -235,7 +240,7 @@ export function AuthScreen({
               aria-describedby="auth-password-help"
             />
             <p className="field-help" id="auth-password-help">
-              At least 8 characters
+              {L("At least 8 characters", "8자 이상")}
             </p>
           </div>
 
@@ -247,10 +252,10 @@ export function AuthScreen({
 
           <button className="btn btn-primary" type="submit" disabled={busy}>
             {busy
-              ? "One moment"
+              ? L("One moment", "잠시만요")
               : mode === "login"
-                ? "Log in"
-                : "Create account"}
+                ? L("Log in", "로그인")
+                : L("Create account", "가입하고 시작하기")}
           </button>
 
           <button
@@ -263,20 +268,23 @@ export function AuthScreen({
             }}
           >
             {mode === "login"
-              ? "No account? Sign up"
-              : "Already have an account? Log in"}
+              ? L("No account? Sign up", "계정이 없으신가요? 가입하기")
+              : L("Already have an account? Log in", "이미 계정이 있으신가요? 로그인")}
           </button>
         </form>
       )}
 
       <div className="auth-foot">
         <p className="fineprint" style={{ margin: 0 }}>
-          Passwords are never stored as plain text. Nail photos stay in this
-          browser, not in your account. {DISCLAIMER_SHORT}
+          {L(
+            "Passwords are never stored as plain text. Nail photos stay in this browser, not in your account.",
+            "비밀번호는 서버에 원문으로 저장되지 않아요. 손톱 사진은 계정이 아니라 이 기기의 브라우저 안에만 보관돼요.",
+          )}{" "}
+          {DISCLAIMER_SHORT}
         </p>
         {onBack && (
           <button className="link link-quiet" onClick={onBack}>
-            Continue without an account
+            {L("Continue without an account", "로그인하지 않고 계속 쓰기")}
           </button>
         )}
       </div>

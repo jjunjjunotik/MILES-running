@@ -1,4 +1,9 @@
-import { TIP_CATEGORY_LABELS, type Tip } from "../../../shared/analysis";
+import {
+  type Tip,
+} from "../../../shared/analysis";
+import {
+  TIP_CATEGORY_LABELS,
+} from "../labels";
 
 export function TipList({ tips }: { tips: Tip[] }) {
   return (

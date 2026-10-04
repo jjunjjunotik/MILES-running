@@ -9,7 +9,7 @@
  * 건강 데이터 처리 동의 문구의 버전. 문구를 바꾸면 이 값도 바꾼다.
  * 서버는 이 버전으로 동의했다는 표시가 없는 분석 요청을 받지 않는다.
  */
-export const HEALTH_CONSENT_VERSION = "2026-10";
+export const HEALTH_CONSENT_VERSION = "2026-10.2";
 
 export type PlanId = "free" | "pro";
 export type BillingInterval = "month" | "year";

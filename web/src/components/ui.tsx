@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import {
-  ATTENTION_DESCRIPTIONS,
-  ATTENTION_LABELS,
-  STATUS_LABELS,
   type Attention,
   type Status,
 } from "../../../shared/analysis";
+import {
+  ATTENTION_DESCRIPTIONS,
+  ATTENTION_LABELS,
+  STATUS_LABELS,
+} from "../labels";
 import {
   ArrowDownIcon,
   ArrowUpIcon,
@@ -17,6 +19,7 @@ import {
   WarningCircleIcon,
   type Icon,
 } from "./Icons";
+import { INTL_LOCALE, KO, L } from "../i18n";
 
 export function TopBar({
   title,
@@ -146,7 +149,7 @@ export function Delta({ value }: { value: number }) {
     return (
       <span className="delta">
         <MinusIcon size={12} weight="bold" />
-        No change
+        {L("No change", "변화 없음")}
       </span>
     );
   }
@@ -157,7 +160,7 @@ export function Delta({ value }: { value: number }) {
       ) : (
         <ArrowDownIcon size={12} weight="bold" />
       )}
-      <span className="sr-only">{value > 0 ? "up" : "down"}</span>
+      <span className="sr-only">{value > 0 ? L("up", "올라감") : L("down", "내려감")}</span>
       {Math.abs(value)}
     </span>
   );
@@ -233,7 +236,7 @@ export function Sheet({
 }
 
 export function formatDate(timestamp: number): string {
-  return new Date(timestamp).toLocaleDateString("en-US", {
+  return new Date(timestamp).toLocaleDateString(INTL_LOCALE, {
     year: "numeric",
     month: "long",
     day: "numeric",
@@ -247,7 +250,7 @@ export function formatDateShort(timestamp: number): string {
 }
 
 export function formatToday(timestamp: number = Date.now()): string {
-  return new Date(timestamp).toLocaleDateString("en-US", {
+  return new Date(timestamp).toLocaleDateString(INTL_LOCALE, {
     weekday: "long",
     month: "long",
     day: "numeric",
@@ -257,14 +260,15 @@ export function formatToday(timestamp: number = Date.now()): string {
 export function formatRelative(timestamp: number): string {
   const diff = Date.now() - timestamp;
   const day = 24 * 60 * 60 * 1000;
-  if (diff < day) return "Today";
-  if (diff < day * 2) return "Yesterday";
-  if (diff < day * 7) return `${Math.floor(diff / day)} days ago`;
+  if (diff < day) return L("Today", "오늘");
+  if (diff < day * 2) return L("Yesterday", "어제");
+  if (diff < day * 7) return L(`${Math.floor(diff / day)} days ago`, `${Math.floor(diff / day)}일 전`);
   return formatDate(timestamp);
 }
 
 /** 부위를 한 번에 적는다. "Left ring finger", "Right thumb" */
 export function partLabel(hand: "left" | "right", finger: string): string {
+  if (KO) return `${hand === "left" ? "왼손" : "오른손"}${finger ? ` ${finger}` : ""}`;
   const side = hand === "left" ? "Left" : "Right";
   if (!finger) return `${side} hand`;
   const name = finger.toLowerCase();

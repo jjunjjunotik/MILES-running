@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import type { NailRecord } from "../../../shared/analysis";
 import { formatDateShort } from "./ui";
+import { L } from "../i18n";
 
 const W = 320;
 const H = 132;
@@ -72,7 +73,7 @@ export function TrendChart({ records }: { records: NailRecord[] }) {
         className="trend"
         viewBox={`0 0 ${W} ${H}`}
         role="img"
-        aria-label={`Observation index over time. ${points.length} records, latest value ${Math.round(last.y)}.`}
+        aria-label={L(`Observation index over time. ${points.length} records, latest value ${Math.round(last.y)}.`, `관찰 지표 추이. ${points.length}건의 기록, 가장 최근 값 ${Math.round(last.y)}.`)}
         onMouseLeave={() => setSelected(null)}
       >
         {[yMax, (yMax + yMin) / 2, yMin].map((value) => (
@@ -136,8 +137,8 @@ export function TrendChart({ records }: { records: NailRecord[] }) {
 
       <p className="trend-caption" aria-live="polite">
         {active
-          ? `Observation index on ${formatDateShort(active.x)}: ${Math.round(active.y)}`
-          : "Tap a point to see that day's value."}
+          ? L(`Observation index on ${formatDateShort(active.x)}: ${Math.round(active.y)}`, `${formatDateShort(active.x)} 기록의 관찰 지표는 ${Math.round(active.y)}입니다.`)
+          : L("Tap a point to see that day's value.", "점을 누르면 그날의 값을 볼 수 있어요.")}
       </p>
     </div>
   );

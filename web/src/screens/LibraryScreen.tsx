@@ -1,17 +1,23 @@
 import { useEffect, useMemo, useState } from "react";
 import {
-  ARTICLES,
   ARTICLE_CATEGORIES,
-  ARTICLE_CATEGORY_LABELS,
-  ARTICLE_DISCLAIMER,
+  articleSet,
   type ArticleCategory,
 } from "../../../shared/articles";
 import { fetchArticle, listArticles, type ArticleSummary } from "../lib/server";
 import { STANDALONE_DEMO } from "../lib/api";
 import { BackIcon, ChevronIcon, SearchIcon } from "../components/Icons";
 import { Empty, TopBar } from "../components/ui";
+import { L, LOCALE } from "../i18n";
 
 type Filter = "all" | ArticleCategory;
+
+// 앱에 함께 실린 글(서버가 없을 때 쓴다)도 지금 언어로 고른다.
+const {
+  articles: ARTICLES,
+  categoryLabels: ARTICLE_CATEGORY_LABELS,
+  disclaimer: ARTICLE_DISCLAIMER,
+} = articleSet(LOCALE);
 
 /**
  * 건강 정보 라이브러리.
@@ -88,7 +94,7 @@ export function LibraryScreen() {
     return (
       <>
         <TopBar
-          title="Learn"
+          title={L("Learn", "건강 정보")}
           left={
             <button
               className="icon-btn"
@@ -96,7 +102,7 @@ export function LibraryScreen() {
                 setOpenSlug(null);
                 setBody(null);
               }}
-              aria-label="Back to list"
+              aria-label={L("Back to list", "목록으로")}
             >
               <BackIcon size={22} />
             </button>
@@ -127,12 +133,12 @@ export function LibraryScreen() {
 
   return (
     <>
-      <TopBar title="Learn" />
+      <TopBar title={L("Learn", "건강 정보")} />
       <main className="screen">
         <div className="search mt-8">
           <SearchIcon size={18} />
           <label htmlFor="library-search" className="sr-only">
-            Search guides
+            {L("Search guides", "건강 정보 검색")}
           </label>
           <input
             id="library-search"
@@ -140,17 +146,17 @@ export function LibraryScreen() {
             type="search"
             value={query}
             onChange={(event) => setQuery(event.target.value)}
-            placeholder="Search guides"
+            placeholder={L("Search guides", "궁금한 내용 검색")}
           />
         </div>
 
-        <div className="chips scroll mt-12" role="group" aria-label="Categories">
+        <div className="chips scroll mt-12" role="group" aria-label={L("Categories", "분류")}>
           <button
             className="chip"
             aria-pressed={filter === "all"}
             onClick={() => setFilter("all")}
           >
-            All
+            {L("All", "전체")}
           </button>
           {ARTICLE_CATEGORIES.map((category) => (
             <button
@@ -167,8 +173,8 @@ export function LibraryScreen() {
         {shown.length === 0 ? (
           <Empty
             icon={<SearchIcon size={26} />}
-            title="No matching guides"
-            body="Try a different word or another category."
+            title={L("No matching guides", "찾는 내용이 없어요")}
+            body={L("Try a different word or another category.", "다른 단어로 검색하거나 분류를 바꿔 보세요.")}
           />
         ) : (
           <ul className="article-list">

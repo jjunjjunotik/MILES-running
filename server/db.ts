@@ -219,6 +219,27 @@ const MIGRATIONS: Migration[] = [
       ALTER TABLE user_preferences ADD COLUMN health_consent_version TEXT;
     `,
   },
+  {
+    version: 4,
+    name: "건강 정보 글을 언어별로",
+    sql: `
+      -- 같은 글(slug)을 언어마다 한 줄씩 둔다. 예전 표(health_articles)는 지우지 않고 그대로 둔다.
+      CREATE TABLE IF NOT EXISTS health_article_texts (
+        slug       TEXT NOT NULL,
+        locale     TEXT NOT NULL,
+        category   TEXT NOT NULL,
+        title      TEXT NOT NULL,
+        summary    TEXT NOT NULL,
+        body       TEXT NOT NULL,
+        tags       TEXT NOT NULL DEFAULT '',
+        sort_order INTEGER NOT NULL DEFAULT 0,
+        updated_at INTEGER NOT NULL,
+        PRIMARY KEY (slug, locale)
+      );
+      CREATE INDEX IF NOT EXISTS idx_article_texts_locale
+        ON health_article_texts(locale, category);
+    `,
+  },
 ];
 
 function migrate(database: DatabaseSync): void {

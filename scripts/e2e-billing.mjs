@@ -223,7 +223,7 @@ try {
   await page.click(".tabbar >> text=Scan");
   check(await visible("text=4 of 5 scans left today"), "Pro 로 분석하면 하루 한도에서 차감");
   const recorded = await page.evaluate(async () => (await (await fetch("/api/preferences")).json()).preferences);
-  check(recorded.healthConsentVersion === "2026-10" && recorded.healthConsentAt > 0, "로그인 상태의 분석은 동의 기록을 계정에 남김");
+  check(recorded.healthConsentVersion === "2026-10.2" && recorded.healthConsentAt > 0, "로그인 상태의 분석은 동의 기록을 계정에 남김");
 
   /* ------------------------------ 프로필 ------------------------------ */
   console.log("프로필");

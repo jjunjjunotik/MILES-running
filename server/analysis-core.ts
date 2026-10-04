@@ -1,3 +1,4 @@
+import type { Locale } from "../shared/i18n.js";
 import {
   ATTENTION_KEYS,
   ATTENTION_RANK,
@@ -51,6 +52,8 @@ export interface AnalyzeInput {
   hand: string;
   finger: string;
   note: string;
+  /** 결과 문장을 어느 언어로 받을지 */
+  locale: Locale;
 }
 
 /** 한 프로바이더가 갖춰야 할 모양. */
@@ -67,7 +70,7 @@ export interface Provider {
  * UI가 순서와 개수에 의존하므로 여기서 한 번 더 보정한다.
  * 프로바이더가 바뀌어도 화면이 받는 모양은 같아야 한다.
  */
-export function normalize(analysis: NailAnalysis): NailAnalysis {
+export function normalize(analysis: NailAnalysis, locale: Locale = "en"): NailAnalysis {
   const byKey = new Map<MetricKey, NailAnalysis["metrics"][number]>();
   for (const metric of analysis.metrics) {
     if (!byKey.has(metric.key)) byKey.set(metric.key, metric);
@@ -79,13 +82,18 @@ export function normalize(analysis: NailAnalysis): NailAnalysis {
         key,
         status: "watch" as const,
         confidence: "low" as const,
-        observation: "This area was hard to make out in this photo.",
+        observation:
+          locale === "ko"
+            ? "이 사진에서는 해당 항목을 확인하기 어려웠습니다."
+            : "This area was hard to make out in this photo.",
         explanation:
-          "A photo that shows the whole nail clearly would allow a closer look.",
+          locale === "ko"
+            ? "손톱 전체가 잘 보이도록 다시 촬영하면 더 자세히 살펴볼 수 있습니다."
+            : "A photo that shows the whole nail clearly would allow a closer look.",
       },
   );
 
-  return tidyStrings({
+  return tidyStrings(locale, {
     ...analysis,
     observationScore: Math.max(
       0,
@@ -98,24 +106,26 @@ export function normalize(analysis: NailAnalysis): NailAnalysis {
 
 /**
  * 모델은 프롬프트에서 막아도 가끔 문장 사이에 줄표(—, –)를 끼워 넣는다.
- * 화면 문구 규칙에 맞춰 숫자 사이의 줄표는 하이픈("2-3 weeks")으로,
- * 나머지는 쉼표로 바꾼다. 문장부호만 고칠 뿐 내용은 건드리지 않는다.
+ * 화면 문구 규칙에 맞춰 숫자 사이의 줄표는 범위 표기로(영어 "2-3 weeks", 한국어 "2~3주"),
+ * 한국어에서 문장이 끝난 자리("~습니다 — 이어지는 말")는 마침표로, 나머지는 쉼표로 바꾼다.
+ * 문장부호만 고칠 뿐 내용은 건드리지 않는다.
  */
-export function tidyDashes(text: string): string {
-  return text
-    .replace(/(\d)\s*[–—]\s*(\d)/g, "$1-$2")
+export function tidyDashes(text: string, locale: Locale = "en"): string {
+  let out = text.replace(/(\d)\s*[–—]\s*(\d)/g, locale === "ko" ? "$1~$2" : "$1-$2");
+  if (locale === "ko") out = out.replace(/([다요])\s*[—–]+\s*(?=\S)/g, "$1. ");
+  return out
     .replace(/\s*[—–]+\s*/g, ", ")
     .replace(/,\s*([,.;:!?])/g, "$1")
     .replace(/^,\s*/, "")
     .replace(/,\s*$/, "");
 }
 
-function tidyStrings<T>(value: T): T {
-  if (typeof value === "string") return tidyDashes(value) as T;
-  if (Array.isArray(value)) return value.map((item) => tidyStrings(item)) as T;
+function tidyStrings<T>(locale: Locale, value: T): T {
+  if (typeof value === "string") return tidyDashes(value, locale) as T;
+  if (Array.isArray(value)) return value.map((item) => tidyStrings(locale, item)) as T;
   if (value && typeof value === "object") {
     return Object.fromEntries(
-      Object.entries(value).map(([key, item]) => [key, tidyStrings(item)]),
+      Object.entries(value).map(([key, item]) => [key, tidyStrings(locale, item)]),
     ) as T;
   }
   return value;

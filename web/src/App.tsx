@@ -23,6 +23,7 @@ import {
   type UsageInfo,
 } from "../../shared/billing";
 import type { LegalDocId } from "../../shared/legal";
+import { RETURN_TAB_KEY } from "./i18n";
 import {
   DEFAULT_SETTINGS,
   clearAll,
@@ -50,6 +51,7 @@ import {
 } from "./lib/server";
 import { seedExampleRecords } from "./lib/seed";
 import { IconContext, OfflineIcon } from "./components/Icons";
+import { L } from "./i18n";
 
 /** 아이콘 기본값. 장식용이라 화면 낭독기에서는 숨기고, 뜻은 옆의 글자가 전한다. */
 const ICON_DEFAULTS = {
@@ -85,12 +87,24 @@ const ONBOARDED_KEY = "nailsense.onboarded.v1";
 export function App() {
   const [phase, setPhase] = useState<Phase>("loading");
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [tab, setTab] = useState<Tab>("home");
+  const [tab, setTab] = useState<Tab>(() => {
+    // 언어를 바꾸느라 다시 불러왔다면 프로필로 돌아온다.
+    try {
+      const back = sessionStorage.getItem(RETURN_TAB_KEY);
+      sessionStorage.removeItem(RETURN_TAB_KEY);
+      if (back === "profile") return "profile";
+    } catch {
+      // 저장소를 못 쓰면 홈에서 시작한다.
+    }
+    return "home";
+  });
   const [records, setRecords] = useState<NailRecord[]>([]);
   const [failedScans, setFailedScans] = useState<ServerScan[]>([]);
   const [settings, setSettings] = useState<Settings>(DEFAULT_SETTINGS);
   const [result, setResult] = useState<ResultView | null>(null);
   const [demoMode, setDemoMode] = useState(false);
+  /** 서버가 쓰는 분석 업체("Gemini"/"Claude"). 동의 창에서 받는 곳을 밝힐 때 쓴다. */
+  const [provider, setProvider] = useState<string | null>(null);
   /** 프로필에서 직접 열었을 때만 보이는 로그인 화면 */
   const [showAuth, setShowAuth] = useState(false);
   /** 요금제 화면. 로그인하러 갔다 와도 그대로 돌아오도록 따로 기억한다. */
@@ -184,6 +198,7 @@ export function App() {
       void health().then((info) => {
         if (!info || cancelled) return;
         setDemoMode(!info.configured && info.demoAvailable);
+        setProvider(info.provider ?? null);
       });
       void refreshBilling();
 
@@ -368,7 +383,7 @@ export function App() {
       return (
         <main className="boot" aria-busy="true">
           <span className="wordmark">NailSense</span>
-          <span className="sr-only">Loading</span>
+          <span className="sr-only">{L("Loading", "불러오는 중")}</span>
         </main>
       );
     }
@@ -407,7 +422,7 @@ export function App() {
         {!online && (
           <div className="offline-bar" role="status">
             <OfflineIcon size={16} />
-            You're offline. Saved records are still available.
+            {L("You're offline. Saved records are still available.", "네트워크가 끊겼어요. 저장된 기록은 계속 볼 수 있어요.")}
           </div>
         )}
 
@@ -448,6 +463,7 @@ export function App() {
                 online={online}
                 signedIn={Boolean(user)}
                 usage={billing?.enabled ? billing.usage : null}
+                provider={provider}
                 onUsage={updateUsage}
                 onOpenPlan={billing?.enabled ? () => setShowPlan(true) : undefined}
                 onSignIn={() => setShowAuth(true)}

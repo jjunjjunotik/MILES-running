@@ -182,7 +182,7 @@ async function analyzeNailPhoto(input: AnalyzeInput): Promise<NailAnalysis> {
     );
   }
 
-  return normalize(result.data);
+  return normalize(result.data, input.locale);
 }
 
 function toAnalyzeError(err: unknown): AnalyzeError {
