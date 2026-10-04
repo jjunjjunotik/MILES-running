@@ -110,3 +110,77 @@ test('without a webhook secret the endpoint does not exist', async (t) => {
   t.after(() => s.close());
   assert.equal((await client(s.url).post('/v1/billing/revenuecat', {}, { authorization: '' })).status, 404);
 });
+
+test('checking with RevenueCat right after a purchase', async (t) => {
+  // A stand-in for RevenueCat's REST API: one subscriber record per runner.
+  const http = require('http');
+  const records = new Map();
+  const seen = [];
+  const rc = http.createServer((req, res) => {
+    seen.push(req.headers.authorization);
+    const id = decodeURIComponent(req.url.split('/').pop());
+    res.writeHead(records.has(id) ? 200 : 500, { 'content-type': 'application/json' });
+    res.end(JSON.stringify(records.get(id) || { error: 'down' }));
+  });
+  await new Promise((resolve) => rc.listen(0, resolve));
+  t.after(() => rc.close());
+  const s = await boot({ REVENUECAT_API_KEY: 'sk_test', REVENUECAT_API_URL: `http://127.0.0.1:${rc.address().port}` });
+  t.after(() => s.close());
+  const later = new Date(Date.now() + 30 * DAY).toISOString();
+
+  await t.test('a fresh purchase counts at once, without waiting for the webhook', async () => {
+    const r = await s.runner();
+    records.set(r.id, { subscriber: {
+      entitlements: { pro: { expires_date: later, product_identifier: 'pro_yearly' } },
+      subscriptions: { pro_yearly: { expires_date: later, store: 'app_store', unsubscribe_detected_at: null } },
+    } });
+    const res = await r.api.post('/v1/billing/sync');
+    assert.equal(res.status, 200, res.text);
+    assert.equal(res.body.pro.tier, 'pro');
+    assert.equal(res.body.pro.plan, 'pro_yearly');
+    assert.equal(res.body.pro.willRenew, true);
+    assert.equal(seen[seen.length - 1], 'Bearer sk_test');
+  });
+
+  await t.test('the best tier still running wins; a lapsed one counts for nothing', async () => {
+    const r = await s.runner();
+    records.set(r.id, { subscriber: {
+      entitlements: {
+        pro: { expires_date: new Date(Date.now() - DAY).toISOString(), product_identifier: 'pro_monthly' },
+        supporter: { expires_date: later, product_identifier: 'supporter_yearly' },
+      },
+      subscriptions: { supporter_yearly: { unsubscribe_detected_at: new Date().toISOString(), store: 'play_store' } },
+    } });
+    const pro = (await r.api.post('/v1/billing/sync')).body.pro;
+    assert.equal(pro.tier, 'supporter');
+    assert.equal(pro.willRenew, false, 'cancelled, but paid up');
+    records.set(r.id, { subscriber: { entitlements: {}, subscriptions: {} } });
+    assert.equal((await r.api.post('/v1/billing/sync')).body.pro.tier, 'free');
+  });
+
+  await t.test("a Google product named with its base plan in one place and not the other", async () => {
+    const r = await s.runner();
+    records.set(r.id, { subscriber: {
+      entitlements: { pro: { expires_date: later, product_identifier: 'pro_monthly:monthly' } },
+      subscriptions: { pro_monthly: { expires_date: later, store: 'play_store', unsubscribe_detected_at: new Date().toISOString() } },
+    } });
+    const pro = (await r.api.post('/v1/billing/sync')).body.pro;
+    assert.equal(pro.plan, 'pro_monthly');
+    assert.equal(pro.willRenew, false, 'the cancellation is found under the other name');
+  });
+
+  await t.test('a plan granted by hand is not taken away by the store having nothing', async () => {
+    const r = await s.runner();
+    await s.admin.post('/admin/entitlements', { userId: r.id, plan: 'pro_yearly', days: 30 });
+    records.set(r.id, { subscriber: { entitlements: {}, subscriptions: {} } });
+    assert.equal((await r.api.post('/v1/billing/sync')).body.pro.tier, 'pro');
+  });
+
+  await t.test('the store being down says so, and changes nothing', async () => {
+    const r = await s.runner();
+    const res = await r.api.post('/v1/billing/sync');
+    assert.equal(res.status, 502);
+    assert.equal(res.body.error.code, 'store_unreachable');
+    assert.equal((await r.api.get('/v1/me')).body.pro.tier, 'free');
+  });
+});

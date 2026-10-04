@@ -30,6 +30,10 @@ function load(env) {
     adminToken: e.ADMIN_TOKEN || '',
     // Shared secret RevenueCat sends in its webhook's Authorization header.
     revenuecatSecret: e.REVENUECAT_WEBHOOK_SECRET || '',
+    // RevenueCat's secret API key (sk_…), so the server can ask what a runner
+    // has right after they buy, instead of waiting for the webhook.
+    revenuecatApiKey: e.REVENUECAT_API_KEY || '',
+    revenuecatApiUrl: (e.REVENUECAT_API_URL || 'https://api.revenuecat.com').replace(/\/+$/, ''),
     resendApiKey: e.RESEND_API_KEY || '',
     mailFrom: e.MAIL_FROM || '',
     // The app's simulator makes up runs when there is no GPS. Off in

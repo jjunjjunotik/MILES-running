@@ -304,7 +304,7 @@ whichever basemap is underneath.
 
 ## Tests
 
-Eighteen checks live in the repo root. The first is plain Node; the rest drive the
+Nineteen checks live in the repo root. The first is plain Node; the rest drive the
 real app in headless Chromium and need Playwright, which the app itself does
 not — `npm i playwright`, or run with `NODE_PATH` pointing at an install that
 has it. The three marked `:8765` want `python3 -m http.server 8765` running.
@@ -328,12 +328,13 @@ node test-crew.js         a captain's crew screen: one job per block, nothing sh
 node test-card.js         the record card: every layout fits, and its climb is real
 node test-native.js       the phone app: a run records in the background, the notch is clear
 node test-online.js       the app against the real server, from sign-up to deleting the account
+node test-billing.js      buying, upgrading and restoring a plan, against the server and a stand-in store
 ```
 
-`test-online.js` starts the API from `server/` on a database of its own, so it
-also needs the server's dependencies (`cd server && npm install`) and a
+`test-online.js` and `test-billing.js` start the API from `server/` on a
+database of their own, so they also need the server's dependencies (`cd server && npm install`) and a
 Postgres where the role may create databases (`TEST_DATABASE_URL`). The
-server has 79 tests of its own: `cd server && npm test`.
+server has 85 tests of its own: `cd server && npm test`.
 
 `test-tiles.js` serves its own tiles from a throwaway HTTP server, so it needs
 no network and passes with the real CDN blocked.
@@ -465,8 +466,10 @@ away. Signed in to a server it is enforced: `/v1/me` says what the account has
 paid for, `Pro.verify()` reads that answer without changing, and the server
 itself refuses what is paid for and not paid — founding a crew, a race of more
 than four rivals or at a distance of your own, the time machine's history, who
-took your land, naming a plot. Purchases reach the server from the App Store
-and Google Play through RevenueCat (`server/README.md`).
+took your land, naming a plot. Plans are bought in the phone app from the App
+Store or Google Play, through RevenueCat (`src/js/billing.js`,
+`server/README.md`), at the store's own price in the runner's currency; the
+dollar prices below are the demo's.
 
 There are two paid tiers. **Supporter** ($2.99/mo, $29.99/yr) is expression:
 naming and colouring your own plots, and the record card's colourways.
@@ -525,11 +528,16 @@ npm run android        # copy the app into android/ and open Android Studio
 npm run ios            # the same for Xcode (a Mac is needed for iOS)
 npm run sync           # after changing the app: copy it into both
 
-# A build for the stores talks to your server, over HTTPS:
-MILES_API_URL=https://api.example.com npm run android
+# A build for the stores talks to your server, over HTTPS, and sells
+# through RevenueCat with its public key for each store:
+MILES_API_URL=https://api.example.com \
+REVENUECAT_IOS_KEY=appl_… REVENUECAT_ANDROID_KEY=goog_… npm run sync
 ```
 
-Without `MILES_API_URL` the phone build is the demo.
+Without `MILES_API_URL` the phone build is the demo. Without a store's key it
+talks to the server but cannot sell; the subscribe button says so. Only the
+public keys go in the app — `scripts/build-www.js` refuses RevenueCat's secret
+`sk_` key, which belongs on the server.
 
 What the app adds over the browser, all in `src/js/native.js`:
 
@@ -545,6 +553,15 @@ What the app adds over the browser, all in `src/js/native.js`:
 - **The notch and the home bar.** `--inset-top` and `--inset-bottom` in
   `tokens.css` pad the shell; Capacitor measures them on Android, `env()`
   does on iOS.
+- **Buying Supporter and Pro** (`src/js/billing.js`), with
+  `@revenuecat/purchases-capacitor`. Signing in tells the store which MILES
+  account is buying; prices are the store's own; after a purchase the app has
+  the server check with RevenueCat at once, so the plan is on before the
+  webhook lands. Upgrading on Google Play replaces the old plan rather than
+  charging for both (on the App Store the four plans share one subscription
+  group and Apple does this itself). The offer carries the renewal terms each
+  store asks for, Restore purchases, and the terms and privacy policy; Manage
+  opens the store's page for the subscription.
 - Portrait only, iPhone only (no iPad layout to review), dark status bar.
 - Android targets API 36, as Google Play requires from 31 August 2026.
 
@@ -619,9 +636,6 @@ the live socket.
 
 What a store release still needs that is not built here:
 
-- **Buying a plan in the app.** The server takes purchases from RevenueCat,
-  but the phone builds do not carry RevenueCat's SDK yet. Until they do, the
-  subscribe button says so; the free trial works.
 - **Push notifications.** A race invite reaches a friend whose app is open;
   one whose app is closed sees it the next time they open it, for ten
   minutes.

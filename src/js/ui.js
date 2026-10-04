@@ -1540,6 +1540,10 @@
       this.proTier = feature ? M.Pro.tierFor(feature) : (this.proTier || 'pro');
       if (this.proTier === 'free') this.proTier = 'pro';
       this.proPeriod = this.proPeriod || 'yearly';
+      // The store's prices, if they did not load when signing in.
+      if (State.data.connected && M.Billing.available() && !Object.keys(M.Billing.products).length) {
+        M.Billing.loadPrices().catch(() => {});
+      }
       this.renderProOffer();
       this.openSheet('#proSheet');
     },
@@ -1565,12 +1569,16 @@
         ]));
       });
 
+      // Signed in, prices are the store's own, in the runner's currency; the
+      // dollar labels in pro.js are only the demo's.
+      const connected = !!State.data.connected;
+      const label = (id) => (connected && M.Billing.label(id)) || M.Pro.PLANS[id].label;
       const ids = [`${tier}_monthly`, `${tier}_yearly`];
       const plans = $('#proPlans');
       plans.innerHTML = '';
       ids.forEach((id) => {
         plans.appendChild(el('button', {
-          type: 'button', text: M.Pro.PLANS[id].label,
+          type: 'button', text: label(id),
           'aria-pressed': String(id.endsWith(this.proPeriod)),
           onclick: () => { this.proPeriod = id.endsWith('yearly') ? 'yearly' : 'monthly'; this.renderProOffer(); },
         }));
@@ -1584,13 +1592,44 @@
       const trial = M.Pro.trialAvailable() && tier === 'pro';
       $('#proPrimary').textContent = trial
         ? `Start ${M.Pro.TRIAL_DAYS}-day trial`
-        : `Subscribe · ${plan.label}`;
+        : `Subscribe · ${label(plan.id)}`;
       $('#proFinePrint').textContent = trial
         ? `No card needed. After ${M.Pro.TRIAL_DAYS} days, Pro features lock again — nothing is charged and nothing you ran is lost.`
-        : 'Cancel any time. Your runs, land and history stay yours either way.';
+        : this.renewalTerms(plan, label(plan.id));
+
+      // The stores ask for a way to restore purchases and for the terms and
+      // privacy policy beside every subscription offer.
+      const links = $('#proLinks');
+      links.innerHTML = '';
+      links.hidden = !connected;
+      if (!connected) return;
+      const parts = [];
+      if (M.Billing.platform()) {
+        parts.push(el('button', { type: 'button', id: 'proRestore', text: 'Restore purchases', onclick: () => M.Account.restore() }));
+      }
+      parts.push(el('a', { href: M.Api.page('/terms'), target: '_blank', rel: 'noopener', text: 'Terms of Use' }));
+      parts.push(el('a', { href: M.Api.page('/privacy'), target: '_blank', rel: 'noopener', text: 'Privacy policy' }));
+      parts.forEach((part, i) => {
+        if (i) links.appendChild(el('span', { text: ' · ' }));
+        links.appendChild(part);
+      });
+    },
+
+    /** What a subscription commits you to, the way the store the app came from bills it. */
+    renewalTerms(plan, price) {
+      const platform = State.data.connected ? M.Billing.platform() : null;
+      const every = plan.period === 'year' ? 'year' : 'month';
+      if (platform === 'ios') {
+        return `${plan.name}, ${price}, charged to your Apple Account when you confirm. It renews every ${every} at the same price unless cancelled at least 24 hours before the ${every} ends; cancel any time in your App Store account settings. Your runs, land and history stay yours either way.`;
+      }
+      if (platform === 'android') {
+        return `${plan.name}, ${price}, charged to your Google Play account when you confirm. It renews every ${every} at the same price until you cancel, which you can do any time in Google Play. Your runs, land and history stay yours either way.`;
+      }
+      return 'Cancel any time. Your runs, land and history stay yours either way.';
     },
 
     bindPro() {
+      Bus.on('billing:prices', () => { if (!$('#proSheet').hidden) this.renderProOffer(); });
       $('#tmUnlock').addEventListener('click', () => this.openPro('timeMachine'));
       $('#raidUnlock').addEventListener('click', () => this.openPro('raiders'));
       $('#proCard').addEventListener('click', () => this.openPro());

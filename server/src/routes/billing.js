@@ -10,7 +10,8 @@
    ("pro_yearly"); Google's "pro_yearly:base-plan" form is understood too. */
 
 const crypto = require('crypto');
-const { fail, reply } = require('../http');
+const { HttpError, fail, reply } = require('../http');
+const { meView } = require('../services/accounts');
 const { Pro } = require('../shared');
 const { isUuid } = require('../validate');
 const { safeEqual } = require('../auth');
@@ -56,8 +57,71 @@ async function apply(q, userId, event) {
   return 'ignored';
 }
 
+/**
+ * Sets a runner's entitlement from RevenueCat's own record of them (its
+ * "subscriber"): the best tier with an entitlement still running, or none.
+ * Plans granted by hand are never taken away here.
+ */
+async function applySubscriber(q, userId, subscriber) {
+  const now = Date.now();
+  let best = null;
+  Object.entries((subscriber && subscriber.entitlements) || {}).forEach(([name, e]) => {
+    const tier = name === 'pro' || name === 'supporter' ? name : null;
+    const expires = e.expires_date ? Date.parse(e.expires_date) : null;
+    if (!tier || (expires !== null && expires <= now)) return;
+    if (!best || Pro.TIERS[tier] > Pro.TIERS[best.tier]) best = { tier, expires, product: e.product_identifier || '' };
+  });
+  if (!best) {
+    await q.query(
+      `update entitlements set expires_at = now(), will_renew = false, updated_at = now()
+        where user_id = $1 and source = 'revenuecat' and (expires_at is null or expires_at > now())`, [userId]);
+    return 'none';
+  }
+  const plan = planFor({ product_id: best.product, entitlement_ids: [best.tier] });
+  // Google products can be named with or without their base plan
+  // ("pro_yearly:yearly"), and not always the same way in both places.
+  const subs = subscriber.subscriptions || {};
+  const base = (id) => String(id).split(':')[0];
+  const key = best.product in subs ? best.product : Object.keys(subs).find((k) => base(k) === base(best.product));
+  const sub = (key && subs[key]) || {};
+  const willRenew = !sub.unsubscribe_detected_at && !sub.billing_issues_detected_at;
+  await q.query(
+    `insert into entitlements (user_id, plan, tier, expires_at, will_renew, source, store, product_id, updated_at)
+     values ($1, $2, $3, $4, $5, 'revenuecat', $6, $7, now())
+     on conflict (user_id) do update set plan = $2, tier = $3, expires_at = $4, will_renew = $5,
+       source = 'revenuecat', store = $6, product_id = $7, updated_at = now()
+     where entitlements.source <> 'admin' or entitlements.expires_at < $4 or $4 is null`,
+    [userId, plan.id, plan.tier, best.expires === null ? null : new Date(best.expires), willRenew, sub.store || null, best.product]);
+  return 'granted';
+}
+
 module.exports = function billingRoutes(router, app) {
-  const { config } = app;
+  const { config, limiter } = app;
+
+  /* Right after a purchase the app asks here, and the server asks RevenueCat
+     — the purchase counts at once rather than when the webhook lands. */
+  router.post('/v1/billing/sync', async (ctx) => {
+    const { db, user } = ctx;
+    if (!config.revenuecatApiKey) throw fail.notFound('No such endpoint.');
+    if (!limiter.take('billing-sync:' + user.id, 30, 60 * 60 * 1000)) throw fail.tooMany();
+    const unreachable = () => new HttpError(502, 'store_unreachable', 'The store could not be reached. Your purchase is safe — try again in a moment.');
+    let res;
+    try {
+      res = await fetch(`${config.revenuecatApiUrl}/v1/subscribers/${encodeURIComponent(user.id)}`, {
+        headers: { authorization: `Bearer ${config.revenuecatApiKey}`, accept: 'application/json' },
+      });
+    } catch (err) {
+      throw unreachable();
+    }
+    if (!res.ok) {
+      app.log.error(`[billing] RevenueCat answered ${res.status} for ${user.id}`);
+      throw unreachable();
+    }
+    const body = await res.json();
+    await db.tx((q) => applySubscriber(q, user.id, body.subscriber));
+    const fresh = await db.one('select * from users where id = $1', [user.id]);
+    return meView(db, fresh);
+  });
 
   router.post('/v1/billing/revenuecat', { auth: false, limit: 64 * 1024 }, async (ctx) => {
     if (!config.revenuecatSecret) throw fail.notFound('No such endpoint.');
@@ -108,3 +172,4 @@ module.exports = function billingRoutes(router, app) {
 };
 
 module.exports.planFor = planFor;
+module.exports.applySubscriber = applySubscriber;

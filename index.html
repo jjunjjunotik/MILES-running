@@ -7,6 +7,8 @@
   <!-- The MILES server. Empty is the self-contained demo; scripts/build-www.js
        fills it from MILES_API_URL for the phone builds (see src/js/api.js). -->
   <meta name="miles-api" content="" />
+  <meta name="miles-rc-ios" content="" />
+  <meta name="miles-rc-android" content="" />
   <meta name="description" content="MILES — run solo or head-to-head with a friend, share live pace, claim territory by closing loops, and level up through quests." />
   <title>MILES</title>
   <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%23c8ff2e'/><text x='16' y='23' font-size='19' font-weight='800' text-anchor='middle' font-family='sans-serif' fill='%2305070a'>M</text></svg>" />
@@ -571,6 +573,7 @@
           <button class="btn btn--ghost btn--block" type="button" id="proLater">Not now</button>
         </div>
         <p class="tiny" id="proFinePrint" style="margin-top:var(--s-3);text-align:center"></p>
+        <p class="tiny account-links" id="proLinks" hidden></p>
       </div>
     </div>
 
@@ -661,6 +664,7 @@
   <script src="src/js/ui.js"></script>
   <script src="src/js/sync.js"></script>
   <script src="src/js/account.js"></script>
+  <script src="src/js/billing.js"></script>
   <script src="src/js/app.js"></script>
 </body>
 </html>

@@ -63,6 +63,7 @@ a note on what it is for.
 | `RESEND_API_KEY`, `MAIL_FROM` | Password reset emails. Without them nobody can reset a password. |
 | `ADMIN_TOKEN` | Bearer token for `/admin`. Empty turns `/admin` off. |
 | `REVENUECAT_WEBHOOK_SECRET` | The Authorization value RevenueCat sends. Empty turns the webhook off. |
+| `REVENUECAT_API_KEY` | RevenueCat's secret key (`sk_…`), so a purchase counts the moment it is made. Never in the app. |
 | `TRUST_PROXY` | `true` behind a load balancer, so rate limits see runners, not the balancer. |
 | `ALLOW_SIMULATED_RUNS` | `false` in production: the app's simulator must never claim real ground. |
 | `CORS_ORIGINS` | Default `*`. Safe, because the API uses bearer tokens, not cookies. |
@@ -136,15 +137,28 @@ runners, runs, crews and open reports, with the age of the oldest.
 ## Payments
 
 Purchases go through [RevenueCat](https://www.revenuecat.com), which sits in
-front of both Apple's in-app purchase and Google Play Billing:
+front of both Apple's in-app purchase and Google Play Billing. The app buys
+with RevenueCat's SDK (`src/js/billing.js`), logged in as the runner's MILES
+user id; RevenueCat tells the server what that runner now has.
 
-- Name the store products after the plans in `src/js/pro.js`:
-  `supporter_monthly`, `supporter_yearly`, `pro_monthly`, `pro_yearly`
-  (Google's `pro_yearly:base-plan` form works too).
-- Give them RevenueCat entitlements called `supporter` and `pro`.
-- The app logs in to RevenueCat with the runner's MILES user id.
-- Point RevenueCat's webhook at `PUBLIC_URL/v1/billing/revenuecat` with an
-  Authorization value equal to `REVENUECAT_WEBHOOK_SECRET`.
+- **The products.** Name them after the plans in `src/js/pro.js`:
+  `supporter_monthly`, `supporter_yearly`, `pro_monthly`, `pro_yearly`. On
+  the App Store all four go in **one subscription group**, so moving between
+  them is an upgrade or a downgrade, not a second subscription. On Google
+  Play each is a subscription with one base plan (`pro_yearly:yearly` is
+  understood). Set the prices in each store; the app shows whatever they are.
+  The yearly plans say "two months free", so price them at ten months.
+- **RevenueCat.** Entitlements called `supporter` and `pro`, with each
+  product attached to its tier.
+- **The app.** RevenueCat's public key for each store at build time:
+  `REVENUECAT_IOS_KEY=appl_…` and `REVENUECAT_ANDROID_KEY=goog_…` (see the
+  phone app in the main README).
+- **The server.** `REVENUECAT_API_KEY` (the secret `sk_…` key): right after a
+  purchase the app calls `POST /v1/billing/sync`, and the server asks
+  RevenueCat at once instead of waiting for the webhook. And the webhook, at
+  `PUBLIC_URL/v1/billing/revenuecat` with an Authorization value equal to
+  `REVENUECAT_WEBHOOK_SECRET`, for everything after: renewals, cancellations,
+  refunds, expiry.
 
 Every event is stored in `billing_events` and applied once. What a runner has
 is in `entitlements`, and every Pro gate on the server reads it — founding a
@@ -178,7 +192,8 @@ milliseconds — as in the app.
 | `POST /v1/races`, `GET /v1/races/invites` | Races with friends. |
 | `WS /v1/live` | Presence, race invites, live telemetry. First message `{type:'auth', token}`. |
 | `POST /v1/reports`, `GET` · `POST /v1/blocks` | Reporting and blocking. |
-| `POST /v1/billing/revenuecat` | Payments. |
+| `POST /v1/billing/sync` | After a purchase or a restore: the server asks RevenueCat what you have now. |
+| `POST /v1/billing/revenuecat` | RevenueCat's webhook. |
 | `/privacy` · `/terms` · `/support` · `/delete-account` · `/healthz` | Pages and the health check. |
 
 ### What the server checks about a run

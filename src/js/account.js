@@ -47,6 +47,7 @@
         this.hideAuth();
         Api.live.connect();
         M.Sync.pullAll();
+        M.Billing.start(Api.user);
       } else {
         this.showAuth();
       }
@@ -56,11 +57,13 @@
       M.Sync.reset();
       if (event.signedIn) {
         State.useAccount(event.user);
+        M.Billing.start(event.user);
         this.hideAuth();
         UI().go('home');
         // Where you are decides which crews and ground are "near you".
         M.Sync.pullAll().then(() => UI().locate({ quiet: true }));
       } else {
+        M.Billing.stop();
         State.signOut();
         UI().go('home');
         this.mode = 'signin';
@@ -526,23 +529,16 @@
     },
 
     /* --- Paying ------------------------------------------------------------------
-       Purchases go through the App Store and Google Play, by way of
-       RevenueCat (server/README.md). Until the store builds carry its SDK
-       there is nothing on the phone that can take a payment, and the app
-       says so rather than pretending. */
-    purchase(planId) {
-      const store = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Purchases;
-      if (!store) {
-        toast('Subscriptions open with the App Store and Google Play release. The free trial works now.');
-        return Promise.resolve(false);
-      }
-      return store.purchaseStoreProduct({ product: { identifier: planId } })
-        .then(() => M.Sync.pullMe().then(() => { State.save(); return true; }))
-        .catch((err) => { if (err && !err.userCancelled) toast(esc(err.message || 'The purchase did not go through.')); return false; });
-    },
+       The App Store and Google Play take the money, by way of RevenueCat;
+       billing.js has the details. */
+    purchase(planId) { return M.Billing.purchase(planId); },
+
+    restore() { return M.Billing.restore(); },
 
     /** Cancelling is the store's to do; this opens the right page. */
     manageSubscription() {
+      // The store's own link for this subscription when it gave one.
+      if (M.Billing.managementURL) { window.open(M.Billing.managementURL, '_blank', 'noopener'); return; }
       const ios = window.Capacitor && window.Capacitor.getPlatform && window.Capacitor.getPlatform() === 'ios';
       window.open(ios ? 'https://apps.apple.com/account/subscriptions' : 'https://play.google.com/store/account/subscriptions', '_blank', 'noopener');
     },

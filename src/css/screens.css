@@ -1719,6 +1719,19 @@
   padding: 0 6px;
 }
 
+.account-links button {
+  display: inline-flex;
+  align-items: center;
+  min-height: var(--tap);
+  padding: 0 6px;
+  background: none;
+  border: 0;
+  font: inherit;
+  font-weight: 700;
+  color: var(--flame-ink);
+  cursor: pointer;
+}
+
 .account-actions { gap: var(--s-2); margin-top: var(--s-2); }
 .account-links { text-align: center; margin-top: var(--s-1); }
 .friend-code { font-family: var(--font-num); font-size: 20px; font-weight: 700; letter-spacing: 0.12em; }
