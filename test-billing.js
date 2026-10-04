@@ -8,7 +8,7 @@
 // Checked: the store learns who is buying; prices are the store's, in won;
 // the renewal terms, Restore purchases, the terms and the privacy policy sit
 // beside the offer; a cancelled purchase changes nothing; a purchase counts
-// at once; an upgrade on Google Play replaces the old plan rather than
+// at once, and the profile shows it — and when it ends, once cancelled; an upgrade on Google Play replaces the old plan rather than
 // running beside it; the same plan is not sold twice; managing opens the
 // store's own page; a purchase made while the store's records lag still
 // switches on; restoring on an iPhone; signing out and in moves the store to
@@ -246,7 +246,12 @@ const STORE = (platform, prices) => `(() => {
       ent && ent.plan === 'supporter_monthly' && ent.source === 'revenuecat' && ent.will_renew === true, JSON.stringify(ent));
     ok('and the app says so', /Supporter is on/.test(await lastToast(page)), await lastToast(page));
     await page.evaluate(() => MILES.UI.go('profile'));
-    ok('the profile shows the plan', /Supporter/.test(await page.textContent('#proStatus')), await page.textContent('#proStatus'));
+    ok('the profile shows the plan', /Supporter · renews in/.test(await page.textContent('#proStatus')), await page.textContent('#proStatus'));
+    ok('as what it is, not at the demo\'s dollar price', (await page.textContent('#proCardNote')) === 'Supporter · monthly', await page.textContent('#proCardNote'));
+    records.get(mina.id).subscriber.subscriptions.supporter_monthly.unsubscribe_detected_at = new Date().toISOString();
+    await page.evaluate(() => MILES.Billing.confirm());
+    await until(page, () => /ends in/.test(document.querySelector('#proStatus').textContent)).catch(() => {});
+    ok('cancelled in the store, it says when it ends rather than renews', /Supporter · ends in/.test(await page.textContent('#proStatus')), await page.textContent('#proStatus'));
 
     // --- 5. Upgrading on Google Play replaces the plan ------------------------------------------
     await offer(page, 'pro', 'yearly');

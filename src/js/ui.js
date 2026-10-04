@@ -1703,10 +1703,13 @@
       const chip = $('#proCardChip');
       chip.textContent = v.tier === 'supporter' ? 'SUPPORTER' : 'PRO';
       $('#proCardTitle').textContent = v.tier === 'free' ? 'Know your ground' : 'Your plan';
+      // A real plan was paid for in the store's currency; the dollar labels
+      // in pro.js are only the demo's, so a signed-in runner sees the period.
+      const term = (plan) => (State.data.connected ? (plan.period === 'year' ? 'yearly' : 'monthly') : plan.label);
       $('#proCardNote').textContent = v.tier === 'free'
         ? 'Nine features'
         : v.trial ? `Trial · ${Math.max(0, Math.ceil((v.until - Date.now()) / 864e5))} days left`
-          : `${v.plan.name} · ${v.plan.label}`;
+          : `${v.plan.name} · ${term(v.plan)}`;
 
       if (v.tier === 'free') {
         note.textContent = M.Pro.trialAvailable()
@@ -1717,9 +1720,11 @@
         return;
       }
       const days = Math.max(0, Math.ceil(((v.until || Date.now()) - Date.now()) / 864e5));
+      // Cancelled in the store: it runs to the end of what was paid, then stops.
+      const ending = !!(State.data.pro && State.data.pro.willRenew === false);
       note.textContent = v.trial
         ? `Pro trial · ${days} ${days === 1 ? 'day' : 'days'} left`
-        : `${v.plan.name} · renews in ${days} ${days === 1 ? 'day' : 'days'}`;
+        : `${v.plan.name} · ${ending ? 'ends' : 'renews'} in ${days} ${days === 1 ? 'day' : 'days'}`;
       btn.textContent = 'Manage';
       btn.classList.add('btn--ghost');
     },
