@@ -313,8 +313,25 @@ function markImageRef(scanId: string, keep: boolean): void {
 
 // 프로덕션 빌드 결과를 같은 서버에서 서빙한다.
 const distDir = path.resolve(here, "../dist");
-app.use(express.static(distDir));
+/**
+ * 이름에 내용 해시가 붙은 파일(/assets/…)은 바뀌면 이름도 바뀌므로 1년 동안 캐시해도 된다.
+ * 브라우저와 앞단 CDN 이 한국에서도 이 파일들을 가까운 곳에서 다시 쓰게 된다.
+ * index.html 은 늘 새로 확인하게 해서, 배포하면 바로 새 화면이 나가게 한다.
+ */
+app.use(
+  express.static(distDir, {
+    setHeaders: (res, filePath) => {
+      res.setHeader(
+        "Cache-Control",
+        filePath.includes(`${path.sep}assets${path.sep}`)
+          ? "public, max-age=31536000, immutable"
+          : "no-cache",
+      );
+    },
+  }),
+);
 app.get(/^\/(?!api\/).*/, (_req, res) => {
+  res.setHeader("Cache-Control", "no-cache");
   res.sendFile(path.join(distDir, "index.html"), (err) => {
     if (err) res.status(404).end();
   });

@@ -421,6 +421,52 @@ npm run check:billing       # 동의·한도·결제 거래·웹훅 서명/중�
 npm run build && npm run e2e:billing   # 같은 흐름을 화면으로: 한도 안내 → 요금제 → 결제 창 → Pro → 해지·철회
 ```
 
+## 배포 (Fly.io)
+
+서버는 **미국 서부(산호세) 한 곳**에 둡니다. 분석 한 번이 10~30초라 한국에서 미국 서버까지의
+왕복 시간(약 0.2초)은 체감되지 않고, 이름에 해시가 붙은 화면 파일(`/assets/…`)은 1년 캐시를 걸어
+브라우저와 앞단 CDN 이 가까운 곳에서 다시 씁니다. 데이터베이스가 파일 하나(SQLite)라서
+**서버는 한 대만** 둡니다(`--ha=false`).
+
+### 처음 한 번
+
+```bash
+# 1. Fly CLI 설치와 로그인 (https://fly.io/docs/flyctl/install/)
+fly auth signup            # 또는 fly auth login
+
+# 2. fly.toml 의 app 이름을 남과 겹치지 않게 바꾼 뒤 앱 만들기
+fly apps create <앱이름>
+
+# 3. 데이터베이스를 둘 저장공간(볼륨) 만들기. 1GB 면 충분합니다.
+fly volumes create nailsense_data --region sjc --size 1
+
+# 4. 비밀값 넣기 (.env 에 있던 값들. 값이 터미널 기록에 남지 않게 주의)
+fly secrets set GEMINI_API_KEY=… PADDLE_API_KEY=… PADDLE_WEBHOOK_SECRET=… \
+  PADDLE_CLIENT_TOKEN=… PADDLE_PRICE_MONTHLY=… PADDLE_PRICE_YEARLY=…
+
+# 5. 배포 (서버 한 대)
+fly deploy --ha=false
+```
+
+배포가 끝나면 `https://<앱이름>.fly.dev` 로 열립니다. 이후에는 `fly deploy --ha=false` 만 다시 하면 됩니다.
+
+### 배포한 뒤 바꿀 것
+
+- **Paddle 웹훅 주소**: Notifications 의 대상 주소를 `https://<앱이름>.fly.dev/api/billing/webhook` 으로.
+  이제 갱신·결제 실패·해지 확정이 앱에 바로 반영됩니다.
+- **Paddle 기본 결제 링크**: `https://<앱이름>.fly.dev`
+- **구글·애플 로그인**을 쓴다면 각 콘솔에 새 주소를 허용 출처로 추가합니다.
+
+### 운영할 때
+
+- **백업**: Fly 는 볼륨 스냅샷을 매일 자동으로 찍어 며칠 보관합니다(`fly volumes snapshots list`).
+- **로그**: `fly logs`. 서버는 사진이나 요청 본문을 로그에 남기지 않습니다.
+- **서버 한 대 확인**: `fly scale count 1`. 두 대가 되면 데이터베이스가 둘로 갈라집니다.
+- **실제 결제(production)로 넘어갈 때**: Paddle 은 **본인 소유 도메인**만 승인하므로 `fly.dev` 주소로는
+  실제 판매를 열 수 없습니다. 도메인을 사서 `fly certs add <도메인>` 으로 연결하고, Paddle 도메인 승인을 받은 뒤
+  `PADDLE_ENV=production` 과 live 키로 바꿉니다. 이때 Cloudflare 같은 CDN 을 도메인 앞에 두면
+  화면 파일이 한국에서도 가까운 곳에서 나갑니다.
+
 ## 분석 프로바이더
 
 **Gemini** 와 **Claude** 를 모두 지원합니다. 키가 설정된 쪽이 자동으로 선택되고,
