@@ -585,6 +585,46 @@ The icon and launch screen are drawn from the wordmark face by
 The app id is `app.miles.running` (`capacitor.config.json`). Change it before
 the first store upload if you want another; after that it is permanent.
 
+### Releasing
+
+The version the stores show is `package.json`'s. Before each release,
+`npm version patch` (or `minor`) moves it; Google Play's version code is made
+from it, `1.2.3` being `10203`, so every upload is numbered higher than the last.
+
+**Google Play.** Make an upload key once, and keep it and its password safe,
+outside this repository:
+
+```bash
+keytool -genkeypair -v -keystore ~/miles-keys/miles-upload.jks -alias miles \
+  -keyalg RSA -keysize 2048 -validity 10000
+```
+
+and point `android/keystore.properties` at it (git ignores the file):
+
+```
+storeFile=/Users/you/miles-keys/miles-upload.jks
+storePassword=…
+keyAlias=miles
+keyPassword=…
+```
+
+Then, with the same variables as `npm run sync` above:
+
+```bash
+MILES_API_URL=… REVENUECAT_IOS_KEY=… REVENUECAT_ANDROID_KEY=… \
+MILES_MAP_KEY=… npm run android:release
+```
+
+and upload `android/app/build/outputs/bundle/release/app-release.aab` in Play
+Console. Leave Play App Signing on (the default): Google signs what people
+install, the upload key only proves an upload is yours, and a lost one can be
+replaced. Without `keystore.properties` the bundle comes out unsigned, and Play
+refuses it.
+
+**App Store.** `npm run ios` with the same variables, then in Xcode set
+Version to `package.json`'s and raise Build for every upload (target → General
+→ Identity), and Product → Archive → Distribute App → App Store Connect.
+
 ---
 
 ## The app and the server

@@ -1,5 +1,21 @@
 apply plugin: 'com.android.application'
 
+// The upload key Google Play knows this app by, from android/keystore.properties
+// (storeFile, storePassword, keyAlias, keyPassword). The file and the key are
+// never committed; README, The phone app, says how to make them. Without the
+// file a release build comes out unsigned, and Play will not take it.
+def keystoreFile = rootProject.file('keystore.properties')
+def keystore = new Properties()
+if (keystoreFile.exists()) keystoreFile.withInputStream { keystore.load(it) }
+
+// The version the stores show is package.json's; Play also needs a number
+// that grows with every upload, made from it: 1.2.3 is 10203. `npm version
+// patch` before each release moves both.
+def appVersion = new groovy.json.JsonSlurper().parse(rootProject.file('../package.json')).version
+def versionParts = appVersion.tokenize('.-')
+def appVersionCode = (0..2).collect { i -> (versionParts[i] ?: '0').replaceAll(/\D/, '') ?: '0' }
+    .inject(0) { code, part -> code * 100 + (part as int) }
+
 android {
     namespace = "app.miles.running"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +23,8 @@ android {
         applicationId "app.miles.running"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
-        versionName "1.0"
+        versionCode appVersionCode
+        versionName appVersion
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -16,8 +32,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        release {
+            if (keystore['storeFile']) {
+                storeFile file(keystore['storeFile'])
+                storePassword keystore['storePassword']
+                keyAlias keystore['keyAlias']
+                keyPassword keystore['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            if (keystore['storeFile']) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

@@ -7,7 +7,8 @@
     "build": "node scripts/build-www.js",
     "sync": "node scripts/build-www.js && cap sync",
     "android": "node scripts/build-www.js && cap sync android && cap open android",
-    "ios": "node scripts/build-www.js && cap sync ios && cap open ios"
+    "ios": "node scripts/build-www.js && cap sync ios && cap open ios",
+    "android:release": "node scripts/build-www.js && cap sync android && cd android && ./gradlew bundleRelease"
   },
   "dependencies": {
     "@capacitor-community/background-geolocation": "^1.2.26",
