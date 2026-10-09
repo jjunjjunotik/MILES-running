@@ -31,13 +31,11 @@ import { attachUser } from "./auth.js";
 import { api, recordHealthConsent, saveFailedScan, saveScan } from "./routes.js";
 import {
   billing,
-  handlePaddleWebhook,
   quotaMessage,
   reserveScan,
   scanAllowance,
   usageOf,
 } from "./billing.js";
-import { billingConfig, missingBillingSettings } from "./billing-config.js";
 import { pruneUsage } from "./usage.js";
 import { missingStoreSettings, storeConfig } from "./revenuecat.js";
 import { localeMiddleware } from "./i18n.js";
@@ -58,16 +56,6 @@ app.use(securityHeaders);
 app.use(localeMiddleware);
 // 휴대폰 앱 화면(다른 출처)에서 오는 API 요청을 허락한다.
 app.use("/api", appCors);
-
-/**
- * 결제 업체(Paddle)의 웹훅. 서명을 원본 본문으로 검증해야 하므로 JSON 파서보다 먼저,
- * 원본 그대로 받는다. 브라우저가 아니라 Paddle 서버가 부르므로 세션도 오리진도 없다.
- */
-app.post(
-  "/api/billing/webhook",
-  express.raw({ type: "*/*", limit: "1mb" }),
-  handlePaddleWebhook,
-);
 
 // 업로드 이미지는 클라이언트에서 미리 1280px 이하로 줄여 보낸다.
 app.use(express.json({ limit: "6mb" }));
@@ -374,13 +362,13 @@ app.listen(PORT, () => {
     );
   }
 
-  const paddle = billingConfig();
-  const missing = missingBillingSettings();
-  if (paddle.enabled) {
-    console.log(`결제: Paddle ${paddle.environment} · 무료 사용 한도 적용`);
-  } else if (missing.length > 0) {
+  // 예전 웹 결제(Paddle) 설정이 남아 있으면 알린다. 더 이상 읽지 않으니 지우는 편이 안전하다.
+  const leftoverPaddle = Object.keys(process.env).filter(
+    (name) => name.startsWith("PADDLE_") && (process.env[name] ?? "").trim() !== "",
+  );
+  if (leftoverPaddle.length > 0) {
     console.warn(
-      `[결제] 설정이 일부만 되어 있어 결제를 끈 채로 동작합니다. 빠진 값: ${missing.join(", ")}`,
+      `[결제] 웹 결제(Paddle)는 없앴습니다. 쓰지 않는 설정이 남아 있으니 .env 와 서버 비밀값에서 지워 주세요: ${leftoverPaddle.join(", ")}`,
     );
   }
 

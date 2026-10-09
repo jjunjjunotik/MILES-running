@@ -50,12 +50,13 @@ const server = spawn("npx", ["tsx", "server/index.ts"], {
     ...process.env,
     PORT: String(API_PORT),
     DATA_DIR: dataDir,
+    // 개발자 컴퓨터의 진짜 .env(키·비밀값)를 읽지 않게 없는 파일을 가리킨다.
+    ENV_FILE: path.join(dataDir, "none.env"),
     // 실제 앱의 출처 대신 테스트용 출처를 허락한다. 기본값(capacitor://localhost 등)은 아래에서 따로 본다.
     APP_ORIGINS: `${APP_ORIGIN},capacitor://localhost,https://localhost`,
     NODE_ENV: "production",
     GEMINI_API_KEY: "",
     ANTHROPIC_API_KEY: "",
-    PADDLE_API_KEY: "",
   },
   stdio: "ignore",
   detached: true,

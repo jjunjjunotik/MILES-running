@@ -25,7 +25,7 @@ import { ChevronIcon } from "../components/Icons";
 import type { BillingStatus } from "../../../shared/billing";
 import type { LegalDocId } from "../../../shared/legal";
 import { consentGivenAt, withdrawConsent } from "../lib/consent";
-import { formatBillingDate, usageLine } from "../lib/billing";
+import { formatBillingDate, storeLabel, usageLine } from "../lib/billing";
 import { L, localePreference, setLocalePreference } from "../i18n";
 
 type PendingAction = "photos" | "all" | "account" | "consent" | null;
@@ -479,19 +479,14 @@ export function ProfileScreen({
                   ? L("We won't analyze any more photos until you agree again before your next scan. Your saved history isn't deleted; you can delete it under Your data.", "다음 분석 전에 다시 동의하기 전까지는 사진을 분석하지 않아요. 저장된 기록은 지워지지 않으니, 지우려면 내 데이터에서 삭제해 주세요.")
                   : L("Your account, all scans and the photos on this device will be deleted. This can't be undone.", "계정과 모든 분석 기록, 이 기기의 사진이 함께 지워져요. 되돌릴 수 없어요.")}
           </p>
-          {pending === "account" && subscription && (
+          {pending === "account" && subscription && subscription.source !== "other" && (
             <div className="mt-12">
               <Notice tone="monitor">
-                {subscription.source === "paddle"
-                  ? L("Your Pro subscription will be canceled right away, and you won't be charged again.", "Pro 구독이 바로 해지되고, 더 이상 결제되지 않아요.")
-                  : (() => {
-                      // 스토어 구독은 스토어에서만 해지된다. 계정을 지워도 결제는 계속되므로 먼저 알린다.
-                      const store = subscription.source === "play_store" ? "Google Play" : "App Store";
-                      return L(
-                        `Deleting your account doesn't cancel your ${store} subscription. Cancel it in your ${store} subscriptions first, or you'll keep being charged.`,
-                        `계정을 지워도 ${store} 구독은 해지되지 않아요. 먼저 ${store} 구독 메뉴에서 해지하지 않으면 계속 결제돼요.`,
-                      );
-                    })()}
+                {/* 스토어 구독은 스토어에서만 해지된다. 계정을 지워도 결제는 계속되므로 먼저 알린다. */}
+                {L(
+                  `Deleting your account doesn't cancel your ${storeLabel(subscription.source)} subscription. Cancel it in your ${storeLabel(subscription.source)} subscriptions first, or you'll keep being charged.`,
+                  `계정을 지워도 ${storeLabel(subscription.source)} 구독은 해지되지 않아요. 먼저 ${storeLabel(subscription.source)} 구독 메뉴에서 해지하지 않으면 계속 결제돼요.`,
+                )}
               </Notice>
             </div>
           )}

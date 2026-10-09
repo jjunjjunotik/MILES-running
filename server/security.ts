@@ -1,7 +1,6 @@
 import type { NextFunction, Request, Response } from "express";
 import fs from "node:fs";
 import { appleEnabled, googleEnabled } from "./oauth.js";
-import { billingConfig, type PaddleEnvironment } from "./billing-config.js";
 
 /**
  * 이 파일의 목적은 하나다: API 키가 새거나, 키로 돈이 새지 않게 하는 것.
@@ -17,8 +16,6 @@ import { billingConfig, type PaddleEnvironment } from "./billing-config.js";
 const KEY_PATTERNS: { re: RegExp; mask: string }[] = [
   { re: /sk-ant-[A-Za-z0-9_-]{8,}/g, mask: "sk-ant-***" },
   { re: /AIza[0-9A-Za-z_-]{35}/g, mask: "AIza***" },
-  { re: /pdl_(?:live|sdbx)_apikey_[A-Za-z0-9_]{8,}/g, mask: "pdl_***_apikey_***" },
-  { re: /pdl_ntfset_[A-Za-z0-9_]{8,}/g, mask: "pdl_ntfset_***" },
   // RevenueCat 서버 비밀키. 앱용 공개 키(appl_/goog_)는 원래 앱에 들어가는 값이다.
   { re: /\bsk_[A-Za-z0-9]{16,}/g, mask: "sk_***" },
 ];
@@ -34,15 +31,9 @@ export function redact(text: string): string {
 const KEY_SHAPES: { name: string; looksRight: (value: string) => boolean }[] = [
   { name: "ANTHROPIC_API_KEY", looksRight: (v) => v.startsWith("sk-ant-") },
   { name: "GEMINI_API_KEY", looksRight: (v) => v.startsWith("AIza") },
-  { name: "PADDLE_API_KEY", looksRight: (v) => v.startsWith("pdl_") },
   { name: "REVENUECAT_SECRET_KEY", looksRight: (v) => v.startsWith("sk_") },
   { name: "REVENUECAT_IOS_KEY", looksRight: (v) => v.startsWith("appl_") },
   { name: "REVENUECAT_ANDROID_KEY", looksRight: (v) => v.startsWith("goog_") },
-  { name: "PADDLE_WEBHOOK_SECRET", looksRight: (v) => v.startsWith("pdl_ntfset_") },
-  {
-    name: "PADDLE_CLIENT_TOKEN",
-    looksRight: (v) => v.startsWith("test_") || v.startsWith("live_"),
-  },
 ];
 
 /**
@@ -63,24 +54,6 @@ export function auditCredentials(envPath = ".env"): string[] {
       warnings.push(
         `${name} 앞뒤에 공백이 있습니다. 따옴표나 줄바꿈이 섞였는지 확인하세요.`,
       );
-    }
-  }
-
-  // 테스트용(sandbox) 값과 실제(production) 값을 섞으면 결제가 조용히 실패한다.
-  const paddle = billingConfig();
-  const token = paddle.clientToken;
-  const key = paddle.apiKey;
-  if (paddle.environment === "production") {
-    if (token.startsWith("test_") || key.startsWith("pdl_sdbx_")) {
-      warnings.push("PADDLE_ENV=production 인데 sandbox 용 키나 토큰이 설정되어 있습니다.");
-    }
-  } else if (token.startsWith("live_") || key.startsWith("pdl_live_")) {
-    warnings.push("PADDLE_ENV 가 sandbox 인데 실제 결제용(live) 키나 토큰이 설정되어 있습니다.");
-  }
-  for (const name of ["PADDLE_PRICE_MONTHLY", "PADDLE_PRICE_YEARLY"]) {
-    const value = (process.env[name] ?? "").trim();
-    if (value && !/^pri_[a-z0-9]+$/.test(value)) {
-      warnings.push(`${name} 형식이 예상과 다릅니다(pri_ 로 시작해야 합니다).`);
     }
   }
 
@@ -122,8 +95,6 @@ export function auditCredentials(envPath = ".env"): string[] {
 export function buildContentSecurityPolicy(options: {
   google: boolean;
   apple: boolean;
-  /** 결제를 켰으면 어느 환경의 Paddle 인지. 꺼져 있으면 null */
-  paddle?: PaddleEnvironment | null;
 }): string {
   const script = ["'self'"];
   const style = ["'self'", "'unsafe-inline'"];
@@ -142,19 +113,6 @@ export function buildContentSecurityPolicy(options: {
     connect.push("https://appleid.apple.com");
     frame.push("https://appleid.apple.com");
   }
-  if (options.paddle) {
-    // Paddle.js 는 늘 cdn.paddle.com 에서 받는다. 결제 창은 buy 도메인의 iframe 이고,
-    // 화면 꾸밈과 오류 페이지는 환경별 cdn 에서 온다. Paddle.js 가 부르는 다른 분석
-    // 스크립트(Retain)는 허용하지 않는다.
-    const sandbox = options.paddle === "sandbox";
-    const cdn = sandbox ? "https://sandbox-cdn.paddle.com" : "https://cdn.paddle.com";
-    script.push("https://cdn.paddle.com");
-    style.push(cdn);
-    img.push(cdn);
-    connect.push(sandbox ? "https://sandbox-api.paddle.com" : "https://api.paddle.com");
-    frame.push(sandbox ? "https://sandbox-buy.paddle.com" : "https://buy.paddle.com", cdn);
-  }
-
   return [
     "default-src 'self'",
     // 번들은 자기 출처에서만. 인라인 스타일은 React 인라인 style 때문에 허용한다.
@@ -179,10 +137,8 @@ export function securityHeaders(
 ): void {
   const google = googleEnabled();
   const apple = appleEnabled();
-  const paddle = billingConfig();
-  const paddleEnv = paddle.enabled ? paddle.environment : null;
-  // 바깥 창(소셜 로그인 팝업, 결제 중 PayPal 같은 창)과 이어져야 하는 기능이 켜졌는지
-  const thirdParty = google || apple || paddleEnv !== null;
+  // 바깥 창(소셜 로그인 팝업)과 이어져야 하는 기능이 켜졌는지
+  const thirdParty = google || apple;
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
   // 구글 로그인은 요청을 보낸 출처를 보고 허용 여부를 정한다. 소셜 로그인을 켰을 때만
@@ -198,7 +154,7 @@ export function securityHeaders(
   res.setHeader("Permissions-Policy", "geolocation=(), microphone=()");
   res.setHeader(
     "Content-Security-Policy",
-    buildContentSecurityPolicy({ google, apple, paddle: paddleEnv }),
+    buildContentSecurityPolicy({ google, apple }),
   );
   next();
 }

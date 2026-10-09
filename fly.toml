@@ -14,7 +14,6 @@ primary_region = "sjc"
   PORT = "8080"
   DATA_DIR = "/data"
   TRUST_PROXY = "true"
-  PADDLE_ENV = "sandbox"
 
 [[mounts]]
   source = "nailsense_data"

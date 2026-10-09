@@ -102,17 +102,10 @@ const KO: Record<string, string> = {
     "처리 중 문제가 생겼습니다. 잠시 후 다시 시도해 주세요.",
   "Scan not found.": "기록을 찾지 못했습니다.",
   "Guide not found.": "글을 찾지 못했습니다.",
-  // 결제
+  // 인앱 구독
   "Subscriptions aren't available right now.": "지금은 구독을 이용할 수 없습니다.",
-  "We couldn't reach our payment provider. Please try again in a moment.":
-    "결제 업체에 연결하지 못했습니다. 잠시 후 다시 시도해 주세요.",
-  "That plan isn't available.": "선택한 요금제를 이용할 수 없습니다.",
-  "You already have Pro.": "이미 Pro를 이용 중입니다.",
-  "That payment wasn't found.": "해당 결제를 찾지 못했습니다.",
-  "You don't have an active subscription.": "이용 중인 구독이 없습니다.",
-  "There's no billing account to manage yet.": "아직 관리할 결제 정보가 없습니다.",
-  "We couldn't cancel your subscription, so your account wasn't deleted. Please try again in a moment.":
-    "구독을 해지하지 못해 계정을 삭제하지 않았습니다. 잠시 후 다시 시도해 주세요.",
+  "We couldn't check your subscription right now. Please try again in a moment.":
+    "지금은 구독 상태를 확인하지 못했습니다. 잠시 후 다시 시도해 주세요.",
 };
 
 /** 숫자나 덧붙는 내용이 들어가는 문구 */
@@ -132,10 +125,6 @@ const KO_PATTERNS: [RegExp, (match: RegExpMatchArray) => string][] = [
   [
     /^The analysis server returned an error\. \((.*)\)$/,
     (m) => `분석 서버에서 오류가 발생했습니다. (${m[1]})`,
-  ],
-  [
-    /^Our payment provider couldn't complete this request\. Please try again in a moment\.(.*)$/s,
-    (m) => `결제 업체가 요청을 처리하지 못했습니다. 잠시 후 다시 시도해 주세요.${m[1]}`,
   ],
   [
     /^Model "(.*)" wasn't found\.(.*)$/s,

@@ -157,6 +157,10 @@ const MIGRATIONS: Migration[] = [
     `,
   },
   {
+    // 이미 적용된 마이그레이션은 고치지 않는다(적용 기록이 어긋난다).
+    // 이 가운데 profiles.paddle_customer_id, subscriptions, billing_checkouts 는 웹 결제(Paddle)용이었고
+    // 지금은 읽지도 쓰지도 않는다. 결제는 인앱 구독(store_subscriptions, 마이그레이션 5)만 쓴다.
+    // billing_events(웹훅 중복 방지), usage_counters, app_secrets 는 계속 쓴다.
     version: 3,
     name: "구독 · 결제 이벤트 · 사용량 · 건강 데이터 동의",
     sql: `

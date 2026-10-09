@@ -435,7 +435,6 @@ export function App() {
           billing={billing}
           user={user}
           onBack={() => setShowPlan(false)}
-          onSignIn={() => setShowAuth(true)}
           onBillingChange={setBilling}
           onOpenLegal={setLegalDoc}
         />

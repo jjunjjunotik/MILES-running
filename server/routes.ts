@@ -27,7 +27,7 @@ import {
   verifyGoogleToken,
 } from "./oauth.js";
 import { METRIC_KEYS, type NailAnalysis } from "../shared/analysis.js";
-import { BillingError, cancelForAccountDeletion } from "./billing.js";
+import { StoreError, forgetStoreCustomer } from "./revenuecat.js";
 
 /**
  * 계정 · 기록 · 설정 · 건강 정보 API.
@@ -51,7 +51,7 @@ function fail(res: Response, err: unknown): void {
     res.status(status).json({ ok: false, code: err.code, error: err.message });
     return;
   }
-  if (err instanceof AuthError || err instanceof BillingError) {
+  if (err instanceof AuthError || err instanceof StoreError) {
     res.status(err.status).json({ ok: false, code: err.code, error: err.message });
     return;
   }
@@ -197,8 +197,9 @@ api.delete("/auth/account", requireUser, authLimiter, async (req, res) => {
         throw new AuthError(400, "confirm_mismatch", "The email doesn't match.");
       }
     }
-    // 살아 있는 구독이 있으면 먼저 해지한다. 해지하지 못하면 계정도 지우지 않는다.
-    await cancelForAccountDeletion(req.user!.id);
+    // 스토어 구독은 애플·구글에서만 해지할 수 있다(화면에서 먼저 안내한다).
+    // 여기서는 영수증 확인 업체(RevenueCat)에 남은 고객 기록 삭제만 요청한다. 실패해도 삭제는 계속한다.
+    await forgetStoreCustomer(req.user!.id);
     endAllSessions(req.user!.id);
     deleteAccount(req.user!.id);
     endSession(req, res);

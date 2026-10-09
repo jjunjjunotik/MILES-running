@@ -1,11 +1,15 @@
 /**
- * 휴대폰 앱의 인앱 구독 화면을 브라우저로 점검한다.
+ * 요금제 화면 흐름을 브라우저로 점검한다(휴대폰 앱의 인앱 구독 + 웹).
  *
- *   npm run e2e:store
+ *   npm run build && npm run e2e:store
  *
  * 앱용 빌드를 "가짜 스토어 플러그인"으로 만들어 서버와 다른 출처에서 띄운다.
  * 진짜 App Store · Google Play 결제 창은 여기서 열 수 없으므로, 스토어 결제 단계만 가짜이고
  * 나머지(서버 확인, RevenueCat 조회, Pro 전환, 화면 문구)는 실제 코드가 돈다.
+ *
+ * 보는 것: 첫 분석 전 동의, 무료 한도 안내 → 요금제, 로그인 → 가격·체험·자동 갱신 안내, 구매 취소·대기·구매,
+ * Pro 하루 한도, 스토어 구독 관리, 약관 시트, 동의 철회와 재동의, 구독 중 계정 삭제 안내,
+ * 다른 계정·구매 복원·로그아웃, 그리고 웹(dist)에는 결제 버튼이 없다는 것.
  */
 import { execFileSync } from "node:child_process";
 import http from "node:http";
@@ -13,7 +17,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { chromium } from "playwright";
-import { startAppServer } from "./lib/mock-paddle.mjs";
+import { startAppServer } from "./lib/app-server.mjs";
 import {
   ANDROID_KEY,
   IOS_KEY,
@@ -38,25 +42,31 @@ const check = (condition, label) => {
   }
 };
 
+if (!fs.existsSync("dist/index.html")) {
+  console.error("웹 화면 빌드(dist)가 없습니다. 먼저 npm run build 를 실행하세요.");
+  process.exit(1);
+}
+
 const rc = await startMockRevenueCat(RC_PORT);
-const app = await startAppServer({
-  port: API_PORT,
-  paddlePort: 1,
-  env: {
-    PADDLE_API_KEY: "",
-    PADDLE_WEBHOOK_SECRET: "",
-    PADDLE_CLIENT_TOKEN: "",
-    PADDLE_PRICE_MONTHLY: "",
-    PADDLE_PRICE_YEARLY: "",
-    REVENUECAT_SECRET_KEY: SECRET_KEY,
-    REVENUECAT_WEBHOOK_AUTH: WEBHOOK_AUTH,
-    REVENUECAT_IOS_KEY: IOS_KEY,
-    REVENUECAT_ANDROID_KEY: ANDROID_KEY,
-    REVENUECAT_API_URL: rc.url,
-    APP_ORIGINS: APP_ORIGIN,
-    BILLING_RATE_LIMIT_PER_IP: "500",
-  },
-});
+let app;
+try {
+  app = await startAppServer({
+    port: API_PORT,
+    env: {
+      REVENUECAT_SECRET_KEY: SECRET_KEY,
+      REVENUECAT_WEBHOOK_AUTH: WEBHOOK_AUTH,
+      REVENUECAT_IOS_KEY: IOS_KEY,
+      REVENUECAT_ANDROID_KEY: ANDROID_KEY,
+      REVENUECAT_API_URL: rc.url,
+      APP_ORIGINS: APP_ORIGIN,
+      FREE_SCANS_PER_MONTH: "2",
+      PRO_SCANS_PER_DAY: "5",
+    },
+  });
+} catch (err) {
+  await rc.close();
+  throw err;
+}
 
 const APP_DIR = path.join(os.tmpdir(), "nailsense-store-build");
 execFileSync(
@@ -124,11 +134,54 @@ try {
   if (await page.locator("text=Skip").count()) await page.click("text=Skip");
   await page.waitForSelector(".tabbar", { timeout: 20000 });
 
-  console.log("로그인 전");
-  await page.click(".tabbar >> text=Profile");
-  await page.click(".plan-row");
+  // 손톱 비슷한 사진을 만든다.
+  const photo = path.join(OUT, "nail.jpg");
+  const bytes = await page.evaluate(async () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 600;
+    canvas.height = 800;
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#efcdbd";
+    ctx.fillRect(0, 0, 600, 800);
+    ctx.fillStyle = "#f7e2d8";
+    ctx.beginPath();
+    ctx.ellipse(300, 400, 150, 230, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.9));
+    return Array.from(new Uint8Array(await blob.arrayBuffer()));
+  });
+  fs.writeFileSync(photo, Buffer.from(bytes));
+
+  async function scanOnce(target, { expectConsent }) {
+    await target.click(".tabbar >> text=Scan");
+    await target.setInputFiles('input[type="file"]:not([capture])', photo);
+    await target.waitForTimeout(400);
+    await target.click('button:has-text("Analyze")');
+    if (expectConsent) {
+      await target.waitForSelector(".sheet >> text=Before your first scan", { timeout: 5000 });
+      const agree = target.locator('.sheet button:has-text("Agree and analyze")');
+      check(await agree.isDisabled(), "동의 체크 전에는 분석 버튼이 꺼져 있음");
+      for (const box of await target.locator('.sheet input[type="checkbox"]').all()) await box.check();
+      await agree.click();
+    }
+    await target.waitForSelector("text=By area", { timeout: 30000 });
+  }
+
+  console.log("손님: 동의와 무료 한도");
+  await scanOnce(page, { expectConsent: true });
+  await page.click(".tabbar >> text=Scan");
+  check(await visible("text=1 of 2 free scans left this month"), "남은 무료 횟수 표시");
+  await scanOnce(page, { expectConsent: false });
+  await page.click(".tabbar >> text=Scan");
+  await page.waitForTimeout(300);
+  check(await visible("text=You've used your 2 free scans this month"), "한도를 다 쓰면 안내가 분석 버튼 자리에");
+  check(!(await visible('button:has-text("Analyze")')), "한도를 다 쓰면 분석 버튼 없음");
+  await page.screenshot({ path: path.join(OUT, "00-quota.png") });
+
+  console.log("로그인 전 요금제");
+  await page.click('.quota button:has-text("See Pro")');
   await page.waitForSelector("text=Log in to subscribe", { timeout: 10000 });
-  check(true, "로그인 전에는 구독 대신 로그인 안내");
+  check(true, "한도 안내의 Pro 보기 → 요금제(로그인 전에는 로그인 안내)");
   check(!(await visible("text=Paddle")), "앱에는 웹 결제(Paddle) 문구가 없음");
   check(!(await visible("text=Restore purchases")), "로그인 전에는 구매 복원 버튼 없음");
   await page.screenshot({ path: path.join(OUT, "01-guest.png") });
@@ -178,18 +231,60 @@ try {
   await page.click("text=Manage or cancel subscription");
   await page.waitForTimeout(300);
   check((await fake()).opened.includes("https://apps.apple.com/account/subscriptions"), "스토어 구독 관리 화면을 엶");
-
-  // 서버도 정말 Pro 로 알고 있는지(화면 말고)
   log = (await fake()).log;
   check(log.some((entry) => entry[0] === "purchase" && entry[1] === "$rc_annual"), "고른 상품(연간)으로 구매");
 
-  console.log("다른 계정·복원·로그아웃");
+  console.log("Pro 로 분석");
   await page.click('button[aria-label="Back"]');
-  await page.click("text=Log out");
-  await page.waitForTimeout(800);
-  log = (await fake()).log;
-  check(log.some((entry) => entry[0] === "logOut"), "로그아웃하면 RevenueCat 사용자도 떼어 냄");
+  await page.click(".tabbar >> text=Scan");
+  await page.waitForTimeout(300);
+  check(await visible("text=5 of 5 scans left today"), "Pro 하루 한도 표시");
+  await scanOnce(page, { expectConsent: false });
+  await page.click(".tabbar >> text=Scan");
+  check(await visible("text=4 of 5 scans left today"), "Pro 로 분석하면 하루 한도에서 차감");
 
+  console.log("프로필");
+  await page.click(".tabbar >> text=Profile");
+  await page.waitForTimeout(400);
+  check(await visible(".plan-row >> text=Pro"), "프로필의 요금제 줄");
+  await page.click('button:has-text("Privacy Policy")');
+  await page.waitForSelector(".sheet >> text=Draft for legal review", { timeout: 5000 });
+  check(await visible(".sheet h3 >> text=Privacy Policy"), "개인정보처리방침 시트");
+  check(await visible(".sheet >> text=RevenueCat"), "개인정보처리방침에 영수증 확인 업체(RevenueCat) 안내");
+  check(!(await visible(".sheet >> text=Paddle")), "개인정보처리방침에 Paddle 없음");
+  await page.click('.sheet button:has-text("Close")');
+
+  await page.click('button:has-text("Withdraw")');
+  await page.waitForSelector(".sheet >> text=Withdraw consent?");
+  await page.click('.sheet button:has-text("Withdraw")');
+  await page.waitForSelector("text=Not given. We'll ask before your next scan.", { timeout: 5000 });
+  check(true, "동의 철회");
+  await page.click(".tabbar >> text=Scan");
+  await page.setInputFiles('input[type="file"]:not([capture])', photo);
+  await page.waitForTimeout(300);
+  await page.click('button:has-text("Analyze")');
+  check(
+    await page.locator(".sheet >> text=Before your first scan").isVisible({ timeout: 5000 }),
+    "철회 뒤에는 다시 동의를 묻는다",
+  );
+  await page.click('.sheet button:has-text("Not now")');
+
+  console.log("구독 중 계정 삭제");
+  await page.click(".tabbar >> text=Profile");
+  await page.click('button:has-text("Delete account")');
+  check(
+    await visible(".sheet >> text=Deleting your account doesn't cancel your App Store subscription"),
+    "삭제 전에 스토어 구독은 따로 해지해야 한다고 안내",
+  );
+  await page.screenshot({ path: path.join(OUT, "04-delete-with-pro.png") });
+  await page.fill("#confirm-delete", "password789");
+  await page.click('.sheet button:has-text("Delete")');
+  await page.waitForSelector('button:has-text("Scan a nail")', { timeout: 15000 });
+  check(rc.state.deleted.length === 1, "RevenueCat 고객 기록 삭제 요청");
+  log = (await fake()).log;
+  check(log.some((entry) => entry[0] === "logOut"), "계정을 지우면 RevenueCat 사용자도 떼어 냄");
+
+  console.log("다른 계정·복원·로그아웃");
   await page.click(".tabbar >> text=Profile");
   await page.click(".signin-btn");
   await page.click("text=No account? Sign up");
@@ -205,6 +300,39 @@ try {
   await page.click('button:has-text("Restore purchases")');
   await page.waitForSelector("text=didn't find an active subscription", { timeout: 10000 });
   check(true, "구독이 없으면 복원 시 그렇다고 알려 줌");
+  const logOutsBefore = (await fake()).log.filter((entry) => entry[0] === "logOut").length;
+  await page.click('button[aria-label="Back"]');
+  await page.click("text=Log out");
+  await page.waitForTimeout(800);
+  const logOutsAfter = (await fake()).log.filter((entry) => entry[0] === "logOut").length;
+  check(logOutsAfter > logOutsBefore, "로그아웃하면 RevenueCat 사용자도 떼어 냄");
+
+  console.log("웹(dist)에는 결제가 없음");
+  const web = await browser.newContext({ viewport: { width: 390, height: 844 }, locale: "en-US" });
+  const webPage = await web.newPage();
+  webPage.on("pageerror", (error) => consoleErrors.push(`web: ${error.message}`));
+  webPage.on("console", (message) => {
+    if (message.type() === "error" && !/status of 402/.test(message.text())) {
+      consoleErrors.push(`web: ${message.text().slice(0, 200)}`);
+    }
+  });
+  await webPage.goto(app.api, { waitUntil: "networkidle" });
+  if (await webPage.locator("text=Skip").count()) await webPage.click("text=Skip");
+  await webPage.waitForSelector(".tabbar", { timeout: 20000 });
+  await scanOnce(webPage, { expectConsent: true });
+  await scanOnce(webPage, { expectConsent: false });
+  await webPage.click(".tabbar >> text=Scan");
+  await webPage.click('.quota button:has-text("See Pro")');
+  await webPage.waitForSelector("text=Pro is available in the NailSense app", { timeout: 10000 });
+  check(true, "웹 요금제 화면은 앱에서 구독하라고 안내");
+  check(
+    (await webPage.locator(".price-option").count()) === 0 &&
+      (await webPage.locator('button:has-text("Subscribe"), button:has-text("Start free trial"), button:has-text("Restore purchases")').count()) === 0,
+    "웹에는 결제·복원 버튼이 없음",
+  );
+  check((await webPage.locator("script[src*='paddle']").count()) === 0, "웹에 결제 업체 스크립트가 없음");
+  await webPage.screenshot({ path: path.join(OUT, "05-web-plan.png"), fullPage: true });
+  await web.close();
 
   check(consoleErrors.length === 0, `콘솔 오류 없음${consoleErrors.length ? `: ${consoleErrors.join(" | ")}` : ""}`);
 } catch (err) {

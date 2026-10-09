@@ -64,7 +64,7 @@ Google Play 는 건강 앱을 조직 계정(D-U-N-S 번호 필요)으로만 배�
 
 ## 4. 인앱 구독 (RevenueCat)
 
-- ✅ 앱 결제 화면, 구매 복원, 스토어 구독 관리, 서버 확인, 웹훅 (README "인앱 구독" 참고)
+- ✅ 앱 결제 화면, 구매 복원, 스토어 구독 관리, 서버 확인, 웹훅 (README "유료 구독" 참고). 웹 결제(Paddle)는 없앰
 - 🔲 App Store Connect: 구독 그룹 + 상품 2개(예: `nailsense_pro_monthly`, `nailsense_pro_yearly`), 가격, 체험,
   유료 앱 계약(Paid Apps Agreement)·세금·은행 정보
 - 🔲 Play Console: 정기 결제 상품 2개(같은 아이디 권장), 결제 프로필(판매자 계정)

@@ -1,6 +1,8 @@
 /**
  * 구독과 사용 한도에 관해 화면과 서버가 함께 쓰는 타입.
  *
+ * Pro 는 휴대폰 앱의 인앱 구독(App Store · Google Play)으로만 판다. 영수증 확인은 RevenueCat 이 한다.
+ *
  * 원칙: 안전에 관한 정보(위험 신호 점검, 진료 안내, 결과 전체)는 요금제와 상관없이
  * 모두에게 보인다. 요금제가 바꾸는 것은 새로 분석할 수 있는 횟수뿐이다.
  */
@@ -14,34 +16,21 @@ export const HEALTH_CONSENT_VERSION = "2026-10.2";
 export type PlanId = "free" | "pro";
 export type BillingInterval = "month" | "year";
 
-export type SubscriptionStatus =
-  | "active"
-  | "trialing"
-  | "past_due"
-  | "paused"
-  | "canceled";
+/** 인앱 구독의 상태. 결제 문제로 유예 중이면 past_due(그동안은 Pro 유지). */
+export type SubscriptionStatus = "active" | "trialing" | "past_due" | "canceled";
+
+/** 인앱 구독을 판 스토어 */
+export type StoreName = "app_store" | "play_store" | "other";
 
 export interface UsageInfo {
   plan: PlanId;
-  /** 기간 안에 할 수 있는 분석 횟수. null 이면 한도가 없다(결제 기능이 꺼져 있을 때). */
+  /** 기간 안에 할 수 있는 분석 횟수. null 이면 한도가 없다(인앱 구독이 설정되지 않았을 때). */
   limit: number | null;
   used: number;
   period: "month" | "day";
   /** 한도가 다시 차는 시각(UTC 기준 다음 달 1일 또는 다음 날 0시) */
   resetsAt: number;
 }
-
-export interface PriceInfo {
-  interval: BillingInterval;
-  /** 화면에 그대로 쓰는 금액. 예: "$4.99" */
-  amount: string;
-  currency: string;
-  /** 결제 업체에 설정된 무료 체험. 없으면 null */
-  trial: { interval: "day" | "week" | "month" | "year"; frequency: number } | null;
-}
-
-/** 인앱 구독을 판 스토어 */
-export type StoreName = "app_store" | "play_store" | "other";
 
 export interface SubscriptionInfo {
   status: SubscriptionStatus;
@@ -50,33 +39,19 @@ export interface SubscriptionInfo {
   currentPeriodEnd: number | null;
   /** 해지를 예약했으면 Pro 가 끝나는 시각 */
   cancelAt: number | null;
-  /** 어디서 결제했는지. 해지·관리하는 곳이 다르다(웹 결제 창, 앱스토어, 플레이스토어). */
-  source: "paddle" | StoreName;
+  /** 어느 스토어에서 샀는지. 해지·결제 수단 변경은 그 스토어에서 한다. */
+  source: StoreName;
 }
 
 export interface BillingStatus {
-  /** 결제 기능(웹 결제나 인앱 구독)이 설정되어 있는지. 꺼져 있으면 한도도 없다. */
+  /** 인앱 구독이 설정되어 있는지. 꺼져 있으면 한도도 없다. */
   enabled: boolean;
-  environment: "sandbox" | "production";
-  /** 결제 창(Paddle.js)용 공개 토큰. 비밀값이 아니다. */
-  clientToken: string | null;
   usage: UsageInfo;
   subscription: SubscriptionInfo | null;
-  prices: PriceInfo[];
   limits: { freePerMonth: number; proPerDay: number };
   /**
    * 휴대폰 앱의 인앱 구독(RevenueCat) 설정. 공개 키만 담는다(비밀키는 서버에만 있다).
    * 꺼져 있으면 null.
    */
   store: { iosKey: string | null; androidKey: string | null; entitlement: string } | null;
-}
-
-/** 체험 기간을 "7-day" 처럼 읽기 좋게 */
-export function trialLabel(trial: NonNullable<PriceInfo["trial"]>): string {
-  return `${trial.frequency}-${trial.interval}`;
-}
-
-/** 체험 기간을 "7 days" 처럼 문장 속에 */
-export function trialDuration(trial: NonNullable<PriceInfo["trial"]>): string {
-  return `${trial.frequency} ${trial.interval}${trial.frequency === 1 ? "" : "s"}`;
 }

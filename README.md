@@ -287,11 +287,24 @@ npm run dev
 - **약관**: 영어와 한국어 초안이 따로 있습니다(`shared/legal.ts`). 한국어 방침에는 개인정보 보호책임자,
   국외 이전, 위탁, 파기, 권익침해 구제 항목이 들어 있고, 채워야 할 곳은 `[…]` 로 표시되어 있습니다.
 
-## 인앱 구독 (휴대폰 앱 · RevenueCat)
+## 유료 구독 (App Store · Google Play 인앱 구독)
 
-휴대폰 앱의 Pro 는 **App Store · Google Play 인앱 구독**으로 팝니다(스토어 규정상 앱 안의 디지털 구독은
-스토어 결제를 써야 합니다). 스토어 영수증 확인은 [RevenueCat](https://www.revenuecat.com) 이 맡습니다.
-아래 네 값을 넣기 전까지는 꺼져 있습니다. 무료 한도(월 3회)와 Pro 한도(하루 20회)는 웹 결제와 같습니다.
+Pro 는 **휴대폰 앱의 인앱 구독**으로만 팝니다(App Store · Google Play 결제). 앱 안의 디지털 구독은
+스토어 규정상 스토어 결제를 써야 하므로 웹 결제는 두지 않습니다. 스토어 영수증 확인은
+[RevenueCat](https://www.revenuecat.com) 이 맡습니다. 카드 정보는 애플·구글만 갖고, 이 서버로 오지 않습니다.
+
+**아래 값을 넣기 전까지는 꺼져 있습니다.** 이때는 요금제 화면이 보이지 않고 분석 횟수 한도도 없습니다.
+
+| 요금제 | 할 수 있는 것 |
+|---|---|
+| Free | 한 달에 3번 분석 (`FREE_SCANS_PER_MONTH`), 결과 전체 |
+| Pro | 하루 20번까지 분석 (`PRO_SCANS_PER_DAY`), 결과 전체 |
+
+- **안전 정보는 요금제와 상관없이 모두 보입니다.** 위험 신호 점검, 진료 안내, 지난 결과는
+  한도를 다 써도 그대로 볼 수 있습니다. 요금제가 바꾸는 것은 새로 분석할 수 있는 횟수뿐입니다.
+- 로그인하지 않은 손님은 기기(웹은 쿠키, 앱은 설치 때 만든 무작위 아이디)와 IP 를 함께 세어
+  (`GUEST_SCANS_PER_IP_PER_MONTH`, 기본 15) 앱을 다시 깔아도 한도가 새로 차지 않게 합니다.
+- 가격과 무료 체험은 코드가 아니라 **스토어에 설정한 값**을 앱이 현지 통화로 그대로 보여 줍니다.
 
 | 환경변수 | 어디서 | 성격 |
 |---|---|---|
@@ -307,10 +320,13 @@ npm run dev
 
 - 구매는 **로그인한 계정**에 붙습니다(RevenueCat 사용자 아이디 = NailSense 계정 아이디).
   다른 기기나 재설치 뒤에는 로그인하고 **구매 복원**을 누릅니다. 다른 계정으로 복원하면 Pro 가 그 계정으로 옮겨 갑니다.
-- 해지·결제 수단 변경은 **스토어에서** 합니다. 앱의 "구독 관리·해지"가 스토어 구독 화면을 엽니다.
+- 해지·결제 수단 변경은 **스토어에서** 합니다. 앱의 "구독 관리·해지"가 그 기기의 스토어 구독 화면을 엽니다.
+  아이폰에서 산 구독을 안드로이드 앱에서 보면(또는 반대) 구독한 기기의 스토어에서 관리하라고 안내합니다.
 - **계정을 지워도 스토어 구독은 해지되지 않습니다.** 삭제 화면에서 이 사실을 먼저 알리고,
   서버는 RevenueCat 쪽 고객 기록 삭제만 요청합니다.
 - 심사용 sandbox 구매도 Pro 로 인정합니다(App Store 심사는 sandbox 로 결제해 봅니다).
+- **웹사이트**(서버가 함께 내주는 화면)에는 결제 버튼이 없습니다. 요금제 화면은 지금 요금제와 남은 횟수,
+  "앱에서 구독하세요" 안내만 보여 줍니다. 앱에서 구독한 계정으로 웹에 로그인하면 웹에서도 Pro 입니다.
 
 ### 설정 순서
 
@@ -323,91 +339,17 @@ npm run dev
 4. `fly secrets set REVENUECAT_SECRET_KEY=… REVENUECAT_WEBHOOK_AUTH=… REVENUECAT_IOS_KEY=… REVENUECAT_ANDROID_KEY=…`
 
 ```bash
-npm run check:store   # 가짜 RevenueCat 으로: 공개 키만 내려감, 무료 한도, 구매 확인, 웹훅 인증·중복·재시도,
-                      # 체험·해지 예약·결제 문제·환불, 계정 간 이전, 만료 뒤 재확인, 계정 삭제
-npm run e2e:store     # 앱 화면으로: 로그인 안내 → 요금제(가격·체험·자동 갱신 안내) → 취소·대기 → 구매 → Pro
-                      #   → 스토어 구독 관리 → 로그아웃 → 다른 계정은 Free → 복원
+npm run check:store                    # 서버: 동의, 무료 한도(웹·앱 손님, 계정), Pro 하루 한도, 구매 확인,
+                                       #   웹훅 인증·중복·재시도, 체험·해지 예약·결제 문제·환불, 계정 간 이전,
+                                       #   만료 뒤 재확인, 계정 삭제, 웹 결제 경로가 없어졌는지
+npm run build && npm run e2e:store     # 화면: 한도 안내 → 요금제 → 로그인 → 가격·체험·자동 갱신 안내 → 구매 → Pro
+                                       #   → 스토어 구독 관리 → 동의 철회 → 구독 중 계정 삭제 → 복원, 웹엔 결제 버튼 없음
 ```
 
 진짜 스토어 결제 창은 실제 기기와 스토어 테스트 계정에서만 열 수 있어, 위 점검은 결제 단계만 가짜로 바꿔 돌립니다.
 
-웹 결제(Paddle) 코드는 그대로 남아 있지만, 앱만 내기로 했으므로 Paddle 값을 넣지 않으면 꺼진 채로 있습니다.
-앱 안에서는 Paddle 이 켜져 있어도 웹 결제 창을 띄우지 않습니다(스토어 심사 거절 사유).
-
-## 유료 구독 (웹 · Paddle, 지금은 쓰지 않음)
-
-**결제 업체 계정과 키를 넣기 전까지는 꺼져 있습니다.** 이때는 요금제 화면이 보이지 않고
-분석 횟수 한도도 없습니다(지금까지와 같음). 아래 다섯 값을 모두 넣으면 켜집니다.
-
-| 요금제 | 할 수 있는 것 |
-|---|---|
-| Free | 한 달에 3번 분석 (`FREE_SCANS_PER_MONTH`), 결과 전체 |
-| Pro | 하루 20번까지 분석 (`PRO_SCANS_PER_DAY`), 결과 전체 |
-
-- **안전 정보는 요금제와 상관없이 모두 보입니다.** 위험 신호 점검, 진료 안내, 지난 결과는
-  한도를 다 써도 그대로 볼 수 있습니다. 요금제가 바꾸는 것은 새로 분석할 수 있는 횟수뿐입니다.
-- 가격과 무료 체험 기간은 코드가 아니라 **Paddle 에 설정한 가격**을 그대로 읽어 보여 줍니다.
-  화면의 금액과 실제 청구액이 어긋나지 않게 하기 위해서입니다.
-- 결제는 Paddle(판매 대행, Merchant of Record)이 받습니다. 카드 정보는 이 서버를 지나가지 않고,
-  각국 부가세·판매세 신고와 환불, 영수증도 Paddle 이 맡습니다.
-
-### 어떻게 동작하나
-
-1. 화면에서 결제를 누르면 **서버가 Paddle 에 거래를 만들고**, 그 거래 아이디로 Paddle 결제 창을 엽니다.
-   어떤 요금을 얼마에 사는지는 서버가 정하고, 어느 계정의 결제인지도 서버가 만든 거래 기록으로만 정합니다.
-2. 결제가 끝나면 화면은 서버에 확인을 맡기고, 서버가 비밀키로 Paddle 에 직접 조회해 Pro 를 켭니다.
-   그래서 웹훅이 늦거나 빠져도 결제 직후 바로 Pro 가 됩니다.
-3. 이후의 변화(갱신, 결제 실패, 해지 확정)는 **서명을 검증한 웹훅**(`POST /api/billing/webhook`)으로 받습니다.
-   같은 이벤트가 두 번 와도 한 번만 처리하고, 순서가 뒤바뀌어 온 옛 이벤트는 무시합니다.
-4. 해지는 앱의 Profile > Plan 에서 두 번 눌러 끝납니다. 이번 결제 기간이 끝날 때까지 Pro 가 유지되고,
-   그 전에 철회할 수 있습니다. 결제 수단 변경과 영수증은 Paddle 고객 포털(새 창)에서 합니다.
-5. 계정을 지우면 살아 있는 구독을 **먼저 즉시 해지**합니다. 해지에 실패하면 계정도 지우지 않습니다.
-6. 무료 한도는 로그인했으면 계정으로 세고, 로그인하지 않았으면 이 기기의 무작위 쿠키(`ns_device`)와
-   같은 IP 의 손님 전체(`GUEST_SCANS_PER_IP_PER_MONTH`, 기본 15회)로 셉니다. IP 와 쿠키 값은 그대로
-   저장하지 않고 서버 비밀값으로 만든 해시만 남기며, IP 해시는 달마다 바뀝니다.
-   기간은 UTC 기준(무료: 매달 1일, Pro: 매일 0시)으로 다시 찹니다.
-
-### Paddle 설정 (sandbox 로 먼저)
-
-1. sandbox 계정을 만듭니다: https://sandbox-login.paddle.com/signup
-2. **Catalog > Products** 에 상품 하나와 가격 둘을 만듭니다.
-   월간(매달 청구, 원하면 7일 무료 체험), 연간(매년 청구). 각 가격의 아이디(`pri_…`)를 적어 둡니다.
-3. **Checkout > Checkout settings** 에서 기본 결제 링크(default payment link)를 앱 주소로 정합니다.
-   이게 없으면 거래를 만들 수 없습니다. sandbox 는 `localhost` 도 됩니다.
-   실서비스(production)는 Paddle 의 **도메인 승인**이 먼저 필요합니다.
-4. **Developer tools > Authentication** 에서
-   - API 키(서버용, `pdl_sdbx_apikey_…`): transactions·subscriptions·customer portal 쓰기, prices 읽기 권한
-   - 클라이언트 토큰(브라우저용, `test_…`)
-5. **Developer tools > Notifications** 에서 웹훅 대상을 만듭니다.
-   - 주소: `https://<앱 주소>/api/billing/webhook`
-   - 이벤트: `subscription.created`, `subscription.updated`, `subscription.activated`,
-     `subscription.trialing`, `subscription.past_due`, `subscription.paused`, `subscription.resumed`,
-     `subscription.canceled`, `transaction.completed`, `transaction.paid`
-   - 만들 때 보이는 비밀값(`pdl_ntfset_…`)을 복사합니다.
-   - Paddle 은 내 컴퓨터(localhost)로 웹훅을 보낼 수 없습니다. 로컬에서는 결제 직후 Pro 전환까지는
-     확인 경로로 동작하지만, 갱신·해지 확정까지 보려면 터널(cloudflared, ngrok 등)이나 배포한 서버가 필요합니다.
-6. `.env` 에 넣고 서버를 다시 켭니다. 기동 로그에 `결제: Paddle sandbox` 가 찍히면 켜진 것입니다.
-
-```bash
-PADDLE_ENV=sandbox                 # 실서비스는 production
-PADDLE_API_KEY=pdl_sdbx_apikey_…   # 서버 전용 비밀값
-PADDLE_WEBHOOK_SECRET=pdl_ntfset_… # 서버 전용 비밀값
-PADDLE_CLIENT_TOKEN=test_…         # 공개 토큰 (브라우저로 내려가도 되는 값)
-PADDLE_PRICE_MONTHLY=pri_…
-PADDLE_PRICE_YEARLY=pri_…          # 둘 중 하나만 있어도 됩니다
-
-# 선택
-FREE_SCANS_PER_MONTH=3
-PRO_SCANS_PER_DAY=20
-GUEST_SCANS_PER_IP_PER_MONTH=15
-USAGE_HASH_SECRET=…                # 없으면 서버가 만들어 데이터베이스에 둡니다
-```
-
-- sandbox 결제는 Paddle 문서의 테스트 카드로 합니다. 실제로 청구되지 않습니다.
-- 서버는 sandbox 키와 live 키를 섞어 넣으면 기동할 때 경고합니다. 비밀값은 어떤 로그에도 찍지 않고,
-  빌드 검사(`check:secrets`)가 Paddle 비밀키 형식도 잡습니다.
-- 결제를 켜면 CSP 에 Paddle 출처(스크립트 `cdn.paddle.com`, 결제 창 `buy.paddle.com` 등)가 더해지고,
-  Paddle.js 는 결제 버튼을 누를 때 처음 불러옵니다. Paddle.js 가 부르는 별도 분석 스크립트(Retain)는 막아 둡니다.
+> 예전에 붙였던 웹 결제(Paddle)는 없앴습니다. `.env` 나 서버 비밀값에 `PADDLE_` 로 시작하는 값이 남아 있으면
+> 서버가 기동할 때 이름만 알려 줍니다(값은 찍지 않음). 지우고, Paddle sandbox 의 API 키도 폐기해 두세요.
 
 ## 동의와 약관
 
@@ -416,9 +358,9 @@ USAGE_HASH_SECRET=…                # 없으면 서버가 만들어 데이터�
   (`shared/billing.ts` 의 `HEALTH_CONSENT_VERSION`) 표시가 없는 분석 요청은 거절합니다.
   로그인했으면 동의 시각과 문구 버전을 계정에 남기고, Profile 에서 언제든 거둘 수 있습니다.
   동의 문구를 바꾸면 버전을 올려 모두에게 다시 묻게 합니다.
-- **구독 전에는** 금액, 갱신 주기, 체험이 끝나면 청구된다는 것, 해지 방법을 결제 버튼 바로 위에 적고,
-  약관 동의와 자동 갱신을 이해했다는 체크를 받아야 결제 창이 열립니다.
-- 개인정보처리방침과 이용약관은 `shared/legal.ts` 에 있는 **영어 초안**입니다.
+- **구독 전에는** 현지 통화 가격, 갱신 주기, 체험이 끝나면 청구된다는 것, 24시간 전까지 해지하지 않으면
+  자동 갱신된다는 것과 해지 방법을 구독 버튼 가까이에 적습니다. 실제 결제 확인은 스토어의 결제 창에서 합니다.
+- 개인정보처리방침과 이용약관은 `shared/legal.ts` 에 있는 **영어 · 한국어 초안**입니다.
   변호사 검토 전이라 화면에 "Draft for legal review" 표시가 붙습니다. 검토가 끝나면 문구를 고치고,
   `OPERATOR` 의 빈칸(운영자 이름·주소·연락처·준거법·EU/영국 대리인)을 채우고,
   `LEGAL_STATUS` 를 `"final"` 로 바꿉니다. 초안 안의 `[…]` 표시는 확인이 필요한 곳입니다.
@@ -426,13 +368,11 @@ USAGE_HASH_SECRET=…                # 없으면 서버가 만들어 데이터�
 
 ### 아직 하지 않은 것
 
-- 실제 Paddle 계정(sandbox 포함)으로 결제해 본 적은 없습니다. 모의 Paddle 서버로 전 과정을 검증했고,
-  진짜 Paddle.js 를 불러와 CSP 에 막히지 않는 것까지만 확인했습니다. sandbox 로 한 번 결제해 보세요.
-- 무료 체험을 해지 후 다시 받는 것을 막지 않습니다. 필요하면 Paddle 에 체험 없는 가격을 하나 더 두고
-  재가입자에게는 그 가격을 쓰게 바꾸면 됩니다.
+- 실제 스토어 결제(sandbox · 테스트 계정 포함)로 구매해 본 적은 없습니다. 가짜 RevenueCat 서버와 가짜 스토어
+  플러그인으로 전 과정을 확인했습니다. 실제 기기에서 스토어 테스트 계정으로 한 번 사 보세요.
+- 무료 체험을 몇 번 받을 수 있는지는 스토어가 정합니다(같은 Apple 계정 · Google 계정에는 보통 한 번).
 - 손님으로 쓰던 무료 횟수는 가입하면 계정 기준으로 새로 셉니다.
 - Pro 전용 기능은 아직 "더 많은 분석 횟수" 하나뿐입니다(사진 나란히 비교, 재촬영 알림, 진료용 PDF 등은 없음).
-- 앱스토어·구글 플레이용 인앱 결제는 없습니다(지금은 웹 결제만).
 - 약관·개인정보처리방침은 법률 검토 전 초안입니다. 의료기기 해당 여부도 출시 전에 전문가 검토가 필요합니다.
 
 ## 실행
@@ -487,11 +427,11 @@ npm run e2e                 # 온보딩 → 스캔 → 기록 → 건강 정보 
 npm run smoke:ko            # 한국어 기기: 한국어 화면·동의 두 가지·한국어 결과·글·오류 문구·언어 바꾸기
 ```
 
-결제와 한도는 서버를 따로 띄우지 않아도 됩니다. 스크립트가 모의 Paddle 과 서버를 직접 띄웁니다.
+요금제·한도와 앱 방식 점검은 서버를 따로 띄우지 않아도 됩니다. 스크립트가 가짜 RevenueCat 과 서버를 직접 띄웁니다.
 
 ```bash
-npm run check:billing       # 동의·한도·결제 거래·웹훅 서명/중복/순서·해지·계정 삭제
-npm run build && npm run e2e:billing   # 같은 흐름을 화면으로: 한도 안내 → 요금제 → 결제 창 → Pro → 해지·철회
+npm run check:store         # 동의·무료 한도·Pro 하루 한도·구매 확인·웹훅·환불·계정 이전·계정 삭제
+npm run build && npm run e2e:store   # 같은 흐름을 화면으로(앱 빌드 + 웹)
 npm run check:app           # 앱 방식: 앱 출처 CORS, 토큰 로그인·로그아웃, 앱 빌드 화면으로 가입→분석→기록
 ```
 
@@ -526,7 +466,7 @@ fly deploy --ha=false
 
 ### 배포한 뒤 바꿀 것
 
-- **RevenueCat 웹훅 주소**: `https://<앱이름>.fly.dev/api/billing/store-webhook` (위 인앱 구독 설정 3).
+- **RevenueCat 웹훅 주소**: `https://<앱이름>.fly.dev/api/billing/store-webhook` (위 "유료 구독" › 설정 순서 3).
 - 앱 빌드의 API 주소: `APP_API_BASE=https://<앱이름>.fly.dev npm run build:app` 뒤 `npx cap sync`.
 - **구글·애플 로그인**을 쓴다면 각 콘솔에 새 주소를 허용 출처로 추가합니다.
 
@@ -535,10 +475,9 @@ fly deploy --ha=false
 - **백업**: Fly 는 볼륨 스냅샷을 매일 자동으로 찍어 며칠 보관합니다(`fly volumes snapshots list`).
 - **로그**: `fly logs`. 서버는 사진이나 요청 본문을 로그에 남기지 않습니다.
 - **서버 한 대 확인**: `fly scale count 1`. 두 대가 되면 데이터베이스가 둘로 갈라집니다.
-- **실제 결제(production)로 넘어갈 때**: Paddle 은 **본인 소유 도메인**만 승인하므로 `fly.dev` 주소로는
-  실제 판매를 열 수 없습니다. 도메인을 사서 `fly certs add <도메인>` 으로 연결하고, Paddle 도메인 승인을 받은 뒤
-  `PADDLE_ENV=production` 과 live 키로 바꿉니다. 이때 Cloudflare 같은 CDN 을 도메인 앞에 두면
-  화면 파일이 한국에서도 가까운 곳에서 나갑니다.
+- **도메인**: 스토어에 올릴 개인정보처리방침 · 지원 주소는 `fly.dev` 주소로도 됩니다. 나중에 도메인을 사면
+  `fly certs add <도메인>` 으로 연결하고, 스토어 등록 정보와 앱 빌드의 `APP_API_BASE` 를 함께 바꿉니다.
+  이때 Cloudflare 같은 CDN 을 도메인 앞에 두면 공개 페이지가 한국에서도 가까운 곳에서 나갑니다.
 
 ## 휴대폰 앱 (iOS · 안드로이드)
 
@@ -643,8 +582,9 @@ server/gemini.ts       Gemini 호출과 오류 매핑
 server/analyze.ts      프로바이더 선택
 server/env.ts          .env 로드 (다른 모듈보다 먼저)
 server/security.ts     키 마스킹, 속도 제한, 오리진 검사, 보안 헤더
-server/billing.ts      Paddle 거래·구독·웹훅, 요금제 상태, 사용 한도 판단
-server/billing-config.ts 결제 설정 읽기 (다른 모듈에 의존하지 않음)
+server/billing.ts      요금제 상태, 사용 한도 판단, 요금제 API(/status · /sync · /store-webhook)
+server/revenuecat.ts   인앱 구독: RevenueCat 조회·웹훅, Pro 권한 저장, 탈퇴 시 고객 기록 삭제
+server/public-pages.ts 스토어용 공개 페이지(/privacy · /terms · /delete-account · /support)
 server/usage.ts        분석 횟수 세기 (계정 / 기기·IP 해시)
 server/index.ts        API 프록시 + 정적 파일 서빙
 shared/billing.ts      요금제 타입, 건강 데이터 동의 버전

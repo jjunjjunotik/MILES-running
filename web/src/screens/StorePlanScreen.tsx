@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Capacitor } from "@capacitor/core";
 import type { BillingStatus } from "../../../shared/billing";
 import type { LegalDocId } from "../../../shared/legal";
-import { formatBillingDate, usageLine } from "../lib/billing";
+import { formatBillingDate, storeLabel, usageLine } from "../lib/billing";
 import {
   loadPackages,
   openManageSubscriptions,
@@ -29,6 +29,8 @@ const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const IS_ANDROID = Capacitor.getPlatform() === "android";
 const STORE_NAME = IS_ANDROID ? "Google Play" : "App Store";
+/** 이 기기의 스토어. 다른 스토어에서 산 구독은 이 기기에서 관리할 수 없다. */
+const THIS_STORE = IS_ANDROID ? "play_store" : "app_store";
 const ACCOUNT_NAME = IS_ANDROID ? L("Google account", "Google 계정") : L("Apple Account", "Apple 계정");
 
 function trialText(trial: NonNullable<StorePackage["trial"]>): string {
@@ -270,8 +272,8 @@ export function StorePlanScreen({
                 <Notice tone="monitor">
                   <strong>{L("Your last payment didn't go through.", "지난 결제가 처리되지 않았어요.")}</strong>{" "}
                   {L(
-                    `Update your payment method in ${STORE_NAME} to keep Pro.`,
-                    `Pro를 계속 쓰려면 ${STORE_NAME}에서 결제 수단을 바꿔 주세요.`,
+                    `Update your payment method in ${storeLabel(subscription.source)} to keep Pro.`,
+                    `Pro를 계속 쓰려면 ${storeLabel(subscription.source)}에서 결제 수단을 바꿔 주세요.`,
                   )}
                 </Notice>
               </div>
@@ -281,12 +283,34 @@ export function StorePlanScreen({
               <section className="sec">
                 <h3 className="sec-title">{L("Manage", "관리")}</h3>
                 <div className="list">
-                  {subscription.source === "paddle" ? (
+                  {subscription.source === "other" ? (
+                    // 스토어 결제가 아닌 Pro(예: RevenueCat 에서 직접 준 이용권)는 관리할 스토어가 없다.
                     <div className="row">
                       <div className="row-main">
-                        <div className="row-title">{L("Subscribed on the web", "웹에서 구독함")}</div>
+                        <div className="row-title">{L("Pro is active on your account", "계정에 Pro가 적용되어 있어요")}</div>
                         <div className="row-sub">
-                          {L("Manage it from the website where you subscribed.", "구독한 웹사이트에서 관리해 주세요.")}
+                          {L(
+                            "It wasn't bought through a store, so there's nothing to manage or cancel.",
+                            "스토어에서 산 구독이 아니라서 관리하거나 해지할 것이 없어요.",
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ) : subscription.source !== THIS_STORE ? (
+                    // 다른 스토어(예: 아이폰에서 구독하고 안드로이드에서 연 경우)의 구독은 여기서 열 수 없다.
+                    <div className="row">
+                      <div className="row-main">
+                        <div className="row-title">
+                          {L(
+                            `Subscribed through ${storeLabel(subscription.source)}`,
+                            `${storeLabel(subscription.source)}에서 구독함`,
+                          )}
+                        </div>
+                        <div className="row-sub">
+                          {L(
+                            `Manage or cancel it in ${storeLabel(subscription.source)} on the device you subscribed with.`,
+                            `구독한 기기의 ${storeLabel(subscription.source)}에서 관리하거나 해지해 주세요.`,
+                          )}
                         </div>
                       </div>
                     </div>
