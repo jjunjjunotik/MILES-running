@@ -95,9 +95,11 @@ const PACKAGES = [
     product: { identifier: "nailsense_pro_monthly", price: 4.99, priceString: "$4.99", pricePerMonthString: "$4.99", introPrice: null },
   },
   {
-    identifier: "$rc_annual",
-    packageType: "ANNUAL",
+    // 직접 이름 붙인 패키지(CUSTOM)도 상품의 결제 주기(P1Y)로 연간임을 알아보는지 함께 본다.
+    identifier: "yearly_custom",
+    packageType: "CUSTOM",
     product: {
+      subscriptionPeriod: "P1Y",
       identifier: "nailsense_pro_yearly",
       price: 39.99,
       priceString: "$39.99",
@@ -232,7 +234,7 @@ try {
   await page.waitForTimeout(300);
   check((await fake()).opened.includes("https://apps.apple.com/account/subscriptions"), "스토어 구독 관리 화면을 엶");
   log = (await fake()).log;
-  check(log.some((entry) => entry[0] === "purchase" && entry[1] === "$rc_annual"), "고른 상품(연간)으로 구매");
+  check(log.some((entry) => entry[0] === "purchase" && entry[1] === "yearly_custom"), "고른 상품(연간)으로 구매");
 
   console.log("Pro 로 분석");
   await page.click('button[aria-label="Back"]');

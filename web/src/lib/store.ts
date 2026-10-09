@@ -70,12 +70,18 @@ export async function forgetStoreUser(): Promise<void> {
 }
 
 function toPackage(pkg: PurchasesPackage): StorePackage | null {
+  // 보통은 패키지 종류($rc_monthly · $rc_annual)로 알고, 직접 이름 붙인 패키지면 상품의 결제 주기(P1M · P1Y)로 안다.
+  const period = pkg.product.subscriptionPeriod;
   const interval =
     pkg.packageType === PACKAGE_TYPE.MONTHLY
       ? "month"
       : pkg.packageType === PACKAGE_TYPE.ANNUAL
         ? "year"
-        : null;
+        : period === "P1M"
+          ? "month"
+          : period === "P1Y" || period === "P12M"
+            ? "year"
+            : null;
   if (!interval) return null;
   const intro = pkg.product.introPrice;
   return {

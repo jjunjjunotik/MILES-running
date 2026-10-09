@@ -330,13 +330,18 @@ Pro 는 **휴대폰 앱의 인앱 구독**으로만 팝니다(App Store · Googl
 
 ### 설정 순서
 
-1. RevenueCat 프로젝트를 만들고 App Store 앱 · Play Store 앱을 추가합니다(앱 아이디 확정 후).
-2. 각 스토어에 구독 상품 두 개(월간·연간)를 만들고, RevenueCat 에서
-   Entitlement `pro` 에 붙인 뒤 Offering(current)의 Monthly · Annual 패키지로 넣습니다.
-   **상품 아이디에 `monthly` · `yearly` 를 넣으면** 서버가 기간을 알아봅니다.
-3. RevenueCat › Integrations › Webhooks: 주소 `https://<서버>/api/billing/store-webhook`,
-   Authorization 에 `REVENUECAT_WEBHOOK_AUTH` 와 같은 값.
-4. `fly secrets set REVENUECAT_SECRET_KEY=… REVENUECAT_WEBHOOK_AUTH=… REVENUECAT_IOS_KEY=… REVENUECAT_ANDROID_KEY=…`
+처음 설정은 **[docs/revenuecat-setup.md](docs/revenuecat-setup.md)** 순서대로 합니다. RevenueCat 안의 구성은 도구가 만듭니다.
+
+```bash
+npm run revenuecat                # 확인만: 앱 · 권한(pro) · 상품 4개 · 오퍼링(default) · 패키지 · 웹훅 · 서버 키
+npm run revenuecat -- --apply     # 빠진 것을 만들고, 앱용 공개 키(appl_ · goog_)를 알려 줌
+```
+
+- 설정용 키 `REVENUECAT_V2_KEY`(V2, Project configuration 읽기/쓰기)는 **내 컴퓨터 `.env` 에만** 둡니다. 서버에는 넣지 않습니다.
+- 상품 아이디: App Store `nailsense_pro_monthly` · `nailsense_pro_yearly`, Google Play `nailsense_pro_monthly:monthly` ·
+  `nailsense_pro_yearly:yearly`(정기 결제:기본 요금제). 아이디에 기간이 들어 있어 서버가 월간 · 연간을 알아봅니다.
+- 웹훅 주소는 `https://<서버>/api/billing/store-webhook`, 인증값은 `REVENUECAT_WEBHOOK_AUTH`(서버와 같은 값).
+- 서버 비밀값: `fly secrets set REVENUECAT_SECRET_KEY=… REVENUECAT_WEBHOOK_AUTH=… REVENUECAT_IOS_KEY=… REVENUECAT_ANDROID_KEY=…`
 
 ```bash
 npm run check:store                    # 서버: 동의, 무료 한도(웹·앱 손님, 계정), Pro 하루 한도, 구매 확인,
@@ -432,6 +437,8 @@ npm run smoke:ko            # 한국어 기기: 한국어 화면·동의 두 가
 ```bash
 npm run check:store         # 동의·무료 한도·Pro 하루 한도·구매 확인·웹훅·환불·계정 이전·계정 삭제
 npm run check:db            # 데이터베이스 마이그레이션: 빈 DB, 옛 웹 결제 표가 든 DB 에서 올라가는지
+npm run check:rc-setup      # RevenueCat 설정 도구를 가짜 RevenueCat 으로: 확인만 · 만들기 · 다시 해도 안전 · 비밀값 숨김
+npm run check:set-app-id    # 앱 아이디 바꾸기를 파일 사본에서: 모든 자리 · 폴더 이동 · 틀린 아이디 거절 · 전부 아니면 전무
 npm run build && npm run e2e:store   # 같은 흐름을 화면으로(앱 빌드 + 웹)
 npm run check:app           # 앱 방식: 앱 출처 CORS, 토큰 로그인·로그아웃, 앱 빌드 화면으로 가입→분석→기록
 ```
@@ -508,8 +515,9 @@ npm run check:app          # 앱 방식(다른 출처 + 토큰 로그인) 점검
 - 안드로이드는 카메라 권한을 요청하지 않습니다(시스템 카메라 앱으로 찍음). 기록·사진이 기기 백업으로 나가지 않게 `allowBackup` 을 껐습니다.
 - iOS 는 카메라 · 사진 보관함 사용 이유 문구와 영어 · 한국어 지원(`CFBundleLocalizations`)을 넣었습니다.
 
-**아직 확정할 것**: 앱 아이디 `com.nailsense.app` 은 임시입니다. 스토어에 한 번 올리면 바꿀 수 없으므로
-첫 업로드 전에 정해 `capacitor.config.ts`, `android/app/build.gradle`, iOS 프로젝트에서 함께 바꿉니다.
+**아직 확정할 것**: 앱 아이디 `com.nailsense.app` 은 임시입니다. 스토어 · RevenueCat 에 한 번 등록하면 바꿀 수 없으므로
+첫 등록 전에 정해서 `npm run set-app-id -- com.새.아이디` 로 바꿉니다(설정 파일, 안드로이드 패키지 폴더, Xcode 프로젝트,
+codemagic.yaml 을 한꺼번에. 예상과 다른 파일이 있으면 하나도 바꾸지 않고 멈춥니다). 그다음 `npm run cap:sync`.
 
 **빌드**: Mac 없이 [Codemagic](https://codemagic.io) 으로 iOS(TestFlight) · Android(Play 내부 테스트)를 만듭니다(`codemagic.yaml`).
 안드로이드 출시용 서명 키는 저장소에 넣지 않고 Codemagic 에 올립니다(`CM_KEYSTORE_PATH` 등으로 넘어옴).

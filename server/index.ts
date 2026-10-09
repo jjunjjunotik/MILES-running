@@ -372,6 +372,11 @@ app.listen(PORT, () => {
     );
   }
 
+  // 설정용 v2 키(npm run revenuecat)는 RevenueCat 구성을 바꿀 수 있다. 운영 서버에는 두지 않는다.
+  if (process.env.NODE_ENV === "production" && (process.env.REVENUECAT_V2_KEY ?? "").trim()) {
+    console.warn("[인앱 구독] REVENUECAT_V2_KEY 는 설정할 때만 쓰는 키입니다. 서버 비밀값에서 지워 주세요(fly secrets unset REVENUECAT_V2_KEY).");
+  }
+
   const store = storeConfig();
   const missingStore = missingStoreSettings();
   if (store.enabled) {

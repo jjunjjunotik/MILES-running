@@ -99,7 +99,10 @@ export class StoreError extends Error {
 interface RcEntitlement {
   expires_date: string | null;
   grace_period_expires_date?: string | null;
+  /** 구글 정기 결제는 기본 요금제(base plan)를 뺀 정기 결제 아이디만 온다 */
   product_identifier: string;
+  /** 구글 기본 요금제 아이디. 문서에는 없지만 실제 응답에 오는 경우가 있어 있으면 쓴다. */
+  product_plan_identifier?: string | null;
   purchase_date?: string;
 }
 
@@ -214,7 +217,10 @@ export function toStoreRow(userId: string, subscriber: RcSubscriber, at = now())
     status,
     store: asStore(subscription?.store),
     productId: entitlement.product_identifier,
-    interval: guessInterval(entitlement.product_identifier),
+    // 상품 아이디로 먼저 짐작하고(nailsense_pro_yearly), 안 되면 구글 기본 요금제 아이디(yearly)로.
+    interval:
+      guessInterval(entitlement.product_identifier) ??
+      guessInterval(entitlement.product_plan_identifier ?? ""),
     // 결제 문제로 유예 중이면 유예가 끝나는 때까지를 기간으로 본다.
     expiresAt: graceUntil !== null && (expiresAt === null || graceUntil > expiresAt) ? graceUntil : expiresAt,
     cancelAt: active && subscription?.unsubscribe_detected_at ? expiresAt : null,

@@ -325,6 +325,13 @@ try {
   await webhook(event("CANCELLATION", bob.id));
   check((await status(bob.token)).usage.plan === "free", "환불되면 Pro 아님");
 
+  // 구글 정기 결제 하나에 기본 요금제를 여러 개 두면 상품 아이디에 기간이 없다. 기본 요금제 아이디로 알아본다.
+  const grace = await signup("grace@example.com");
+  rc.grant(grace.id, { productId: "nailsense_pro", planId: "yearly", store: "play_store" });
+  await sync(grace.token);
+  s = await status(grace.token);
+  check(s.subscription?.interval === "year" && s.subscription.source === "play_store", "구글 기본 요금제 아이디로 기간을 알아봄");
+
   const frank = await signup("frank@example.com");
   rc.grant(frank.id, { productId: "rc_promo_pro_monthly", store: "promotional" });
   await sync(frank.token);

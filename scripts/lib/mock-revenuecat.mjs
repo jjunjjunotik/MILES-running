@@ -82,6 +82,7 @@ export async function startMockRevenueCat(port) {
         expires_date: iso(entry.expiresAt),
         grace_period_expires_date: iso(entry.graceUntil ?? null),
         product_identifier: entry.productId,
+        ...(entry.planId ? { product_plan_identifier: entry.planId } : {}),
         purchase_date: iso(Date.now() - 1000),
       };
       subscriber.subscriptions[entry.productId] = {

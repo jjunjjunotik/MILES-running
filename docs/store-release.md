@@ -35,9 +35,8 @@ Google Play 는 건강 앱을 조직 계정(D-U-N-S 번호 필요)으로만 배�
 
 - 🔲 Apple Developer Program 가입(연 US$99) — 가능하면 **조직(법인)** 으로. 법인이 없으면 위 위험을 감수.
 - 🔲 Google Play Console 가입(1회 US$25) — **조직 계정** + D-U-N-S 번호.
-- 🔲 **앱 아이디 확정** (지금은 임시 `com.nailsense.app`). 스토어에 한 번 올리면 못 바꿉니다.
-  바꿀 곳: `capacitor.config.ts`, `android/app/build.gradle`(namespace · applicationId),
-  `android/app/src/main/java/...` 패키지 폴더, iOS `PRODUCT_BUNDLE_IDENTIFIER`, `codemagic.yaml`.
+- 🔲 **앱 아이디 확정** (지금은 임시 `com.nailsense.app`). 스토어 · RevenueCat 에 한 번 등록하면 못 바꿉니다.
+  ✅ 바꿀 때는 `npm run set-app-id -- com.새.아이디` 한 번이면 됩니다(설정 · 안드로이드 패키지 · Xcode · codemagic 전부).
 - 🔲 `shared/legal.ts` 의 `OPERATOR` 빈칸(상호, 주소, 연락 이메일, 개인정보 보호책임자 등) 채우기,
   변호사 검토 후 `LEGAL_STATUS` 를 `"final"` 로.
 - 🔲 AI 분석 업체(Gemini/Anthropic)의 데이터 처리 조건이 "학습에 쓰지 않음"인지 확인
@@ -65,11 +64,9 @@ Google Play 는 건강 앱을 조직 계정(D-U-N-S 번호 필요)으로만 배�
 ## 4. 인앱 구독 (RevenueCat)
 
 - ✅ 앱 결제 화면, 구매 복원, 스토어 구독 관리, 서버 확인, 웹훅 (README "유료 구독" 참고). 웹 결제(Paddle)는 없앰
-- 🔲 App Store Connect: 구독 그룹 + 상품 2개(예: `nailsense_pro_monthly`, `nailsense_pro_yearly`), 가격, 체험,
-  유료 앱 계약(Paid Apps Agreement)·세금·은행 정보
-- 🔲 Play Console: 정기 결제 상품 2개(같은 아이디 권장), 결제 프로필(판매자 계정)
-- 🔲 RevenueCat: 프로젝트, 앱 2개, Entitlement `pro`, Offering(current)에 Monthly · Annual 패키지, 웹훅
-- 🔲 서버 비밀값: `REVENUECAT_SECRET_KEY`, `REVENUECAT_WEBHOOK_AUTH`, `REVENUECAT_IOS_KEY`, `REVENUECAT_ANDROID_KEY`
+- ✅ RevenueCat 안의 구성(앱 · 권한 pro · 상품 4개 · 오퍼링 · 패키지 · 웹훅)은 `npm run revenuecat -- --apply` 가 만듦
+- 🔲 순서대로: **[docs/revenuecat-setup.md](revenuecat-setup.md)** — 키 두 개, 스토어 상품과 가격(App Store 구독 그룹,
+  Play 정기 결제 · 기본 요금제), 유료 앱 계약 · 결제 프로필, 스토어 자격증명 연결, 서버 비밀값, 시험 구매
 
 ## 5. 빌드 (Mac 없이)
 
