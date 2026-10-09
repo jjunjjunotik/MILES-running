@@ -555,9 +555,9 @@ What the app adds over the browser, all in `src/js/native.js`:
   does on iOS.
 - **Buying Supporter and Pro** (`src/js/billing.js`), with
   `@revenuecat/purchases-capacitor`. Signing in tells the store which MILES
-  account is buying; prices are the store's own; after a purchase the app has
-  the server check with RevenueCat at once, so the plan is on before the
-  webhook lands. Upgrading on Google Play replaces the old plan rather than
+  account is buying; prices are the store's own; after a purchase the app
+  waits the few seconds until RevenueCat's webhook has told the server, then
+  says the plan is on. Upgrading on Google Play replaces the old plan rather than
   charging for both (on the App Store the four plans share one subscription
   group and Apple does this itself). The offer carries the renewal terms each
   store asks for, Restore purchases, and the terms and privacy policy; Manage

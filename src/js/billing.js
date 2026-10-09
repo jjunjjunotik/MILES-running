@@ -4,11 +4,12 @@
    Play on Android, both through RevenueCat's SDK
    (@revenuecat/purchases-capacitor).
 
-   The store takes the money; the server decides what it bought. After a
-   purchase the app asks the server to check with RevenueCat at once
-   (/v1/billing/sync), so Pro is on before the webhook arrives. Prices shown
-   are the store's own, in the runner's currency — never the dollar figures
-   in pro.js, which are only the demo's.
+   The store takes the money; the server decides what it bought, when
+   RevenueCat's webhook tells it, a few seconds after the purchase. The app
+   looks again until it has (and a server with RevenueCat's V1 secret key
+   asks RevenueCat at once, /v1/billing/sync). Prices shown are the store's
+   own, in the runner's currency — never the dollar figures in pro.js, which
+   are only the demo's.
 
    Needs a signed-in account, the phone app, and the store's public key for
    the platform (meta tags miles-rc-ios and miles-rc-android, written by
@@ -21,6 +22,10 @@
 
   const { Api, State, Bus, esc } = M;
   const CANCELLED = '1';            // PURCHASES_ERROR_CODE.PURCHASE_CANCELLED_ERROR
+  // How long to keep looking for a purchase the server has not heard of
+  // yet, about half a minute in all. The webhook usually takes seconds.
+  const WAITS = [1000, 2000, 3000, 4000, 6000, 8000, 8000];
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   const toast = (html) => { if (M.UI) M.UI.toast(html); };
   const meta = (name) => {
@@ -126,10 +131,16 @@
         this.loadPrices().catch(() => {});
         return false;
       }
+      const plan = M.Pro.PLANS[planId];
+      // Bought, as far as the server says: this plan, or a better one.
+      const bought = () => {
+        const v = M.Pro.verify(State.data);
+        return !!State.data.pro && (State.data.pro.plan === planId || (!v.trial && M.Pro.TIERS[v.tier] >= M.Pro.TIERS[plan.tier]));
+      };
       const active = await this.current();
       if (active.indexOf(planId) >= 0) {
         toast('This store account already has that plan. If MILES does not show it yet, tap <b>Restore purchases</b>.');
-        await this.confirm();
+        await this.confirm(bought, []);
         return false;
       }
       const options = { product };
@@ -146,11 +157,9 @@
         toast(esc((err && err.message) || 'The purchase did not go through. Nothing was charged.'));
         return false;
       }
-      await this.confirm();
-      const v = M.Pro.verify(State.data);
-      toast(v.tier === 'free'
-        ? 'Payment received — your plan switches on in a moment.'
-        : `<b>${esc(M.Pro.PLANS[planId].name)}</b> is on. Thank you.`);
+      const on = await this.confirm(bought, WAITS, () => toast('Payment received — your plan switches on in a moment.'));
+      if (on) toast(`<b>${esc(plan.name)}</b> is on. Thank you.`);
+      else if (Api.signedIn()) toast('Payment received. It can take a few minutes to switch on; nothing more is charged.');
       return true;
     },
 
@@ -160,29 +169,50 @@
         toast('Restoring purchases works in the MILES app from the App Store or Google Play.');
         return false;
       }
+      let info = null;
       try {
-        await this.plugin().restorePurchases();
+        info = (await this.plugin().restorePurchases()).customerInfo;
       } catch (err) {
         toast(esc((err && err.message) || 'The store could not be reached. Try again.'));
         return false;
       }
-      await this.confirm();
+      const paid = () => { const v = M.Pro.verify(State.data); return v.tier !== 'free' && !v.trial; };
+      // Worth waiting for the webhook only if the store found something.
+      const found = !!(info && info.activeSubscriptions && info.activeSubscriptions.length);
+      const on = await this.confirm(paid, found ? WAITS : []);
       const v = M.Pro.verify(State.data);
-      toast(v.tier === 'free' || v.trial
-        ? 'No subscription found on this store account.'
-        : `<b>${esc(v.plan ? v.plan.name : 'Your plan')}</b> restored.`);
-      return true;
+      toast(on ? `<b>${esc(v.plan ? v.plan.name : 'Your plan')}</b> restored.`
+        : found ? 'Found on the store. It can take a few minutes to show here.'
+          : 'No subscription found on this store account.');
+      return on;
     },
 
-    /** Has the server check with the store now, rather than wait for the webhook. */
-    async confirm() {
+    /**
+     * Waits for the server to know what the store just did, until `done()`.
+     * A server with RevenueCat's V1 secret key asks RevenueCat at once;
+     * otherwise RevenueCat's webhook tells it, so look again after each of
+     * `waits`. `onWait` hears that it was not immediate. Stops if the
+     * runner signs out or changes account meanwhile. With no arguments it
+     * only asks the once.
+     */
+    async confirm(done, waits, onWait) {
+      done = done || (() => true);
+      waits = waits || [];
+      const who = Api.user && Api.user.id;
+      const same = () => Api.signedIn() && Api.user && Api.user.id === who;
       try {
         M.Sync.applyMe(await Api.post('/v1/billing/sync'));
         State.save();
-      } catch (err) {
-        // The webhook will still arrive; look again shortly.
-        setTimeout(() => M.Sync.pullMe().then(() => State.save()).catch(() => {}), 5000);
+      } catch (err) { /* no key on this server, or RevenueCat unreachable */ }
+      if (done()) return true;
+      if (onWait && waits.length) onWait();
+      for (const wait of waits) {
+        await sleep(wait);
+        if (!same()) return false;
+        try { await M.Sync.pullMe(); State.save(); } catch (err) { /* a moment offline */ }
+        if (done()) return true;
       }
+      return same() && done();
     },
   };
 

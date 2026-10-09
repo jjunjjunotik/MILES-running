@@ -30,8 +30,9 @@ function load(env) {
     adminToken: e.ADMIN_TOKEN || '',
     // Shared secret RevenueCat sends in its webhook's Authorization header.
     revenuecatSecret: e.REVENUECAT_WEBHOOK_SECRET || '',
-    // RevenueCat's secret API key (sk_…), so the server can ask what a runner
-    // has right after they buy, instead of waiting for the webhook.
+    // Optional. RevenueCat's V1 secret key (sk_…), so the server can ask what
+    // a runner has right after they buy instead of waiting for the webhook.
+    // Newer RevenueCat projects only make V2 keys, which this cannot use.
     revenuecatApiKey: e.REVENUECAT_API_KEY || '',
     revenuecatApiUrl: (e.REVENUECAT_API_URL || 'https://api.revenuecat.com').replace(/\/+$/, ''),
     resendApiKey: e.RESEND_API_KEY || '',

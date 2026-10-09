@@ -99,7 +99,9 @@ module.exports = function billingRoutes(router, app) {
   const { config, limiter } = app;
 
   /* Right after a purchase the app asks here, and the server asks RevenueCat
-     — the purchase counts at once rather than when the webhook lands. */
+     — the purchase counts at once rather than when the webhook lands, a few
+     seconds later. Optional: it needs a V1 secret key, which RevenueCat's
+     newer projects no longer make, and without one the webhook does it all. */
   router.post('/v1/billing/sync', async (ctx) => {
     const { db, user } = ctx;
     if (!config.revenuecatApiKey) throw fail.notFound('No such endpoint.');
@@ -114,7 +116,9 @@ module.exports = function billingRoutes(router, app) {
       throw unreachable();
     }
     if (!res.ok) {
-      app.log.error(`[billing] RevenueCat answered ${res.status} for ${user.id}`);
+      app.log.error(res.status === 403
+        ? '[billing] RevenueCat refused REVENUECAT_API_KEY: this needs a V1 secret key. With only V2 keys, leave it empty; the webhook does the work.'
+        : `[billing] RevenueCat answered ${res.status} for ${user.id}`);
       throw unreachable();
     }
     const body = await res.json();

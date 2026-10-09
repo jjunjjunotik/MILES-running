@@ -11,7 +11,9 @@
 // at once, and the profile shows it — and when it ends, once cancelled; an upgrade on Google Play replaces the old plan rather than
 // running beside it; the same plan is not sold twice; managing opens the
 // store's own page; a purchase made while the store's records lag still
-// switches on; restoring on an iPhone; signing out and in moves the store to
+// switches on; so does one in a RevenueCat project with only V2 secret keys,
+// where it arrives by webhook alone; restoring with nothing to restore says
+// so at once; restoring on an iPhone; signing out and in moves the store to
 // the new account; and a web build with no store says so.
 //   node test-billing.js
 // Needs what test-online.js needs: Playwright, the server's dependencies and
@@ -90,10 +92,19 @@ const STORE = (platform, prices) => `(() => {
   // --- RevenueCat, as far as the server asks it anything --------------------
   const records = new Map();       // user id → subscriber record
   const down = new Set();          // users whose record is not there yet
+  // Users of a project with only V2 secret keys, which the v1 API refuses.
+  // For them the purchase reaches the server the way it would in such a
+  // project: by RevenueCat's webhook, a moment after the store took the money.
+  const v2 = new Set();
   let rcAsked = 0;
   const rc = http.createServer((req, res) => {
     rcAsked++;
     const id = decodeURIComponent(req.url.split('/').pop());
+    if (v2.has(id)) {
+      res.writeHead(403, { 'content-type': 'application/json' });
+      res.end(JSON.stringify({ code: 7723, message: "You're trying to use a secret API key incompatible with RevenueCat API V1." }));
+      return;
+    }
     const ok = !down.has(id) && req.headers.authorization === 'Bearer sk_test';
     res.writeHead(ok ? 200 : 503, { 'content-type': 'application/json' });
     res.end(JSON.stringify(ok ? (records.get(id) || { subscriber: { entitlements: {}, subscriptions: {} } }) : { message: 'unavailable' }));
@@ -108,6 +119,12 @@ const STORE = (platform, prices) => `(() => {
       entitlements: { [TIERS[plan]]: { expires_date: expires, product_identifier: product } },
       subscriptions: { [plan]: { expires_date: expires, store: platform === 'ios' ? 'app_store' : 'play_store', unsubscribe_detected_at: null } },
     } });
+    if (v2.has(userId)) {
+      setTimeout(() => call('POST', '/v1/billing/revenuecat', { event: {
+        id: crypto.randomUUID(), type: 'INITIAL_PURCHASE', app_user_id: userId, product_id: product,
+        entitlement_ids: [TIERS[plan]], store: platform === 'ios' ? 'APP_STORE' : 'PLAY_STORE', expiration_at_ms: Date.parse(expires),
+      } }, { authorization: 'Bearer rc-hook' }), 2500);
+    }
   };
 
   // --- The server -----------------------------------------------------------
@@ -115,7 +132,8 @@ const STORE = (platform, prices) => `(() => {
   await admin(`create database ${dbName}`);
   const dbUrl = new URL(ADMIN_URL);
   dbUrl.pathname = '/' + dbName;
-  const quiet = { log() {}, warn() {}, error() {} };
+  const logged = [];
+  const quiet = { log() {}, warn() {}, error: (...a) => logged.push(a.join(' ')) };
   const server = await start({
     config: load({
       DATABASE_URL: dbUrl.toString(), SCRYPT_N: '1024', RATE_LIMIT_SCALE: '1000', LOG_REQUESTS: 'false',
@@ -302,8 +320,34 @@ const STORE = (platform, prices) => `(() => {
       entitlement_ids: ['supporter'], store: 'PLAY_STORE', expiration_at_ms: Date.now() + 365 * DAY,
     } }, { authorization: 'Bearer rc-hook' });
     ok('then the webhook lands', hook.status === 200 && hook.body.outcome === 'granted', JSON.stringify(hook));
-    await until(page, () => MILES.Pro.verify(MILES.State.data).tier === 'supporter', null, 9000);
-    ok('and the app looks again by itself, and switches it on', true);
+    await until(page, () => MILES.Pro.verify(MILES.State.data).tier === 'supporter', null, 9000).catch(() => {});
+    ok('and the app looks again by itself, and switches it on', (await tier(page)) === 'supporter');
+    await until(page, () => /Supporter<\/b> is on|Supporter is on/.test([...document.querySelectorAll('#toasts .toast')].map((t) => t.textContent).join(' ')), null, 3000).catch(() => {});
+    ok('and says so when it does', /Supporter is on/.test(await lastToast(page)), await lastToast(page));
+    await page.close();
+
+    // --- 9b. A RevenueCat project with only V2 secret keys ------------------------------------------
+    // The server's quick check is refused, so a purchase arrives only by the
+    // webhook — the set-up a new RevenueCat project has.
+    const hana = await runner('Hana');
+    v2.add(hana.id);
+    page = await phone(hana, 'android');
+    await until(page, () => window.__store.calls.some((c) => c[0] === 'getProducts'));
+    await page.evaluate(() => MILES.Account.restore());
+    ok('Restore with nothing on the store account says so, without making anyone wait',
+      /No subscription found/.test(await lastToast(page)), await lastToast(page));
+    await db.query("update users set trial_ends_at = now() - interval '1 day' where id = $1", [hana.id]);
+    await page.evaluate(() => MILES.Sync.pullMe());
+    await offer(page, 'pro', 'monthly');
+    const clicked = Date.now();
+    await page.click('#proPrimary');
+    await until(page, () => /Payment received/.test([...document.querySelectorAll('#toasts .toast')].map((t) => t.textContent).join(' ')));
+    ok('the server cannot ask RevenueCat, so the app says the payment arrived', (await tier(page)) === 'free');
+    await until(page, () => MILES.Pro.verify(MILES.State.data).tier === 'pro', null, 15000).catch(() => {});
+    ok('the webhook lands, and the app, looking again, switches Pro on', (await tier(page)) === 'pro', await tier(page));
+    await until(page, () => /Pro is on/.test([...document.querySelectorAll('#toasts .toast')].map((t) => t.textContent).join(' ')), null, 3000).catch(() => {});
+    ok('within seconds, and says so', /Pro is on/.test(await lastToast(page)) && Date.now() - clicked < 12000, `${await lastToast(page)} after ${Date.now() - clicked} ms`);
+    ok('the server log says why its quick check failed, and what to do', logged.some((l) => /needs a V1 secret key/.test(l) && /leave it empty/.test(l)), JSON.stringify(logged.slice(-3)));
     await page.close();
 
     // --- 10. An iPhone: Apple's terms, and Restore purchases ----------------------------------------

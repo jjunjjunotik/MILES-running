@@ -63,7 +63,7 @@ a note on what it is for.
 | `RESEND_API_KEY`, `MAIL_FROM` | Password reset emails. Without them nobody can reset a password. |
 | `ADMIN_TOKEN` | Bearer token for `/admin`. Empty turns `/admin` off. |
 | `REVENUECAT_WEBHOOK_SECRET` | The Authorization value RevenueCat sends. Empty turns the webhook off. |
-| `REVENUECAT_API_KEY` | RevenueCat's secret key (`sk_…`), so a purchase counts the moment it is made. Never in the app. |
+| `REVENUECAT_API_KEY` | Optional: RevenueCat's V1 secret key (`sk_…`), so a purchase counts the moment it is made. Newer projects only make V2 keys, which do not work here; leave it empty and the webhook does it. Never in the app. |
 | `TRUST_PROXY` | `true` behind a load balancer, so rate limits see runners, not the balancer. |
 | `ALLOW_SIMULATED_RUNS` | `false` in production: the app's simulator must never claim real ground. |
 | `CORS_ORIGINS` | Default `*`. Safe, because the API uses bearer tokens, not cookies. |
@@ -153,12 +153,14 @@ user id; RevenueCat tells the server what that runner now has.
 - **The app.** RevenueCat's public key for each store at build time:
   `REVENUECAT_IOS_KEY=appl_…` and `REVENUECAT_ANDROID_KEY=goog_…` (see the
   phone app in the main README).
-- **The server.** `REVENUECAT_API_KEY` (the secret `sk_…` key): right after a
-  purchase the app calls `POST /v1/billing/sync`, and the server asks
-  RevenueCat at once instead of waiting for the webhook. And the webhook, at
-  `PUBLIC_URL/v1/billing/revenuecat` with an Authorization value equal to
-  `REVENUECAT_WEBHOOK_SECRET`, for everything after: renewals, cancellations,
-  refunds, expiry.
+- **The server.** The webhook, at `PUBLIC_URL/v1/billing/revenuecat` with
+  an Authorization value equal to `REVENUECAT_WEBHOOK_SECRET`, sending both
+  production and sandbox events (App Review buys in the sandbox). It carries
+  everything: the purchase a few seconds after it is made — the app keeps
+  looking until it lands — then renewals, cancellations, refunds and expiry.
+  Optionally `REVENUECAT_API_KEY`, a V1 secret key, with which the server
+  asks RevenueCat the moment a purchase is made (`POST /v1/billing/sync`).
+  RevenueCat's newer projects only make V2 keys; without one, leave it empty.
 
 Every event is stored in `billing_events` and applied once. What a runner has
 is in `entitlements`, and every Pro gate on the server reads it — founding a
