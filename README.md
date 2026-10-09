@@ -337,7 +337,8 @@ Postgres where the role may create databases (`TEST_DATABASE_URL`). The
 server has 85 tests of its own: `cd server && npm test`.
 
 `test-tiles.js` serves its own tiles from a throwaway HTTP server, so it needs
-no network and passes with the real CDN blocked.
+no network, and refuses the real tile hosts itself where it checks what the app
+says when they cannot be reached: it passes with the network open or blocked.
 
 ---
 

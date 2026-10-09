@@ -186,6 +186,10 @@ function startTiles() {
   // showing you the drawn city because it could not reach any.
   ok('choosing Drawn is not captioned',
     (await p.evaluate(() => document.querySelector('#mapStyleNote').textContent)).trim() === '');
+  // The real tile hosts are refused here, whatever this machine's network
+  // allows: the check is about what the app says when they cannot be
+  // reached, and it used to pass only where the network blocked them.
+  await p.route(/^https:\/\/([a-z0-9-]+\.)*(arcgisonline\.com|openstreetmap\.org|opentopomap\.org)\//, (route) => route.abort());
   await p.evaluate(() => MILES.UI.setMapStyle('dark'));
   // The note changes when the source is given up on, and that happens when its
   // tiles have failed — on the network's clock, not ours. A fixed 400ms wait
@@ -196,7 +200,7 @@ function startTiles() {
       null, { timeout: 10000 }).then(() => true, () => false));
 
   const real = errs.filter((e) => !/Failed to load resource/.test(e));
-  console.log('tile fetch failures (expected — CDN is blocked here):', errs.length - real.length);
+  console.log('tile fetch failures (expected: the real hosts are refused):', errs.length - real.length);
   console.log('ERRORS:', real.length ? real.join(' | ') : 'none');
   if (real.length) bad++;
   console.log(bad === 0 ? 'ALL PASS' : `${bad} FAILURES`);
