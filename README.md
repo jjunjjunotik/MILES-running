@@ -267,11 +267,13 @@ Conversion to km/mi happens only at the display edge, in `Units`.
 
 ### The map
 
-The basemap is real. A store build draws Esri's tiles, licensed by an ArcGIS
-Location Platform key given at build time (`MILES_MAP_KEY`, see **The phone
-app**): the Dark Gray Canvas by default, dark enough that a route drawn over it
-still reads, Esri's streets as `Street`, and its outdoor map, with contours,
-as `Topo`. Its tiles are 512 pixels, drawn as retina tiles, and the map
+The basemap is real. When the server has an ArcGIS Location Platform key
+(`ARCGIS_MAP_KEY`, see `server/README.md`) the app draws Esri's tiles, which
+that key licenses: the Dark Gray Canvas by default, dark enough that a route
+drawn over it still reads, Esri's streets as `Street`, and its outdoor map,
+with contours, as `Topo`. The server hands the key out (`/v1/config`) rather
+than the app being built with it: Esri's keys last a year at most, and the
+next one needs no app update. Its tiles are 512 pixels, drawn as retina tiles, and the map
 carries the "Powered by Esri" credit Esri asks for. The free tier covers two
 million tiles a month; then it is $0.15 per thousand.
 
@@ -539,12 +541,10 @@ npm run android        # copy the app into android/ and open Android Studio
 npm run ios            # the same for Xcode (a Mac is needed for iOS)
 npm run sync           # after changing the app: copy it into both
 
-# A build for the stores talks to your server, over HTTPS, sells through
-# RevenueCat with its public key for each store, and draws licensed map
-# tiles with an ArcGIS key:
+# A build for the stores talks to your server, over HTTPS, and sells
+# through RevenueCat with its public key for each store:
 MILES_API_URL=https://api.example.com \
-REVENUECAT_IOS_KEY=appl_… REVENUECAT_ANDROID_KEY=goog_… \
-MILES_MAP_KEY=… npm run sync
+REVENUECAT_IOS_KEY=appl_… REVENUECAT_ANDROID_KEY=goog_… npm run sync
 ```
 
 Without `MILES_API_URL` the phone build is the demo. Without a store's key it
@@ -612,7 +612,7 @@ Then, with the same variables as `npm run sync` above:
 
 ```bash
 MILES_API_URL=… REVENUECAT_IOS_KEY=… REVENUECAT_ANDROID_KEY=… \
-MILES_MAP_KEY=… npm run android:release
+npm run android:release
 ```
 
 and upload `android/app/build/outputs/bundle/release/app-release.aab` in Play

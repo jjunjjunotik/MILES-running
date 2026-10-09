@@ -41,6 +41,8 @@
 
     init() {
       if (!Api.enabled) return;
+      // Signed in or not: the map behind the sign-in screen needs it too.
+      M.Sync.pullConfig().catch(() => { /* offline: the last key, or keyless */ });
       Bus.on('auth:changed', (event) => this.changed(event));
       Bus.on('live:invite', (race) => UI().offerRace(race));
       if (Api.signedIn()) {

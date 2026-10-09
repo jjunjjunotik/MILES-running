@@ -53,3 +53,13 @@ test('the public pages', async (t) => {
     assert.deepEqual(res.body, { ok: true });
   });
 });
+
+test('what every phone is told: the map key', async (t) => {
+  const withKey = await boot({ ARCGIS_MAP_KEY: 'AAPT-test-key' });
+  const without = await boot();
+  t.after(() => Promise.all([withKey.close(), without.close()]));
+  const res = await fetch(withKey.url + '/v1/config');
+  assert.equal(res.status, 200, 'no sign-in needed');
+  assert.deepEqual(await res.json(), { mapKey: 'AAPT-test-key' });
+  assert.deepEqual(await (await fetch(without.url + '/v1/config')).json(), { mapKey: null }, 'none set: keyless tiles');
+});

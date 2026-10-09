@@ -35,6 +35,10 @@ function load(env) {
     // Newer RevenueCat projects only make V2 keys, which this cannot use.
     revenuecatApiKey: e.REVENUECAT_API_KEY || '',
     revenuecatApiUrl: (e.REVENUECAT_API_URL || 'https://api.revenuecat.com').replace(/\/+$/, ''),
+    // The ArcGIS Location Platform key that licenses the map's tiles. The app
+    // asks for it at /v1/config, so a new one (they last a year at most)
+    // needs no app update. Without it the map uses keyless tile servers.
+    arcgisMapKey: e.ARCGIS_MAP_KEY || '',
     resendApiKey: e.RESEND_API_KEY || '',
     mailFrom: e.MAIL_FROM || '',
     // The app's simulator makes up runs when there is no GPS. Off in

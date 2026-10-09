@@ -55,7 +55,7 @@ const centroid = (ring) => ({
   const server = await start({
     config: load({
       DATABASE_URL: dbUrl.toString(), SCRYPT_N: '1024', RATE_LIMIT_SCALE: '1000', LOG_REQUESTS: 'false',
-      ALLOW_SIMULATED_RUNS: 'true', ADMIN_TOKEN: 'online-admin',
+      ALLOW_SIMULATED_RUNS: 'true', ADMIN_TOKEN: 'online-admin', ARCGIS_MAP_KEY: 'online-map-key',
     }),
     port: 0, log: quiet, poolSize: 4, mailer: { async send() {} },
   });
@@ -92,6 +92,8 @@ const centroid = (ring) => ({
   const errors = [];
   page.on('pageerror', (e) => errors.push('PAGEERROR: ' + e.message));
   const appUrl = 'file://' + path.resolve(__dirname, 'index.html') + '?api=' + encodeURIComponent(API) + '&sim=1';
+  // Esri's tiles are not this test's business; the key that asks for them is.
+  await page.route(/^https:\/\/static-map-tiles-api\.arcgis\.com\//, (route) => route.abort());
 
   let bad = 0;
   const ok = (label, cond, extra) => {
@@ -125,6 +127,11 @@ const centroid = (ring) => ({
     }));
     ok('with a server the app opens on the sign-in screen', first.auth && first.connected, JSON.stringify(first));
     ok('and nothing is made up: no seeded runs, rivals, crews or friends', first.made === 0, first.made);
+    await until(() => /static-map-tiles-api/.test(MILES.Tiles.SOURCES.dark.url)).catch(() => {});
+    const map = await page.evaluate(() => ({ url: MILES.Tiles.SOURCES.dark.url, kept: localStorage.getItem('miles.mapKey') }));
+    ok('the server hands the app the key that licenses Esri\'s map tiles, before anyone signs in',
+      /arcgis\/dark-gray\/static\/tile\/\{z\}\/\{y\}\/\{x\}\?token=online-map-key$/.test(map.url), map.url);
+    ok('and the app keeps it for its next start', map.kept === 'online-map-key', map.kept);
     const audits = [];
     const audit = async (label, selector) => {
       const a = await page.evaluate(AUDIT(selector));
@@ -423,6 +430,8 @@ const centroid = (ring) => ({
       crews: MILES.State.data.crews.length,
     }));
     ok('with no server it is the demo it always was', !d.auth && !d.connected && d.runs > 0 && d.crews > 0, JSON.stringify(d));
+    const demoMap = await demo.evaluate(() => MILES.Tiles.SOURCES.dark.url);
+    ok('and its map needs no key', !/token=/.test(demoMap), demoMap);
   } finally {
     await browser.close();
     await server.close();

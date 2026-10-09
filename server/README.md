@@ -64,6 +64,7 @@ a note on what it is for.
 | `ADMIN_TOKEN` | Bearer token for `/admin`. Empty turns `/admin` off. |
 | `REVENUECAT_WEBHOOK_SECRET` | The Authorization value RevenueCat sends. Empty turns the webhook off. |
 | `REVENUECAT_API_KEY` | Optional: RevenueCat's V1 secret key (`sk_…`), so a purchase counts the moment it is made. Newer projects only make V2 keys, which do not work here; leave it empty and the webhook does it. Never in the app. |
+| `ARCGIS_MAP_KEY` | The key that licenses the map's tiles (see **Map tiles**). Without it the app falls back to keyless tile servers, which are not licensed for a store app. |
 | `TRUST_PROXY` | `true` behind a load balancer, so rate limits see runners, not the balancer. |
 | `ALLOW_SIMULATED_RUNS` | `false` in production: the app's simulator must never claim real ground. |
 | `CORS_ORIGINS` | Default `*`. Safe, because the API uses bearer tokens, not cookies. |
@@ -134,6 +135,18 @@ runners, runs, crews and open reports, with the age of the oldest.
 
 ---
 
+## Map tiles
+
+The app's map is Esri's, through an ArcGIS Location Platform account: two
+million tiles a month free, then $0.15 per thousand. In the account, make API
+key credentials with one privilege, **Static basemap tiles**, generate a key,
+and set it as `ARCGIS_MAP_KEY`. The app asks for it at `GET /v1/config` and
+keeps the last one it was given.
+
+Esri's keys last a year at most. A month before one expires, generate the
+credentials' second key, set `ARCGIS_MAP_KEY` to it and restart; phones take
+it up the next time they open the app, and nobody has to update anything.
+
 ## Payments
 
 Purchases go through [RevenueCat](https://www.revenuecat.com), which sits in
@@ -194,6 +207,7 @@ milliseconds — as in the app.
 | `POST /v1/races`, `GET /v1/races/invites` | Races with friends. |
 | `WS /v1/live` | Presence, race invites, live telemetry. First message `{type:'auth', token}`. |
 | `POST /v1/reports`, `GET` · `POST /v1/blocks` | Reporting and blocking. |
+| `GET /v1/config` | What the app needs from the server before anything else: the map's key. No sign-in. |
 | `POST /v1/billing/sync` | After a purchase or a restore: the server asks RevenueCat what you have now. |
 | `POST /v1/billing/revenuecat` | RevenueCat's webhook. |
 | `/privacy` · `/terms` · `/support` · `/delete-account` · `/healthz` | Pages and the health check. |

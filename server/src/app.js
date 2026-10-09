@@ -8,7 +8,7 @@ const { authenticate, bearer } = require('./auth');
 const { createLimiter } = require('./limits');
 const { createMailer } = require('./mailer');
 
-const ROUTES = ['account', 'runs', 'land', 'crews', 'friends', 'races', 'moderation', 'billing', 'admin', 'pages'];
+const ROUTES = ['account', 'runs', 'land', 'crews', 'friends', 'races', 'moderation', 'billing', 'config', 'admin', 'pages'];
 
 function corsHeaders(req, config) {
   const origin = req.headers.origin;

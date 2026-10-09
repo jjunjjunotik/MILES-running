@@ -236,6 +236,12 @@
 
     async pullMe() { const me = await this.fetch('/v1/me'); if (me) this.applyMe(me); },
 
+    /** What the server tells every phone: the key that licenses the map's tiles. */
+    async pullConfig() {
+      const config = await Api.get('/v1/config');
+      if (config && M.Tiles) M.Tiles.useKey(config.mapKey || null);
+    },
+
     async pullRuns() {
       let runs = [];
       let before = null;

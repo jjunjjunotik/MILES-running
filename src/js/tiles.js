@@ -15,9 +15,10 @@
    the tiles are blocked, offline, or switched off, the map falls back to the
    drawn city and every other feature is untouched.
 
-   Whose tiles: a store build carries an ArcGIS key (MILES_MAP_KEY, written
-   into <meta name="miles-map-key"> by scripts/build-www.js) and draws Esri's
-   static basemap tiles, which that key licenses. Without one — the demo, a
+   Whose tiles: the server hands every phone an ArcGIS key (/v1/config, from
+   ARCGIS_MAP_KEY), and with it the map draws Esri's static basemap tiles,
+   which the key licenses. Esri's keys last a year at most, so the key is the
+   server's to change, not built into the app. Without one — the demo, a
    laptop — it uses tile servers that need no key, which are fine to develop
    against and not licensed for an app in the stores.
    ========================================================================== */
@@ -104,14 +105,16 @@
     };
   }
 
-  function mapKey() {
-    try {
-      const tag = document.querySelector('meta[name="miles-map-key"]');
-      return tag && tag.content.trim() ? tag.content.trim() : null;
-    } catch (err) { return null; }
+  // The last key the server gave, so the map starts on licensed tiles rather
+  // than waiting for the server to answer again.
+  const KEY_STORE = 'miles.mapKey';
+  function storedKey() {
+    try { return localStorage.getItem(KEY_STORE); } catch (err) { return null; }
   }
 
-  const SOURCES = mapKey() ? licensed(mapKey()) : KEYLESS;
+  const SOURCES = Object.assign({}, KEYLESS);
+  const saved = M.Api && M.Api.enabled ? storedKey() : null;
+  if (saved) Object.assign(SOURCES, licensed(saved));
 
   const cache = new Map();      // 'key/z/x/y' -> HTMLImageElement | 'failed'
   let inflight = 0;
@@ -123,6 +126,20 @@
     KEYLESS,
     licensed,
     source: SOURCES.dark,
+
+    /**
+     * The key the server gives (null: none), kept for the next start. The
+     * map moves onto the new tiles at once if it is showing one of the three.
+     */
+    useKey(key) {
+      Object.assign(SOURCES, key ? licensed(key) : KEYLESS);
+      try {
+        if (key) localStorage.setItem(KEY_STORE, key);
+        else localStorage.removeItem(KEY_STORE);
+      } catch (err) { /* kept for this session only */ }
+      const showing = this.source.key;
+      if (SOURCES[showing] && SOURCES[showing] !== this.source) this.setSource(showing);
+    },
 
     /** Switches basemap. 'drawn' turns imagery off entirely. */
     setSource(key) {
