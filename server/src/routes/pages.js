@@ -11,7 +11,7 @@ const { reply } = require('../http');
 const auth = require('../auth');
 const { deleteAccount } = require('../services/accounts');
 
-const UPDATED = '3 October 2026';
+const UPDATED = '9 October 2026';
 
 const esc = (s) => String(s === undefined || s === null ? '' : s)
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
@@ -101,7 +101,7 @@ function privacy(config) {
 <p>Nobody can find you by searching: a friend adds you with the code you give them. You can block anyone, which ends a friendship and hides their runs and notices from you.</p>
 
 <h2>Who we share it with</h2>
-<p>We do not sell your data and there is no advertising in ${app}. To run the service we use providers who process data for us under contract: our hosting and database provider, an email provider to send password codes, and RevenueCat, which handles subscriptions between the app and the App Store or Google Play. We disclose data to authorities only where the law requires it.</p>
+<p>We do not sell your data and there is no advertising in ${app}. To run the service we use providers who process data for us under contract: our hosting and database provider, an email provider to send password codes, RevenueCat, which handles subscriptions between the app and the App Store or Google Play, and Esri, which serves the map: your phone asks it for the part of the map on your screen, so it sees that area and your IP address. Choosing the <b>Drawn</b> map in the app stops those requests. We disclose data to authorities only where the law requires it.</p>
 
 <h2>How long we keep it</h2>
 <p>Until you delete your account. Deleting it removes your profile, runs, ground, crew notices, friends and blocks straight away; ground your loops had taken from other runners goes back to them. Backups are overwritten within 30 days. Records of purchases are kept as long as tax and consumer law requires.</p>

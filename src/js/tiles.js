@@ -14,6 +14,12 @@
    The network is optional. Nothing here is required for the app to work: if
    the tiles are blocked, offline, or switched off, the map falls back to the
    drawn city and every other feature is untouched.
+
+   Whose tiles: a store build carries an ArcGIS key (MILES_MAP_KEY, written
+   into <meta name="miles-map-key"> by scripts/build-www.js) and draws Esri's
+   static basemap tiles, which that key licenses. Without one — the demo, a
+   laptop — it uses tile servers that need no key, which are fine to develop
+   against and not licensed for an app in the stores.
    ========================================================================== */
 
 (function (M) {
@@ -23,11 +29,12 @@
 
   // Metres per pixel at zoom 0 on the equator — the Web Mercator constant.
   const EQUATOR_MPP = 156543.033928;
-  const MAX_CACHE = 256;        // images held; roughly 4 screens' worth
+  const MAX_CACHE = 256;        // 256-pixel images held; roughly 4 screens' worth
   const FAIL_LIMIT = 8;         // consecutive misses before a source is given up on
 
-  /* Sources that need no API key. Dark is the default because the app is dark:
-     a bright basemap would drown the routes and the territory colours.
+  /* Sources that need no API key, for development and the demo. Dark is the
+     default because the app is dark: a bright basemap would drown the routes
+     and the territory colours.
 
      Dark was CARTO's dark_all until CARTO began answering keyless requests
      with an "API KEY REQUIRED" watermark in place of every tile — a 200 with
@@ -38,7 +45,7 @@
      the same way, and there was no keyless light map with streets at running
      zooms to replace it, so it is gone; Street is the light option, and Topo
      took its place. */
-  const SOURCES = {
+  const KEYLESS = {
     dark: {
       key: 'dark',
       name: 'Dark',
@@ -74,6 +81,38 @@
     drawn: { key: 'drawn', name: 'Drawn', url: null, attribution: '' },
   };
 
+  /**
+   * The same three maps from Esri's Static Basemap Tiles service, licensed by
+   * an ArcGIS Location Platform key: the dark gray canvas, streets, and the
+   * outdoor map with its contours. Its tiles are 512 pixels but indexed like
+   * ordinary ones, so each covers the same ground with twice the detail — a
+   * retina tile. Esri asks for "Powered by Esri" and the data sources.
+   */
+  function licensed(key) {
+    const base = 'https://static-map-tiles-api.arcgis.com/arcgis/rest/services/static-basemap-tiles-service/v1/';
+    const token = encodeURIComponent(key);
+    const credit = 'Powered by Esri · Esri, TomTom, Garmin, © OpenStreetMap';
+    const style = (key, name, path, dim) => ({
+      key, name, url: `${base}${path}/static/tile/{z}/{y}/{x}?token=${token}`,
+      subdomains: [''], retina: false, tileSize: 512, maxZoom: 19, dim, attribution: credit,
+    });
+    return {
+      dark: style('dark', 'Dark', 'arcgis/dark-gray', 0.08),
+      osm: style('osm', 'Street', 'arcgis/streets', 0.5),
+      topo: style('topo', 'Topo', 'arcgis/outdoor', 0.5),
+      drawn: KEYLESS.drawn,
+    };
+  }
+
+  function mapKey() {
+    try {
+      const tag = document.querySelector('meta[name="miles-map-key"]');
+      return tag && tag.content.trim() ? tag.content.trim() : null;
+    } catch (err) { return null; }
+  }
+
+  const SOURCES = mapKey() ? licensed(mapKey()) : KEYLESS;
+
   const cache = new Map();      // 'key/z/x/y' -> HTMLImageElement | 'failed'
   let inflight = 0;
   let misses = 0;               // consecutive failures
@@ -81,6 +120,8 @@
 
   const Tiles = {
     SOURCES,
+    KEYLESS,
+    licensed,
     source: SOURCES.dark,
 
     /** Switches basemap. 'drawn' turns imagery off entirely. */
@@ -193,7 +234,8 @@
         if (this.blocked()) Bus.emit('tiles:blocked', this.source);
       };
       cache.set(id, img);
-      if (cache.size > MAX_CACHE) {
+      // A 512-pixel tile holds four times the pixels of a 256-pixel one.
+      if (cache.size > (this.source.tileSize === 512 ? MAX_CACHE / 4 : MAX_CACHE)) {
         // Oldest first; Map preserves insertion order.
         const oldest = cache.keys().next().value;
         if (oldest !== id) cache.delete(oldest);

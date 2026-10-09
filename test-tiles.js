@@ -1,6 +1,8 @@
 // Real map imagery: the tile layer must line up with the routes drawn over it,
 // leave no seams, keep canvases exportable, and fall back to the drawn city
-// whenever the network is unavailable — which is most of the point.
+// whenever the network is unavailable — which is most of the point. A store
+// build's ArcGIS key must reach Esri's licensed tiles, and a refused key must
+// leave the drawn city, not a blank map.
 //
 // The real CDN is not needed (and is usually blocked in CI): the test serves
 // its own tiles, each a solid colour encoding its own x/y, so a canvas pixel
@@ -11,7 +13,10 @@
 const { chromium } = require('playwright');
 const http = require('http');
 const zlib = require('zlib');
+const fs = require('fs');
+const os = require('os');
 const path = require('path');
+const { pathToFileURL } = require('url');
 
 let PORT = 0;   // taken from the OS, so a busy port can never fail the run
 
@@ -198,6 +203,64 @@ function startTiles() {
   ok('a map that could not load says so',
     await p.waitForFunction(() => /drawn city/i.test(document.querySelector('#mapStyleNote').textContent),
       null, { timeout: 10000 }).then(() => true, () => false));
+
+  // 7. A store build: the key in the page licenses Esri's tiles, and the map
+  //    asks for them with it and draws them. Esri is played here, and turns
+  //    away any other key the way the real service does.
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'miles-tiles-'));
+  const built = (key) => {
+    const file = path.join(dir, `index-${key}.html`);
+    fs.writeFileSync(file, fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8')
+      .replace('<head>', `<head>\n  <base href="${pathToFileURL(__dirname + path.sep).href}">`)
+      .replace(/<meta name="miles-map-key" content="[^"]*"/, `<meta name="miles-map-key" content="${key}"`));
+    return pathToFileURL(file).href;
+  };
+  const esri = async (key) => {
+    const q = await b.newPage({ viewport: { width: 430, height: 932 } });
+    const asked = [];
+    q.on('pageerror', (e) => errs.push('PAGEERROR ' + e.message));
+    q.on('console', (m) => { if (m.type() === 'error') errs.push('CONSOLE ' + m.text()); });
+    await q.route(/^https:\/\/static-map-tiles-api\.arcgis\.com\//, (route) => {
+      const url = new URL(route.request().url());
+      asked.push(url.pathname.replace(/^.*\/v1\//, '') + url.search);
+      if (url.searchParams.get('token') !== 'good-key') {
+        return route.fulfill({ status: 401, contentType: 'application/json', body: '{"error":{"code":498,"message":"Invalid token."}}' });
+      }
+      return route.fulfill({ status: 200, contentType: 'image/png', headers: { 'access-control-allow-origin': '*' }, body: png(512, 10, 200, 90) });
+    });
+    await q.goto(built(key));
+    await q.waitForTimeout(500);
+    const want = await q.evaluate(() => {
+      const cv = document.createElement('canvas');
+      cv.style.cssText = 'position:fixed;left:0;top:0;width:400px;height:400px;z-index:9999';
+      document.body.appendChild(cv);
+      const home = MILES.State.data.profile.home;
+      const m = new MILES.MapView(cv, { mpp: 2, padding: 0 });
+      m.setAnchor(home);
+      m.setCenter(home);
+      m.mpp = 2;
+      window.__q = m;
+      m.draw();
+      const z = MILES.Tiles.zoomFor(2, home.lat);
+      return { z, x: Math.floor(MILES.Tiles.lngToX(home.lng, z)), y: Math.floor(MILES.Tiles.latToY(home.lat, z)) };
+    });
+    for (let i = 0; i < 20; i++) { await q.waitForTimeout(250); await q.evaluate(() => window.__q.draw()); }
+    const seen = await q.evaluate(() => {
+      const px = window.__q.ctx.getImageData(200, 200, 1, 1).data;
+      return { px: [px[0], px[1], px[2]], blocked: MILES.Tiles.blocked(), credit: MILES.Tiles.attribution(), size: MILES.Tiles.source.tileSize };
+    });
+    await q.close();
+    return Object.assign(seen, { asked, want });
+  };
+  const good = await esri('good-key');
+  ok('a store build asks Esri for its dark gray canvas, with its key, row before column',
+    good.asked.indexOf(`arcgis/dark-gray/static/tile/${good.want.z}/${good.want.y}/${good.want.x}?token=good-key`) >= 0,
+    JSON.stringify({ want: good.want, asked: good.asked.slice(0, 3) }));
+  ok('and draws the 512-pixel tiles where they belong', good.size === 512 && good.px[1] > good.px[0] + 60 && good.px[1] > good.px[2] + 40, JSON.stringify(good.px));
+  ok('with the credit Esri asks for', /^Powered by Esri/.test(good.credit), good.credit);
+  const refused = await esri('wrong-key');
+  ok('a key Esri refuses leaves the drawn city, not a blank map', refused.blocked && (refused.px[0] + refused.px[1] + refused.px[2]) > 0, JSON.stringify(refused));
+  fs.rmSync(dir, { recursive: true, force: true });
 
   const real = errs.filter((e) => !/Failed to load resource/.test(e));
   console.log('tile fetch failures (expected: the real hosts are refused):', errs.length - real.length);

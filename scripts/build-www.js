@@ -1,10 +1,11 @@
 // Copies the app into www/, the folder Capacitor packs into the Android and
 // iOS builds. The app has no build step of its own; this is only a copy, so
 // what ships is exactly what `index.html` runs in a browser — plus the
-// server's address, from MILES_API_URL, and RevenueCat's public keys for the
-// two stores, from REVENUECAT_IOS_KEY and REVENUECAT_ANDROID_KEY.
+// server's address, from MILES_API_URL; RevenueCat's public keys for the
+// two stores, from REVENUECAT_IOS_KEY and REVENUECAT_ANDROID_KEY; and the
+// ArcGIS key that licenses the map's tiles, from MILES_MAP_KEY.
 //   MILES_API_URL=https://api.example.com REVENUECAT_IOS_KEY=appl_… \
-//   REVENUECAT_ANDROID_KEY=goog_… node scripts/build-www.js
+//   REVENUECAT_ANDROID_KEY=goog_… MILES_MAP_KEY=… node scripts/build-www.js
 const fs = require('fs');
 const path = require('path');
 
@@ -37,10 +38,15 @@ if (rc['miles-rc-ios'] || rc['miles-rc-android']) {
   if (!api) { console.error('RevenueCat keys need MILES_API_URL: purchases belong to a MILES account.'); process.exit(1); }
 }
 
+// Without it the map uses tile servers that need no key: fine for the demo
+// and for development, not licensed for an app in the stores.
+const mapKey = (process.env.MILES_MAP_KEY || '').trim();
+if (/\s/.test(mapKey)) { console.error('MILES_MAP_KEY has a space in it; paste the key alone.'); process.exit(1); }
+
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out);
 const html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
-const values = Object.assign({ 'miles-api': api }, rc);
+const values = Object.assign({ 'miles-api': api, 'miles-map-key': mapKey }, rc);
 let page = html;
 Object.entries(values).forEach(([name, value]) => {
   const meta = new RegExp(`<meta name="${name}" content="[^"]*"`);
@@ -56,4 +62,5 @@ let files = 0;
 })(out);
 const stores = ['ios', 'android'].filter((p) => rc[`miles-rc-${p}`]);
 console.log(`www/ ready: ${files} files, ${api ? 'talking to ' + api : 'the demo (no MILES_API_URL)'}` +
-  (api ? `, ${stores.length ? 'selling on ' + stores.join(' and ') : 'no store keys (nothing can be bought)'}` : ''));
+  (api ? `, ${stores.length ? 'selling on ' + stores.join(' and ') : 'no store keys (nothing can be bought)'}` : '') +
+  `, ${mapKey ? 'map tiles from Esri' : 'keyless map tiles (not for a store release: set MILES_MAP_KEY)'}`);

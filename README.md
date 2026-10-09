@@ -267,12 +267,22 @@ Conversion to km/mi happens only at the display edge, in `Units`.
 
 ### The map
 
-The basemap is real and needs no API key: Esri's Dark Gray Canvas by default,
-dark enough that a route drawn over it still reads, standard OpenStreetMap
-tiles as `Street`, or OpenTopoMap as `Topo`. **You → Map** switches between
-`Dark`, `Street`, `Topo` and `Drawn`, and the choice is remembered. (Dark was
-CARTO's until CARTO started answering keyless requests with a watermark
-instead of a map.) The record card draws the run on the same map.
+The basemap is real. A store build draws Esri's tiles, licensed by an ArcGIS
+Location Platform key given at build time (`MILES_MAP_KEY`, see **The phone
+app**): the Dark Gray Canvas by default, dark enough that a route drawn over it
+still reads, Esri's streets as `Street`, and its outdoor map, with contours,
+as `Topo`. Its tiles are 512 pixels, drawn as retina tiles, and the map
+carries the "Powered by Esri" credit Esri asks for. The free tier covers two
+million tiles a month; then it is $0.15 per thousand.
+
+Without a key — the demo, a laptop — the same three come from servers that
+need none: Esri's public Dark Gray Canvas, standard OpenStreetMap tiles and
+OpenTopoMap. They are fine to develop against and not licensed for an app in
+the stores. (Dark was CARTO's until CARTO started answering keyless requests
+with a watermark instead of a map.)
+
+**You → Map** switches between `Dark`, `Street`, `Topo` and `Drawn`, and the
+choice is remembered. The record card draws the run on the same map.
 
 `Drawn` is the original procedurally generated city, seeded so it looks the
 same every time. It is also the automatic fallback: if tiles are blocked,
@@ -315,7 +325,7 @@ node test-rank.js         a rank-up fires once, and only when earned
 node test-mission.js      three crew missions, scaled and reachable
 node test-icons.js        one icon language, and no emoji anywhere
 node test-pro.js          the paid boundary, and the numbers Pro sells
-node test-tiles.js        tile alignment, seams, canvas taint, fallback
+node test-tiles.js        tile alignment, seams, canvas taint, fallback, Esri's licensed tiles
 node test-map.js          panning, zooming, and who owns what is in view
 node test-territory.js    a loop is the only way a territory run ends
 node test-contrast.js     text against WCAG AA, and a weight floor  :8765
@@ -529,10 +539,12 @@ npm run android        # copy the app into android/ and open Android Studio
 npm run ios            # the same for Xcode (a Mac is needed for iOS)
 npm run sync           # after changing the app: copy it into both
 
-# A build for the stores talks to your server, over HTTPS, and sells
-# through RevenueCat with its public key for each store:
+# A build for the stores talks to your server, over HTTPS, sells through
+# RevenueCat with its public key for each store, and draws licensed map
+# tiles with an ArcGIS key:
 MILES_API_URL=https://api.example.com \
-REVENUECAT_IOS_KEY=appl_… REVENUECAT_ANDROID_KEY=goog_… npm run sync
+REVENUECAT_IOS_KEY=appl_… REVENUECAT_ANDROID_KEY=goog_… \
+MILES_MAP_KEY=… npm run sync
 ```
 
 Without `MILES_API_URL` the phone build is the demo. Without a store's key it
@@ -642,4 +654,3 @@ What a store release still needs that is not built here:
   minutes.
 - **Sign in with Apple or Google.** Email and password only. If a social
   sign-in is added, Apple requires Sign in with Apple alongside it.
-- **A map tile provider licensed for an app in a store** (see **The map**).
