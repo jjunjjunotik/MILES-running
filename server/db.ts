@@ -159,7 +159,7 @@ const MIGRATIONS: Migration[] = [
   {
     // 이미 적용된 마이그레이션은 고치지 않는다(적용 기록이 어긋난다).
     // 이 가운데 profiles.paddle_customer_id, subscriptions, billing_checkouts 는 웹 결제(Paddle)용이었고
-    // 지금은 읽지도 쓰지도 않는다. 결제는 인앱 구독(store_subscriptions, 마이그레이션 5)만 쓴다.
+    // 마이그레이션 6에서 지운다. 결제는 인앱 구독(store_subscriptions, 마이그레이션 5)만 쓴다.
     // billing_events(웹훅 중복 방지), usage_counters, app_secrets 는 계속 쓴다.
     version: 3,
     name: "구독 · 결제 이벤트 · 사용량 · 건강 데이터 동의",
@@ -261,6 +261,18 @@ const MIGRATIONS: Migration[] = [
         sandbox          INTEGER NOT NULL DEFAULT 0,
         checked_at       INTEGER NOT NULL
       );
+    `,
+  },
+  {
+    version: 6,
+    name: "웹 결제(Paddle) 표 지우기",
+    sql: `
+      -- 웹 결제를 없앴으므로 그 기록도 남기지 않는다(쓰지 않는 개인정보를 들고 있지 않기 위해).
+      DROP TABLE IF EXISTS billing_checkouts;
+      DROP TABLE IF EXISTS subscriptions;
+      ALTER TABLE profiles DROP COLUMN paddle_customer_id;
+      -- 웹훅 중복 방지 기록 가운데 Paddle 것. 인앱 구독(RevenueCat) 기록은 rc: 로 시작한다.
+      DELETE FROM billing_events WHERE event_id NOT LIKE 'rc:%';
     `,
   },
 ];

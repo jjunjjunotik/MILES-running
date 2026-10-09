@@ -25,7 +25,8 @@
     "check:app": "node scripts/check-app.mjs",
     "check:store": "node scripts/check-store.mjs",
     "e2e:store": "node scripts/e2e-store.mjs",
-    "make:icons": "node scripts/make-icons.mjs"
+    "make:icons": "node scripts/make-icons.mjs",
+    "check:db": "node --no-warnings scripts/check-db.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.125.0",

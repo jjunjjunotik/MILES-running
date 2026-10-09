@@ -3,13 +3,14 @@
  * check-store.mjs(서버 검증)와 e2e-store.mjs(화면 검증)가 함께 쓴다.
  *
  * env 로 넘긴 값이 기본값을 덮는다. 예: 가짜 RevenueCat 주소, 무료 한도 횟수.
+ * dataDir 를 주면 그 폴더의 데이터베이스를 쓰고, 끝나도 지우지 않는다(재시작 · 마이그레이션 시험용).
  */
 import { spawn } from "node:child_process";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
-export async function startAppServer({ port, env = {} }) {
+export async function startAppServer({ port, env = {}, dataDir: givenDir = null }) {
   // 지난 테스트의 서버가 같은 포트에 남아 있으면, 새 코드가 아니라 옛 서버를 시험하게 된다. 먼저 막는다.
   const leftover = await fetch(`http://127.0.0.1:${port}/api/health`).then(
     () => true,
@@ -19,7 +20,7 @@ export async function startAppServer({ port, env = {} }) {
     throw new Error(`포트 ${port} 에 이미 서버가 떠 있습니다. 지난 테스트의 서버를 끄고 다시 실행하세요.`);
   }
 
-  const dataDir = fs.mkdtempSync(path.join(os.tmpdir(), "nailsense-test-"));
+  const dataDir = givenDir ?? fs.mkdtempSync(path.join(os.tmpdir(), "nailsense-test-"));
   const server = spawn("npx", ["tsx", "server/index.ts"], {
     env: {
       ...process.env,
@@ -53,13 +54,15 @@ export async function startAppServer({ port, env = {} }) {
     try {
       process.kill(-server.pid, "SIGTERM");
     } catch {}
-    fs.rmSync(dataDir, { recursive: true, force: true });
+    if (!givenDir) fs.rmSync(dataDir, { recursive: true, force: true });
   };
 
   for (let i = 0; i < 60; i += 1) {
     try {
       const response = await fetch(`${api}/api/health`);
-      if (response.ok) return { api, stop, output: () => output, errors: () => output };
+      if (response.ok) {
+        return { api, stop, dataDir, dbFile: path.join(dataDir, "test.db"), output: () => output, errors: () => output };
+      }
     } catch {}
     await new Promise((r) => setTimeout(r, 300));
   }

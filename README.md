@@ -431,6 +431,7 @@ npm run smoke:ko            # 한국어 기기: 한국어 화면·동의 두 가
 
 ```bash
 npm run check:store         # 동의·무료 한도·Pro 하루 한도·구매 확인·웹훅·환불·계정 이전·계정 삭제
+npm run check:db            # 데이터베이스 마이그레이션: 빈 DB, 옛 웹 결제 표가 든 DB 에서 올라가는지
 npm run build && npm run e2e:store   # 같은 흐름을 화면으로(앱 빌드 + 웹)
 npm run check:app           # 앱 방식: 앱 출처 CORS, 토큰 로그인·로그아웃, 앱 빌드 화면으로 가입→분석→기록
 ```
